@@ -1,6 +1,7 @@
-torch
-matplotlib
-gym
-numpy
+torch~=2.1.2+cu118
+matplotlib~=3.8.2
+gym~=0.21.0
+numpy~=1.26.3
 compiler_gym
 tqdm
+absl-py==2.1.0
