@@ -1,5 +1,3 @@
-import random
-
 import numpy as np
 import torch
 import torch.nn as nn
@@ -17,7 +15,9 @@ import torch.optim as optim
 """
 
 
-# Network
+MODELS_DIR = "models"
+
+
 class DQN(nn.Module):
     def __init__(
         self, ALPHA, input_dims, fc1_dims, fc2_dims, fc3_dims, n_actions, device
@@ -110,12 +110,12 @@ class Agent(nn.Module):
             # sends observation as tensor to device
             # convert to float - > compiler gyms autophase vector is a long
             observation = observation.astype(np.float32)
-            state = torch.tensor([observation]).to(self.device)
+            state = torch.tensor(observation[None, ...]).to(self.device)
             actions = self.Q_eval.forward(state)
             # network seems to choose same action over and over, even with zero reward,
             # trying giving negative reward for choosing same action multiple times
-            while torch.argmax(actions).item() in self.actions_taken:
-                actions[0][torch.argmax(actions).item()] = 0.0
+            # while torch.argmax(actions).item() in self.actions_taken:
+            #     actions[0][torch.argmax(actions).item()] = 0.0
 
             action = torch.argmax(actions).item()
 
@@ -186,23 +186,25 @@ def save_observation(observation, observations):
     return tmp
 
 
-def train(run, agent, env, train_benchmarks):
+def train(run, agent, env):
     history_size = 100
     mem_cntr = 0
     history = np.zeros(history_size)
 
     for i in range(1, run.config["episodes"] + 1):
-        random_benchmark = random.choice(train_benchmarks)
-        observation = env.reset(benchmark=random_benchmark)
+        observation = env.reset()
         done = False
         total = 0
         actions_taken = 0
         agent.actions_taken = []
         change_count = 0
 
+        flags = []
         while not done:
+            flags = []
             action = agent.choose_action(observation)
             flag = run.config["actions"][action]
+            flags.append(flag)
             # translate to global action number via global index of flag
             new_observation, reward, done, info = env.step(
                 env.action_space.flags.index(flag)
@@ -219,26 +221,30 @@ def train(run, agent, env, train_benchmarks):
             agent.learn()
             observation = new_observation
 
-            print(
-                "Reward Counter "
-                + "{:.4f}".format(env.reward_counter)
-                + "Step: "
-                + str(i)
-                + " Episode Total: "
-                + "{:.4f}".format(total)
-                + " Epsilon: "
-                + "{:.4f}".format(agent.epsilon)
-                + " Action: "
-                + flag
-            )
+            # print(
+            #     "Reward Counter "
+            #     + "{:.4f}".format(env.reward_counter)
+            #     + "Step: "
+            #     + str(i)
+            #     + " Episode Total: "
+            #     + "{:.4f}".format(total)
+            #     + " Epsilon: "
+            #     + "{:.4f}".format(agent.epsilon)
+            #     + " Action: "
+            #     + flag
+            # )
 
         index = mem_cntr % history_size
         history[index] = total
         mem_cntr += 1
 
-        run.log({"average sum of rewards": np.mean(history)})
+        average_sum_of_rewards = np.mean(history)
+        print(
+            f"{i} - total: {total}, average_sum_of_rewards: {average_sum_of_rewards}, benchmark: {str(env.benchmark)}, flags: {' '.join(flags)}"
+        )
+        run.log({"average sum of rewards": average_sum_of_rewards, "total": total})
 
-    path = "./H10-N4000-INSTCOUNTNORM.pth"
+    path = f"./{MODELS_DIR}/{run.name}.pth"
     torch.save(agent.Q_eval.state_dict(), path)
 
 
@@ -247,6 +253,7 @@ def rollout(config, agent, env):
     action_seq, rewards = [], []
     agent.actions_taken = []
     change_count = 0
+    total = 0
 
     for i in range(config["episode_length"]):
         action = agent.choose_action(observation)
@@ -254,6 +261,18 @@ def rollout(config, agent, env):
         action_seq.append(action)
         observation, reward, done, info = env.step(env.action_space.flags.index(flag))
         rewards.append(reward)
+        total += reward
+
+        print(
+            "Step: "
+            + str(i)
+            + " Episode Total: "
+            + "{:.4f}".format(total)
+            + " Epsilon: "
+            + "{:.4f}".format(agent.epsilon)
+            + " Action: "
+            + flag
+        )
 
         if reward == 0:
             change_count += 1
@@ -262,5 +281,5 @@ def rollout(config, agent, env):
 
         if done or change_count > config["patience"]:
             break
-
+    print()
     return sum(rewards)
