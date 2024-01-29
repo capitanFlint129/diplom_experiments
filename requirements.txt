@@ -5,3 +5,5 @@ numpy~=1.26.3
 compiler_gym
 tqdm
 absl-py==2.1.0
+wandb~=0.16.2
+ray[data,train,tune,serve,rllib]==2.2.0
