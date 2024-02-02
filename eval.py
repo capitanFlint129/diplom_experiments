@@ -21,6 +21,7 @@ if __name__ == "__main__":
         print(f"{benchmark} - {reward} - {timer.time}")
         rewards.append(reward)
         times.append(timer.time)
+    env.close()
     print(f"Geomean reward: {geometric_mean(rewards)}")
     print(f"Mean walltime: {arithmetic_mean(times)}")
 

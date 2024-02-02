@@ -75,6 +75,7 @@ if __name__ == "__main__":
         env.datasets[config["train_benchmarks"]],
         test_size=0,
         random_state=config["random_state"],
+        shuffle=True,
     )
     env = CycleOverBenchmarks(env, train_benchmarks)
 
