@@ -1,6 +1,7 @@
 import gym
 from absl import app
-
+import torch
+import random
 import gym
 
 import numpy as np
@@ -11,14 +12,16 @@ from compiler_gym.wrappers import CycleOverBenchmarks
 import wandb
 
 from dqn import train, Agent
+from sklearn.model_selection import train_test_split
 
 config = dict(
     # TODO сделать нормально отслеживание данных для обучения
     train_benchmarks="benchmark://cbench-v1",
+    eval_benchmarks="benchmark://cbench-v1",
     algorithm="DQN",
     compiler_gym_env="llvm-v0",
-    observation_space="InstCountNorm",
-    # observation_space=["InstCountNorm", "Autophase"],
+    # observation_space="InstCountNorm",
+    observation_space=["InstCountNorm", "Autophase"],
     monitoring_baseline_observation_name="IrInstructionCountOz",
     monitoring_observation_space="IrInstructionCount",
     reward_space="IrInstructionCountOz",
@@ -56,14 +59,25 @@ config = dict(
 )
 
 
+def make_env():
+    return gym.make("llvm-ic-v0")
+
+
 if __name__ == "__main__":
     run = wandb.init(
         project="rl-compilers-experiments",
     )
-    env = gym.make("llvm-ic-v0")
-
-    train_benchmarks = env.datasets[config["train_benchmarks"]]
+    env = make_env()
+    np.random.seed(config["random_state"])
+    torch.manual_seed(config["random_state"])
+    random.seed(config["random_state"])
+    train_benchmarks, _ = train_test_split(
+        env.datasets[config["train_benchmarks"]],
+        test_size=0,
+        random_state=config["random_state"],
+    )
     env = CycleOverBenchmarks(env, train_benchmarks)
 
-    agent = Agent(input_dims=[69], n_actions=15)
+    agent = Agent(input_dims=[125], n_actions=len(config["actions"]))
     train(run, agent, env, config)
+    env.close()

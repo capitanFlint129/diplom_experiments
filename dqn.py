@@ -165,7 +165,7 @@ class Agent(nn.Module):
             # sends observation as tensor to device
             # convert to float - > compiler gyms autophase vector is a long
             observation = observation.astype(np.float32)
-            state = torch.tensor([observation]).to(self.Q_eval.device)
+            state = torch.tensor(observation)[None, ...].to(self.Q_eval.device)
             actions = self.Q_eval.forward(state)
             # network seems to choose same action over and over, even with zero reward,
             # trying giving negative reward for choosing same action multiple times
@@ -235,16 +235,20 @@ class Agent(nn.Module):
 
 
 def train(run, agent, env, config):
-    env.observation_space = config["observation_space"]
+    # env.observation_space = config["observation_space"]
     history_size = 100
     mem_cntr = 0
     history = np.zeros(history_size)
 
     for i in range(1, FLAGS.episodes + 1):
         observation = env.reset()
-        # observation = np.concatenate(
-        #     [env.observation[name] for name in config["observation_space"]]
-        # )
+        observation = np.concatenate(
+            [
+                env.observation["InstCountNorm"],
+                env.observation["Autophase"] / env.observation["Autophase"][51],
+            ]
+        )
+        assert np.all(observation <= 1)
         done = False
         total = 0
         actions_taken = 0
@@ -262,11 +266,16 @@ def train(run, agent, env, config):
             flag = FLAGS.actions[action]
             chosen_flags.append(flag)
             new_observation, reward, done, info = env.step(
-                env.action_space.flags.index(flag)
+                env.action_space.flags.index(flag),
+                observation_spaces=["InstCountNorm", "Autophase"],
             )
-            # new_observation = np.concatenate(
-            #     [env.observation[name] for name in config["observation_space"]]
-            # )
+            new_observation = np.concatenate(
+                [
+                    new_observation[0],
+                    new_observation[1] / new_observation[1][51],
+                ]
+            )
+            assert np.all(new_observation <= 1)
             actions_taken += 1
             total += reward
 
@@ -287,9 +296,9 @@ def train(run, agent, env, config):
         index = mem_cntr % history_size
         history[index] = total
         mem_cntr += 1
+        print(f"{i} - {env.benchmark}")
         print(
-            f"{i} - {env.benchmark}"
-            + " Total: {:.4f}".format(total)
+            "Total: {:.4f}".format(total)
             + " Epsilon: {:.4f}".format(agent.epsilon)
             + f" Average rewards sum: {str(np.mean(history))}"
             + f" Action: {' '.join(chosen_flags)}"
@@ -309,6 +318,13 @@ def train(run, agent, env, config):
 
 def rollout(agent, env):
     observation = env.reset()
+    observation = np.concatenate(
+        [
+            env.observation["InstCountNorm"],
+            env.observation["Autophase"] / env.observation["Autophase"][51],
+        ]
+    )
+    assert np.all(observation <= 1)
     action_seq, rewards = [], []
     agent.actions_taken = []
     change_count = 0
@@ -317,7 +333,17 @@ def rollout(agent, env):
         action = agent.choose_action(observation)
         flag = FLAGS.actions[action]
         action_seq.append(action)
-        observation, reward, done, info = env.step(env.action_space.flags.index(flag))
+        observation, reward, done, info = env.step(
+            env.action_space.flags.index(flag),
+            observation_spaces=["InstCountNorm", "Autophase"],
+        )
+        observation = np.concatenate(
+            [
+                observation[0],
+                observation[1] / observation[1][51],
+            ]
+        )
+        assert np.all(observation <= 1)
         rewards.append(reward)
 
         if reward == 0:
