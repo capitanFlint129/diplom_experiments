@@ -243,14 +243,9 @@ def save_observation(observation, observations):
     return tmp
 
 
-def train(run, agent, env):
-    observation_space_name = "Autophase"
-    env.observation_space = observation_space_name
-    train_dataset_name = "benchmark://mibench-v1"
-    run.config["train_benchmarks"] = train_dataset_name
-    run.config["observation_space"] = observation_space_name
-    run.config["algorithm"] = "DQN"
-    train_benchmarks = env.datasets[train_dataset_name]
+def train(agent, env):
+    env.observation_space = "InstCountNorm"
+    train_benchmarks = env.datasets["benchmark://cbench-v1"]
     history_size = 100
     mem_cntr = 0
     history = np.zeros(history_size)
@@ -305,14 +300,8 @@ def train(run, agent, env):
         mem_cntr += 1
 
         print("Average sum of rewards is " + str(np.mean(history)))
-        run.log(
-            {
-                "average_rewards_sum_last_100": np.mean(history),
-                "total_episode_reward": total,
-            }
-        )
 
-    PATH = f"./{run.name}.pth"
+    PATH = "./H10-N4000-INSTCOUNTNORM.pth"
     torch.save(agent.Q_eval.state_dict(), PATH)
 
 
