@@ -1,5 +1,3 @@
-#
-"""Evaluate deep q network for leaderboard"""
 import torch
 from absl import app
 from compiler_gym.envs import LlvmEnv
