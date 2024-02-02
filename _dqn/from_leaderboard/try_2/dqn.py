@@ -15,7 +15,7 @@ from absl import flags
 - use RMSProp instead of grad descent
 - add more exploration at the beginning
 - could try prioritized experience replay again...
-- could also try dueling dqn to see the effect of the advantage property
+- could also try dueling _dqn to see the effect of the advantage property
 
 """
 
