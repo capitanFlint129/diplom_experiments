@@ -1,7 +1,10 @@
 import gym
 
+import numpy as np
+
 # noinspection PyUnresolvedReferences
 import compiler_gym
+from compiler_gym.wrappers import CycleOverBenchmarks
 import wandb
 
 from dqn import train, Agent
@@ -13,7 +16,7 @@ config = dict(
     test_benchmarks="benchmark://cbench-v1",
     algorithm="DQN",
     compiler_gym_env="llvm-v0",
-    observation_space="InstCountNorm",
+    observation_space=["InstCountNorm", "Autophase"],
     monitoring_baseline_observation_name="IrInstructionCountOz",
     monitoring_observation_space="IrInstructionCount",
     reward_space="IrInstructionCountOz",
@@ -61,9 +64,19 @@ if __name__ == "__main__":
         reward_space=config["reward_space"],
     )
 
+    train_dataset_name = "benchmark://cbench-v1"
+    # train_dataset_name = "benchmark://github-v0"
+    run.config["train_benchmarks"] = train_dataset_name
+    run.config["algorithm"] = "DQN"
+    train_benchmarks = env.datasets[train_dataset_name]
+    env = CycleOverBenchmarks(env, train_benchmarks)
+
     env.reset()
-    observation = env.observation[config["observation_space"]]
+    observation = np.concatenate(
+        [env.observation[name] for name in config["observation_space"]]
+    )
     input_dims = observation.shape
+    print(input_dims)
 
     agent = Agent(input_dims=input_dims, n_actions=len(config["actions"]))
     train(run, agent, env, config)

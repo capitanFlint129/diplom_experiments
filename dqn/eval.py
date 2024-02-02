@@ -13,7 +13,7 @@ def run(env: LlvmEnv) -> None:
     input_dims = observation.shape
     agent = Agent(input_dims=input_dims, n_actions=len(config["actions"]))
     env.observation_space = config["observation_space"]
-    agent.Q_eval.load_state_dict(torch.load("models/olive-snowball-76.pth"))
+    agent.Q_eval.load_state_dict(torch.load("models/tough-microwave-79.pth"))
     rollout(agent, env)
 
 

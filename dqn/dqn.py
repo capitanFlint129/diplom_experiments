@@ -222,7 +222,7 @@ class Agent(nn.Module):
         q_next[terminal_batch] = 0.0
         q_target = reward_batch + self.gamma * q_next
         loss = self.Q_eval.loss(q_target, q_eval).to(self.Q_eval.device)
-        loss_val = loss.detach().item()
+        loss_val = loss.item()
         loss.backward()
         self.Q_eval.optimizer.step()
         self.learn_step_counter += 1
@@ -235,19 +235,15 @@ class Agent(nn.Module):
 
 
 def train(run, agent, env, config):
-    env.observation_space = config["observation_space"]
-    train_dataset_name = "benchmark://cbench-v1"
-    # train_dataset_name = "benchmark://github-v0"
-    run.config["train_benchmarks"] = train_dataset_name
-    run.config["algorithm"] = "DQN"
-    train_benchmarks = env.datasets[train_dataset_name]
     history_size = 100
     mem_cntr = 0
     history = np.zeros(history_size)
 
     for i in range(1, FLAGS.episodes + 1):
-        observation = env.reset(benchmark=train_benchmarks.random_benchmark())
-        print(env.benchmark)
+        env.reset()
+        observation = np.concatenate(
+            [env.observation[name] for name in config["observation_space"]]
+        )
         done = False
         total = 0
         actions_taken = 0
@@ -255,6 +251,7 @@ def train(run, agent, env, config):
         change_count = 0
 
         losses = []
+        chosen_flags = []
         while (
             not done
             and actions_taken < FLAGS.episode_length
@@ -262,9 +259,10 @@ def train(run, agent, env, config):
         ):
             action = agent.choose_action(observation)
             flag = FLAGS.actions[action]
-            # translate to global action number via global index of flag
-            new_observation, reward, done, info = env.step(
-                env.action_space.flags.index(flag)
+            chosen_flags.append(flag)
+            _, reward, done, info = env.step(env.action_space.flags.index(flag))
+            new_observation = np.concatenate(
+                [env.observation[name] for name in config["observation_space"]]
             )
             actions_taken += 1
             total += reward
@@ -276,44 +274,39 @@ def train(run, agent, env, config):
 
             agent.store_transition(action, observation, reward, new_observation, done)
             loss_val = agent.learn()
-            losses.append(loss_val)
+            if loss_val is not None:
+                losses.append(loss_val)
             observation = new_observation
 
-            print(
-                "Step: "
-                + str(i)
-                + " Episode Total: "
-                + "{:.4f}".format(total)
-                + " Epsilon: "
-                + "{:.4f}".format(agent.epsilon)
-                + " Action: "
-                + flag
-            )
             if len(agent.actions_taken) == len(FLAGS.actions):
                 done = True
 
         index = mem_cntr % history_size
         history[index] = total
         mem_cntr += 1
-
-        print("Average sum of rewards is " + str(np.mean(history)))
+        print(
+            f"{env.benchmark}"
+            + " Total: {:.4f}".format(total)
+            + " Epsilon: {:.4f}".format(agent.epsilon)
+            + f" Average rewards sum: {str(np.mean(history))}"
+            + f" Action: {' '.join(chosen_flags)}"
+        )
         run.log(
             {
                 "average_rewards_sum_last_100": np.mean(history),
                 "std_rewards_sum_last_100": np.std(history),
-                "average_episode_loss": np.mean(losses),
+                "average_episode_loss": np.mean(losses or [0]),
                 "total_episode_reward": total,
             }
         )
 
-    PATH = f"./models/{run.name}.pth"
-    torch.save(agent.Q_eval.state_dict(), PATH)
+    path = f"./models/{run.name}.pth"
+    torch.save(agent.Q_eval.state_dict(), path)
 
 
 def rollout(agent, env):
     observation = env.reset()
     action_seq, rewards = [], []
-    done = False
     agent.actions_taken = []
     change_count = 0
 
