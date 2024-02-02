@@ -9,9 +9,9 @@ from dqn import rollout, Agent
 
 
 def run(env: LlvmEnv) -> None:
-    agent = Agent(n_actions=15, input_dims=[69])
-    env.observation_space = "InstCountNorm"
-    agent.Q_eval.load_state_dict(torch.load("./H10-N4000-INSTCOUNTNORM.pth"))
+    agent = Agent(n_actions=15, input_dims=[56])
+    env.observation_space = "Autophase"
+    agent.Q_eval.load_state_dict(torch.load("feasible-planet-57.pth"))
     rollout(agent, env)
 
 
