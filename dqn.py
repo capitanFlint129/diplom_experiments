@@ -1,11 +1,12 @@
-import sys
+import os
 
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from absl import flags
+from compiler_gym.util.statistics import arithmetic_mean, geometric_mean
+from compiler_gym.util.timer import Timer
 
 # Start implementing ideas from Deep RL Bootcamp series on youtube
 
@@ -19,62 +20,7 @@ from absl import flags
 
 """
 
-
-# Flags
-
-flags.DEFINE_float("gamma", 0.90, "The percent of how often the actor stays on policy.")
-flags.DEFINE_float("epsilon", 1.0, "The starting value for epsilon.")
-flags.DEFINE_float("epsilon_end", 0.05, "The ending value for epsilon.")
-flags.DEFINE_float("epsilon_dec", 5e-5, "The decrement value for epsilon.")
-flags.DEFINE_float("alpha", 0.001, "The learning rate.")
-flags.DEFINE_integer("batch_size", 32, "The batch size.")
-flags.DEFINE_integer("max_mem_size", 100000, "The maximum memory size.")
-flags.DEFINE_integer(
-    "replace", 500, "The number of iterations to run before replacing target network"
-)
-flags.DEFINE_integer("fc_dim", 512, "The dimension of a fully connected layer")
-flags.DEFINE_integer("episodes", 50000, "The number of episodes used to learn")
-flags.DEFINE_integer(
-    "episode_length", 12, "The (MAX) number of transformation passes per episode"
-)
-flags.DEFINE_integer(
-    "patience",
-    5,
-    "The (MAX) number of times to apply a series of transformations without observable change",
-)
-flags.DEFINE_integer(
-    "learn",
-    32,
-    "The number of fully exploratory episodes to run before starting learning",
-)
-flags.DEFINE_list(
-    "actions",
-    [
-        "-break-crit-edges",
-        "-early-cse-memssa",
-        "-gvn-hoist",
-        "-gvn",
-        "-instcombine",
-        "-instsimplify",
-        "-jump-threading",
-        "-loop-reduce",
-        "-loop-rotate",
-        "-loop-versioning",
-        "-mem2reg",
-        "-newgvn",
-        "-reg2mem",
-        "-simplifycfg",
-        "-sroa",
-    ],
-    "A list of action names to explore from.",
-)
-
-
-FLAGS = flags.FLAGS
-FLAGS(sys.argv)
-
-
-# The Network
+MODELS_DIR = "models"
 
 
 class DQN(nn.Module):
@@ -89,52 +35,51 @@ class DQN(nn.Module):
         self.fc2 = nn.Linear(self.fc1_dims, self.fc2_dims)
         self.fc3 = nn.Linear(self.fc2_dims, self.fc3_dims)
         self.fc4 = nn.Linear(self.fc3_dims, self.n_actions)
+        self.softmax = nn.Softmax(dim=-1)
         self.optimizer = optim.Adam(self.parameters(), lr=ALPHA)
         self.loss = nn.SmoothL1Loss()  # try huber loss
-        self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-        self.to(self.device)
 
     def forward(self, state):
-        # first fully connected layer takes the state in as input, pass that output as input to activation function
         x = F.relu(self.fc1(state))
         x = F.relu(self.fc2(x))
         x = F.relu(self.fc3(x))
-        actions = self.fc4(x)
-
+        x = self.fc4(x)
+        actions = self.softmax(x)
         return actions
 
 
 class Agent(nn.Module):
-    def __init__(self, input_dims, n_actions):
+    def __init__(self, input_dims, n_actions, config, device):
         super(Agent, self).__init__()
-        self.eps_dec = FLAGS.epsilon_dec
-        self.eps_end = FLAGS.epsilon_end
-        self.max_mem_size = FLAGS.max_mem_size
-        self.replace_target_cnt = FLAGS.replace
-        self.gamma = FLAGS.gamma
-        self.epsilon = FLAGS.epsilon
-        self.eps_end = FLAGS.epsilon_end
-        self.eps_dec = FLAGS.epsilon_dec
+        self.eps_dec = config["epsilon_dec"]
+        self.eps_end = config["epsilon_end"]
+        self.max_mem_size = config["max_mem_size"]
+        self.replace_target_cnt = config["replace"]
+        self.gamma = config["gamma"]
+        self.epsilon = config["epsilon"]
+        self.eps_end = config["epsilon_end"]
+        self.eps_dec = config["epsilon_dec"]
         self.n_actions = n_actions
         self.action_space = [i for i in range(n_actions)]
-        self.max_mem_size = FLAGS.max_mem_size
-        self.batch_size = FLAGS.batch_size
+        self.max_mem_size = config["max_mem_size"]
+        self.batch_size = config["batch_size"]
+        self.learn_memory_threshold = config["learn_memory_threshold"]
         # keep track of position of first available memory
         self.mem_cntr = 0
         self.Q_eval = DQN(
-            FLAGS.alpha,
+            config["alpha"],
             input_dims,
-            fc1_dims=FLAGS.fc_dim,
-            fc2_dims=FLAGS.fc_dim,
-            fc3_dims=FLAGS.fc_dim,
+            fc1_dims=config["fc_dim"],
+            fc2_dims=config["fc_dim"],
+            fc3_dims=config["fc_dim"],
             n_actions=self.n_actions,
         )
         self.Q_next = DQN(
-            FLAGS.alpha,
+            config["alpha"],
             input_dims,
-            fc1_dims=FLAGS.fc_dim,
-            fc2_dims=FLAGS.fc_dim,
-            fc3_dims=FLAGS.fc_dim,
+            fc1_dims=config["fc_dim"],
+            fc2_dims=config["fc_dim"],
+            fc3_dims=config["fc_dim"],
             n_actions=self.n_actions,
         )
         self.actions_taken = []
@@ -147,7 +92,8 @@ class Agent(nn.Module):
         self.reward_mem = np.zeros(self.max_mem_size, dtype=np.float32)
         self.terminal_mem = np.zeros(self.max_mem_size, dtype=bool)
         self.learn_step_counter = 0
-        self.to(self.Q_eval.device)
+        self.device = device
+        self.to(self.device)
 
     def store_transition(self, action, state, reward, new_state, done):
         # what is the position of the first unoccupied memory
@@ -157,29 +103,24 @@ class Agent(nn.Module):
         self.action_mem[index] = action
         self.reward_mem[index] = reward
         self.terminal_mem[index] = done
-
         self.mem_cntr += 1
 
-    def choose_action(self, observation):
-        if np.random.random() > self.epsilon:
+    @torch.no_grad()
+    def choose_action(self, observation, disable_epsilon_greedy=False):
+        if np.random.random() > self.epsilon or disable_epsilon_greedy:
             # sends observation as tensor to device
             # convert to float - > compiler gyms autophase vector is a long
             observation = observation.astype(np.float32)
-            state = torch.tensor(observation)[None, ...].to(self.Q_eval.device)
+            state = torch.tensor(observation, device=self.device)[None, ...]
             actions = self.Q_eval.forward(state)
             # network seems to choose same action over and over, even with zero reward,
             # trying giving negative reward for choosing same action multiple times
             while torch.argmax(actions).item() in self.actions_taken:
                 actions[0][torch.argmax(actions).item()] = 0.0
-
             action = torch.argmax(actions).item()
-
             self.actions_taken.append(action)
-
         else:
-            # take random action
             action = np.random.choice(self.action_space)
-
         return action
 
     def replace_target_network(self):
@@ -188,7 +129,7 @@ class Agent(nn.Module):
 
     def learn(self):
         # start learning as soon as batch size of memory is filled
-        if self.mem_cntr < FLAGS.learn:
+        if self.mem_cntr < self.learn_memory_threshold:
             return
         # set gradients to zero
         self.Q_eval.optimizer.zero_grad()
@@ -201,10 +142,10 @@ class Agent(nn.Module):
         # have to calculate scalar of importance so that we don't update network in a biased way
         batch_index = np.arange(self.batch_size, dtype=np.int32)
         # sending a batch of states to device
-        state_batch = torch.tensor(self.state_mem[batch]).to(self.Q_eval.device)
-        new_state_batch = torch.tensor(self.new_state_mem[batch]).to(self.Q_eval.device)
-        reward_batch = torch.tensor(self.reward_mem[batch]).to(self.Q_eval.device)
-        terminal_batch = torch.tensor(self.terminal_mem[batch]).to(self.Q_eval.device)
+        state_batch = torch.tensor(self.state_mem[batch], device=self.device)
+        new_state_batch = torch.tensor(self.new_state_mem[batch], device=self.device)
+        reward_batch = torch.tensor(self.reward_mem[batch], device=self.device)
+        terminal_batch = torch.tensor(self.terminal_mem[batch], device=self.device)
         action_batch = self.action_mem[batch]
         """
 		calling forward with a batch of states gives us a batch of Q-values.
@@ -221,7 +162,7 @@ class Agent(nn.Module):
         # if and index of the batch is done (True), then set next reward to 0
         q_next[terminal_batch] = 0.0
         q_target = reward_batch + self.gamma * q_next
-        loss = self.Q_eval.loss(q_target, q_eval).to(self.Q_eval.device)
+        loss = self.Q_eval.loss(q_target, q_eval).to(self.device)
         loss_val = loss.item()
         loss.backward()
         self.Q_eval.optimizer.step()
@@ -234,21 +175,30 @@ class Agent(nn.Module):
         return loss_val
 
 
-def train(run, agent, env, config):
-    # env.observation_space = config["observation_space"]
-    history_size = 100
+def process_observation(observation):
+    # Autophase
+    return observation / observation[51]
+
+
+def save_model(state_dict, model_name, replace=True):
+    if not replace and os.path.exists(f"./{MODELS_DIR}/{model_name}.pth"):
+        return
+    if not os.path.exists(f"./{MODELS_DIR}"):
+        os.makedirs(f"./{MODELS_DIR}")
+    torch.save(state_dict, f"./{MODELS_DIR}/{model_name}.pth")
+
+
+def train(run, agent: Agent, env, config, train_benchmarks, val_benchmarks):
+    env.observation_space = config["observation_space"]
+    history_size = config["logging_history_size"]
     mem_cntr = 0
     history = np.zeros(history_size)
+    best_val_geomean = 0
 
-    for i in range(1, FLAGS.episodes + 1):
-        observation = env.reset()
-        observation = np.concatenate(
-            [
-                env.observation["InstCountNorm"],
-                env.observation["Autophase"] / env.observation["Autophase"][51],
-            ]
-        )
-        assert np.all(observation <= 1)
+    for episode_i in range(config["episodes"]):
+        agent.Q_eval.train()
+        env.reset(benchmark=train_benchmarks[episode_i % len(train_benchmarks)])
+        observation = process_observation(env.observation[config["observation_space"]])
         done = False
         total = 0
         actions_taken = 0
@@ -259,23 +209,17 @@ def train(run, agent, env, config):
         chosen_flags = []
         while (
             not done
-            and actions_taken < FLAGS.episode_length
-            and change_count < FLAGS.patience
+            and actions_taken < config["episode_length"]
+            and change_count < config["patience"]
         ):
             action = agent.choose_action(observation)
-            flag = FLAGS.actions[action]
+            flag = config["actions"][action]
             chosen_flags.append(flag)
             new_observation, reward, done, info = env.step(
                 env.action_space.flags.index(flag),
-                observation_spaces=["InstCountNorm", "Autophase"],
+                observation_spaces=[config["observation_space"]],
             )
-            new_observation = np.concatenate(
-                [
-                    new_observation[0],
-                    new_observation[1] / new_observation[1][51],
-                ]
-            )
-            assert np.all(new_observation <= 1)
+            new_observation = process_observation(new_observation[0])
             actions_taken += 1
             total += reward
 
@@ -290,13 +234,13 @@ def train(run, agent, env, config):
                 losses.append(loss_val)
             observation = new_observation
 
-            if len(agent.actions_taken) == len(FLAGS.actions):
+            if len(agent.actions_taken) == len(config["actions"]):
                 done = True
 
         index = mem_cntr % history_size
         history[index] = total
         mem_cntr += 1
-        print(f"{i} - {env.benchmark}")
+        print(f"{episode_i} - {env.benchmark}")
         print(
             "Total: {:.4f}".format(total)
             + " Epsilon: {:.4f}".format(agent.epsilon)
@@ -309,41 +253,71 @@ def train(run, agent, env, config):
                 "std_rewards_sum_last_100": np.std(history),
                 "average_episode_loss": np.mean(losses or [0]),
                 "total_episode_reward": total,
-            }
+            },
+            step=episode_i,
         )
+        if episode_i % 500 == 0:
+            best_val_geomean = _validation(
+                run, episode_i, best_val_geomean, agent, env, config, val_benchmarks
+            )
 
-    path = f"./models/{run.name}.pth"
-    torch.save(agent.Q_eval.state_dict(), path)
+    if (config["episodes"] - 1) % 500 != 0:
+        _validation(
+            run,
+            config["episodes"] - 1,
+            best_val_geomean,
+            agent,
+            env,
+            config,
+            val_benchmarks,
+        )
+    save_model(agent.Q_eval.state_dict(), run.name, replace=False)
 
 
-def rollout(agent, env):
-    observation = env.reset()
-    observation = np.concatenate(
-        [
-            env.observation["InstCountNorm"],
-            env.observation["Autophase"] / env.observation["Autophase"][51],
-        ]
+def _validation(run, episode_i, best_val_geomean, agent, env, config, val_benchmarks):
+    val_geomean, _ = validate(agent, env, config, val_benchmarks)
+    run.log(
+        {"val_geomean_reward": val_geomean},
+        step=episode_i,
     )
-    assert np.all(observation <= 1)
+    if val_geomean > best_val_geomean:
+        print(
+            f"model updated. val_geomean: {val_geomean} - best_val_geomean: {best_val_geomean}"
+        )
+        save_model(agent.Q_eval.state_dict(), f"{run.name}")
+        return val_geomean
+    return best_val_geomean
+
+
+def validate(agent, env, config, val_benchmarks):
+    agent.Q_eval.eval()
+    rewards = []
+    times = []
+    for benchmark in val_benchmarks:
+        env.reset(benchmark=benchmark)
+        with Timer() as timer:
+            reward = rollout(agent, env, config)
+        rewards.append(reward)
+        times.append(timer.time)
+    return geometric_mean(rewards), arithmetic_mean(times)
+
+
+@torch.no_grad()
+def rollout(agent: Agent, env, config):
+    observation = process_observation(env.observation[config["observation_space"]])
     action_seq, rewards = [], []
     agent.actions_taken = []
     change_count = 0
 
-    for i in range(FLAGS.episode_length):
-        action = agent.choose_action(observation)
-        flag = FLAGS.actions[action]
+    for i in range(config["episode_length"]):
+        action = agent.choose_action(observation, disable_epsilon_greedy=True)
+        flag = config["actions"][action]
         action_seq.append(action)
         observation, reward, done, info = env.step(
             env.action_space.flags.index(flag),
-            observation_spaces=["InstCountNorm", "Autophase"],
+            observation_spaces=[config["observation_space"]],
         )
-        observation = np.concatenate(
-            [
-                observation[0],
-                observation[1] / observation[1][51],
-            ]
-        )
-        assert np.all(observation <= 1)
+        observation = process_observation(observation[0])
         rewards.append(reward)
 
         if reward == 0:
@@ -351,7 +325,10 @@ def rollout(agent, env):
         else:
             change_count = 0
 
-        if done or change_count > FLAGS.patience:
+        if len(agent.actions_taken) == len(config["actions"]):
+            done = True
+
+        if done or change_count > config["patience"]:
             break
 
     return sum(rewards)

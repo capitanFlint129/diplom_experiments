@@ -3,28 +3,33 @@ from compiler_gym.util.statistics import arithmetic_mean, geometric_mean
 from compiler_gym.util.timer import Timer
 
 from dqn import rollout, Agent
-from train import make_env, config
+from train import make_env, config, fix_seed, prepare_datasets
 
 if __name__ == "__main__":
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     env = make_env()
-    train_benchmarks = env.datasets[config["eval_benchmarks"]]
+    fix_seed()
+    train_benchmarks, val_benchmarks, test_benchmarks = prepare_datasets(
+        env, no_split=True
+    )
 
-    agent = Agent(input_dims=[125], n_actions=len(config["actions"]))
-    agent.Q_eval.load_state_dict(torch.load("models/mild-shadow-94.pth"))
+    agent = Agent(
+        input_dims=config["observation_space_shape"],
+        n_actions=len(config["actions"]),
+        config=config,
+        device=device,
+    )
+    agent.Q_eval.load_state_dict(torch.load("models/wandering-bee-129.pth"))
 
     rewards = []
     times = []
     for benchmark in train_benchmarks:
         env.reset(benchmark=benchmark)
         with Timer() as timer:
-            reward = rollout(agent, env)
-        print(f"{benchmark} - {reward} - {timer.time}")
+            reward = rollout(agent, env, config)
+        print(f"benchmark: {benchmark} - reward: {reward} - time: {timer.time}")
         rewards.append(reward)
         times.append(timer.time)
     env.close()
     print(f"Geomean reward: {geometric_mean(rewards)}")
     print(f"Mean walltime: {arithmetic_mean(times)}")
-
-
-# Current mean walltime: 0.707s / benchmark.
-# Current geomean reward: 1.0146.
