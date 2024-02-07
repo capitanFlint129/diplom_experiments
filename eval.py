@@ -3,15 +3,14 @@ from compiler_gym.util.statistics import arithmetic_mean, geometric_mean
 from compiler_gym.util.timer import Timer
 
 from dqn import rollout, Agent
-from train import make_env, config, fix_seed, prepare_datasets
+from train import make_env, config, fix_seed
+from utils import prepare_datasets
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    env = make_env()
-    fix_seed()
-    train_benchmarks, val_benchmarks, test_benchmarks = prepare_datasets(
-        env, no_split=True
-    )
+    env = make_env(config)
+    fix_seed(config["random_state"])
+    _, _, test_benchmarks = prepare_datasets(env, config["datasets"], no_split=True)
 
     agent = Agent(
         input_dims=config["observation_space_shape"],

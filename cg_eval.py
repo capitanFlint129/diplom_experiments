@@ -4,7 +4,8 @@ from compiler_gym.envs import LlvmEnv
 from compiler_gym.leaderboard.llvm_instcount import eval_llvm_instcount_policy
 
 from dqn import rollout, Agent
-from train import fix_seed, config
+from train import config
+from utils import fix_seed
 
 
 def run(env: LlvmEnv) -> None:
@@ -20,7 +21,7 @@ def run(env: LlvmEnv) -> None:
 
 
 if __name__ == "__main__":
-    fix_seed()
+    fix_seed(config["random_state"])
     app.run(eval_llvm_instcount_policy(run))
 
 # Current mean walltime: 0.480s / benchmark.

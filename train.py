@@ -1,13 +1,10 @@
-import random
-
 # noinspection PyUnresolvedReferences
 import compiler_gym
-import numpy as np
 import torch
-from sklearn.model_selection import train_test_split
 
 import wandb
 from dqn import train, Agent, validate
+from utils import prepare_datasets, make_env, fix_seed
 
 config = dict(
     # Algorithm section
@@ -53,53 +50,16 @@ config = dict(
 )
 
 
-def make_env():
-    return compiler_gym.make(
-        config["compiler_gym_env"],
-        reward_space=config["reward_space"],
-    )
-
-
-def fix_seed():
-    np.random.seed(config["random_state"])
-    torch.manual_seed(config["random_state"])
-    random.seed(config["random_state"])
-
-
-def prepare_datasets(env, no_split=False):
-    if no_split:
-        benchmarks = []
-        for dataset_name in config["datasets"]:
-            benchmarks.extend(list(env.datasets[dataset_name].benchmarks()))
-        random.shuffle(benchmarks)
-        return benchmarks, benchmarks, benchmarks
-    train_benchmarks = []
-    val_benchmarks = []
-    test_benchmarks = []
-    for dataset_name in config["datasets"]:
-        benchmarks = list(env.datasets[dataset_name].benchmarks())
-        train, test = train_test_split(
-            benchmarks, test_size=0.2, random_state=config["random_state"]
-        )
-        train, val = train_test_split(
-            benchmarks, test_size=0.125, random_state=config["random_state"]
-        )
-        train_benchmarks.extend(train)
-        val_benchmarks.extend(val)
-        test_benchmarks.extend(test)
-    return train_benchmarks, val_benchmarks, test_benchmarks
-
-
 def main():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     run = wandb.init(
         project="rl-compilers-experiments",
         config=config,
     )
-    env = make_env()
-    fix_seed()
+    env = make_env(config)
+    fix_seed(config["random_state"])
     train_benchmarks, val_benchmarks, test_benchmarks = prepare_datasets(
-        env, no_split=True
+        env, config["datasets"]
     )
     agent = Agent(
         input_dims=config["observation_space_shape"],
@@ -110,7 +70,8 @@ def main():
     train(run, agent, env, config, train_benchmarks, val_benchmarks)
     env.close()
 
-    env = make_env()
+    # final test
+    env = make_env(config)
     agent = Agent(
         input_dims=config["observation_space_shape"],
         n_actions=len(config["actions"]),
