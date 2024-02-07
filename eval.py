@@ -23,7 +23,7 @@ if __name__ == "__main__":
 
     rewards = []
     times = []
-    for benchmark in train_benchmarks:
+    for benchmark in test_benchmarks:
         env.reset(benchmark=benchmark)
         with Timer() as timer:
             reward = rollout(agent, env, config)
