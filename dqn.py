@@ -217,7 +217,9 @@ def train(
     history_size = config["logging_history_size"]
     mem_cntr = 0
     history = np.zeros(history_size)
-    best_val_geomean = 0
+    # используем среднее из средних геометрических по всем датасетам,
+    # потому что есть неудобные датасеты, на которых среднее геометрическое - 0
+    best_val_mean_geomean = 0
 
     for episode_i in range(config["episodes"]):
         agent.Q_eval.train()
@@ -286,15 +288,15 @@ def train(
             step=episode_i,
         )
         if episode_i % 500 == 0:
-            best_val_geomean = _validation(
-                run, episode_i, best_val_geomean, agent, env, config, val_benchmarks
+            best_val_mean_geomean = _validation(
+                run, episode_i, best_val_mean_geomean, agent, env, config, val_benchmarks
             )
 
     if (config["episodes"] - 1) % 500 != 0:
         _validation(
             run,
             config["episodes"] - 1,
-            best_val_geomean,
+            best_val_mean_geomean,
             agent,
             env,
             config,
@@ -304,7 +306,7 @@ def train(
 
 
 def _validation(
-    run, episode_i, best_val_geomean, agent, env, config, val_benchmarks: dict
+    run, episode_i, best_val_mean_geomean, agent, env, config, val_benchmarks: dict
 ) -> float:
     validation_result = validate(agent, env, config, val_benchmarks)
     log_data = {
@@ -316,18 +318,19 @@ def _validation(
         log_data,
         step=episode_i,
     )
-    if validation_result.geomean_reward > best_val_geomean:
+    if validation_result.mean_geomean_reward > best_val_mean_geomean:
         print(
-            f"Save model. New best geomean: {validation_result.geomean_reward}, previous best geomean: {best_val_geomean}"
+            f"Save model. New best geomean: {validation_result.mean_geomean_reward}, previous best geomean: {best_val_mean_geomean}"
         )
         save_model(agent.Q_eval.state_dict(), f"{run.name}")
-        return validation_result.geomean_reward
-    return best_val_geomean
+        return validation_result.mean_geomean_reward
+    return best_val_mean_geomean
 
 
 @dataclasses.dataclass
 class ValidationResult:
     geomean_reward: float
+    mean_geomean_reward: float
     geomean_reward_per_dataset: dict[str, float]
     mean_walltime: float
 
@@ -356,8 +359,10 @@ def validate(agent, env, config, val_benchmarks: dict[str, list]) -> ValidationR
         for dataset_name, dataset_rewards in rewards.items()
     }
     mean_walltime = arithmetic_mean(times)
+    mean_geomean_reward = arithmetic_mean(rewards.values())
     return ValidationResult(
         geomean_reward,
+        mean_geomean_reward,
         geomean_reward_per_dataset,
         mean_walltime,
     )
