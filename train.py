@@ -86,10 +86,12 @@ def main():
     agent.Q_eval.load_state_dict(torch.load(f"models/{run.name}.pth"))
     agent.eval()
     with torch.no_grad():
-        test_geomean, test_walltime = validate(agent, env, config, test_benchmarks)
-    print(f"Test geomean: {test_geomean}")
-    run.summary["test_geomean_reward"] = test_geomean
-    run.summary["test_mean_walltime"] = test_walltime
+        test_result = validate(agent, env, config, test_benchmarks)
+    print(f"Test geomean: {test_result.geomean_reward}")
+    run.summary["test_geomean_reward"] = test_result.geomean_reward
+    run.summary["test_mean_walltime"] = test_result.mean_walltime
+    for dataset_name, geomean_reward in test_result.geomean_reward_per_dataset.items():
+        run.summary[f"test_geomean_reward_{dataset_name}"] = geomean_reward
     env.close()
 
 

@@ -1,4 +1,7 @@
+import dataclasses
+import itertools
 import os
+import sys
 
 import numpy as np
 import torch
@@ -7,6 +10,7 @@ import torch.nn.functional as F
 import torch.optim as optim
 from compiler_gym.util.statistics import arithmetic_mean, geometric_mean
 from compiler_gym.util.timer import Timer
+from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 
 # Start implementing ideas from Deep RL Bootcamp series on youtube
 
@@ -188,8 +192,26 @@ def save_model(state_dict, model_name, replace=True):
     torch.save(state_dict, f"./{MODELS_DIR}/{model_name}.pth")
 
 
-def train(run, agent: Agent, env, config, train_benchmarks, val_benchmarks):
+def is_observation_correct(observation):
+    return (observation > 0).sum() != 0 and not np.any(np.isnan(observation))
+
+
+def train(
+    run,
+    agent: Agent,
+    env,
+    config,
+    train_benchmarks: list,
+    val_benchmarks: dict,
+) -> None:
     env.observation_space = config["observation_space"]
+
+    train_env = RandomOrderBenchmarks(
+        env.fork(),
+        benchmarks=train_benchmarks,
+        rng=np.random.default_rng(config["random_state"]),
+    )
+
     history_size = config["logging_history_size"]
     mem_cntr = 0
     history = np.zeros(history_size)
@@ -197,8 +219,13 @@ def train(run, agent: Agent, env, config, train_benchmarks, val_benchmarks):
 
     for episode_i in range(config["episodes"]):
         agent.Q_eval.train()
-        env.reset(benchmark=train_benchmarks[episode_i % len(train_benchmarks)])
-        observation = process_observation(env.observation[config["observation_space"]])
+        observation = np.zeros(1)
+        # skip zero vectors
+        while not is_observation_correct(observation):
+            train_env.reset()
+            observation = process_observation(
+                train_env.observation[config["observation_space"]]
+            )
         done = False
         total = 0
         actions_taken = 0
@@ -215,8 +242,8 @@ def train(run, agent: Agent, env, config, train_benchmarks, val_benchmarks):
             action = agent.choose_action(observation)
             flag = config["actions"][action]
             chosen_flags.append(flag)
-            new_observation, reward, done, info = env.step(
-                env.action_space.flags.index(flag),
+            new_observation, reward, done, info = train_env.step(
+                train_env.action_space.flags.index(flag),
                 observation_spaces=[config["observation_space"]],
             )
             new_observation = process_observation(new_observation[0])
@@ -274,32 +301,64 @@ def train(run, agent: Agent, env, config, train_benchmarks, val_benchmarks):
     save_model(agent.Q_eval.state_dict(), run.name, replace=False)
 
 
-def _validation(run, episode_i, best_val_geomean, agent, env, config, val_benchmarks):
-    val_geomean, _ = validate(agent, env, config, val_benchmarks)
+def _validation(
+    run, episode_i, best_val_geomean, agent, env, config, val_benchmarks: dict
+) -> float:
+    validation_result = validate(agent, env, config, val_benchmarks)
+    log_data = {
+        f"val_geomean_reward_{dataset_name}": geomean_reward
+        for dataset_name, geomean_reward in validation_result.geomean_reward_per_dataset.items()
+    }
+    log_data["val_geomean_reward"] = validation_result.geomean_reward
     run.log(
-        {"val_geomean_reward": val_geomean},
+        log_data,
         step=episode_i,
     )
-    if val_geomean > best_val_geomean:
+    if validation_result.geomean_reward > best_val_geomean:
         print(
-            f"model updated. val_geomean: {val_geomean} - best_val_geomean: {best_val_geomean}"
+            f"Save model. New best geomean: {validation_result.geomean_reward}, previous best geomean: {best_val_geomean}"
         )
         save_model(agent.Q_eval.state_dict(), f"{run.name}")
-        return val_geomean
+        return validation_result.geomean_reward
     return best_val_geomean
 
 
-def validate(agent, env, config, val_benchmarks):
+@dataclasses.dataclass
+class ValidationResult:
+    geomean_reward: float
+    geomean_reward_per_dataset: dict[str, float]
+    mean_walltime: float
+
+
+def validate(agent, env, config, val_benchmarks: dict[str, list]) -> ValidationResult:
     agent.Q_eval.eval()
-    rewards = []
+    rewards = {}
     times = []
-    for benchmark in val_benchmarks:
-        env.reset(benchmark=benchmark)
-        with Timer() as timer:
-            reward = rollout(agent, env, config)
-        rewards.append(reward)
-        times.append(timer.time)
-    return geometric_mean(rewards), arithmetic_mean(times)
+    for dataset_name, benchmarks in val_benchmarks.items():
+        rewards[dataset_name] = []
+        for benchmark in benchmarks:
+            env.reset(benchmark=benchmark)
+            observation = env.observation[config["observation_space"]]
+            if is_observation_correct(observation):
+                with Timer() as timer:
+                    reward = rollout(agent, env, config)
+                rewards[dataset_name].append(reward)
+                times.append(timer.time)
+            else:
+                print(f"{benchmark} skipped during validation", file=sys.stderr)
+    geomean_reward = geometric_mean(
+        list(itertools.chain.from_iterable(rewards.values()))
+    )
+    geomean_reward_per_dataset = {
+        dataset_name: geometric_mean(dataset_rewards)
+        for dataset_name, dataset_rewards in rewards.items()
+    }
+    mean_walltime = arithmetic_mean(times)
+    return ValidationResult(
+        geomean_reward,
+        geomean_reward_per_dataset,
+        mean_walltime,
+    )
 
 
 @torch.no_grad()
