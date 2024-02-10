@@ -30,8 +30,8 @@ config = dict(
     ],
     no_split=False,
     compiler_gym_env="llvm-v0",
-    observation_space="Autophase",
-    observation_space_shape=[56],
+    observation_space="InstCountNorm",
+    observation_space_shape=[69],
     reward_space="IrInstructionCountOz",
     logging_history_size=100,
     actions=[  # A list of action names to explore from

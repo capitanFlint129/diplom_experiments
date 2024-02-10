@@ -181,7 +181,9 @@ class Agent(nn.Module):
 
 def process_observation(observation):
     # Autophase
-    return observation / observation[51]
+    # return observation / observation[51]
+    # InstCountNorm
+    return observation
 
 
 def save_model(state_dict, model_name, replace=True):
