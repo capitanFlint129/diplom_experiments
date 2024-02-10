@@ -23,7 +23,12 @@ config = dict(
     patience=4,  # The (MAX) number of times to apply a series of transformations without observable change
     learn_memory_threshold=32,  # The number of fully exploratory episodes to run before starting learning
     # General section
-    datasets=["benchmark://cbench-v1"],
+    datasets=[
+        "benchmark://cbench-v1",
+        "benchmark://mibench-v1",
+        "benchmark://opencv-v0",
+    ],
+    no_split=False,
     compiler_gym_env="llvm-v0",
     observation_space="Autophase",
     observation_space_shape=[56],
@@ -59,7 +64,7 @@ def main():
     env = make_env(config)
     fix_seed(config["random_state"])
     train_benchmarks, val_benchmarks, test_benchmarks = prepare_datasets(
-        env, config["datasets"]
+        env, config["datasets"], no_split=config["no_split"]
     )
     agent = Agent(
         input_dims=config["observation_space_shape"],

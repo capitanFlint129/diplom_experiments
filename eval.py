@@ -10,7 +10,9 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     env = make_env(config)
     fix_seed(config["random_state"])
-    _, _, test_benchmarks = prepare_datasets(env, config["datasets"], no_split=True)
+    _, _, test_benchmarks = prepare_datasets(
+        env, config["datasets"], no_split=config["no_split"]
+    )
 
     agent = Agent(
         input_dims=config["observation_space_shape"],
