@@ -267,7 +267,7 @@ def train(
         index = mem_cntr % history_size
         history[index] = total
         mem_cntr += 1
-        print(f"{episode_i} - {env.benchmark}")
+        print(f"{episode_i} - {train_env.benchmark}")
         print(
             "Total: {:.4f}".format(total)
             + " Epsilon: {:.4f}".format(agent.epsilon)
