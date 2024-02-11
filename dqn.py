@@ -116,12 +116,17 @@ class Agent(nn.Module):
             # convert to float - > compiler gyms autophase vector is a long
             observation = observation.astype(np.float32)
             state = torch.tensor(observation, device=self.device)[None, ...]
-            actions = self.Q_eval.forward(state)
+            actions_probabilities = self.Q_eval.forward(state).squeeze()
             # network seems to choose same action over and over, even with zero reward,
             # trying giving negative reward for choosing same action multiple times
-            while torch.argmax(actions).item() in self.actions_taken:
-                actions[0][torch.argmax(actions).item()] = 0.0
-            action = torch.argmax(actions).item()
+            # while torch.argmax(actions).item() in self.actions_taken:
+            #     # TODO здесь опять не работает
+            #     actions[0][torch.argmax(actions).item()] = 0.0
+            action = torch.argmax(actions_probabilities).item()
+            # action = np.random.choice(
+            #     actions_probabilities.shape[0],
+            #     p=actions_probabilities.detach().cpu().numpy(),
+            # )
             self.actions_taken.append(action)
         else:
             action = np.random.choice(self.action_space)
