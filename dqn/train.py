@@ -68,8 +68,8 @@ def train(
         done = False
         total = 0
         actions_taken = 0
-        agent.actions_taken = []
         change_count = 0
+        agent.episode_reset()
 
         losses = []
         chosen_flags = []
@@ -132,6 +132,7 @@ def train(
                 config,
                 val_benchmarks,
             )
+        agent.episode_done()
 
     if (config["episodes"] - 1) % 500 != 0:
         _validation(
