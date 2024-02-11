@@ -19,6 +19,8 @@ config = dict(
     max_mem_size=100000,  # The maximum memory size
     replace=500,  # The number of iterations to run before replacing target network
     fc_dim=128,  # The dimension of a fully connected layer
+    lstm_hidden_size=128,  # The dimension of a fully connected layer
+    action_embedding_size=50,
     episodes=4000,  # The number of episodes used to learn
     episode_length=20,  # The (MAX) number of transformation passes per episode
     patience=4,  # The (MAX) number of times to apply a series of transformations without observable change
@@ -32,7 +34,7 @@ config = dict(
     no_split=False,
     compiler_gym_env="llvm-v0",
     observation_space="InstCountNorm",
-    observation_space_shape=[69],
+    observation_size=69,
     reward_space="IrInstructionCountOz",
     logging_history_size=100,
     actions=[
@@ -177,7 +179,7 @@ def main():
         env, config["datasets"], no_split=config["no_split"]
     )
     agent = Agent(
-        input_dims=config["observation_space_shape"],
+        observation_size=config["observation_size"],
         n_actions=len(config["actions"]),
         config=config,
         device=device,
@@ -188,7 +190,7 @@ def main():
     # final test
     env = make_env(config)
     agent = Agent(
-        input_dims=config["observation_space_shape"],
+        observation_size=config["observation_size"],
         n_actions=len(config["actions"]),
         config=config,
         device=device,
