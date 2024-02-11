@@ -3,7 +3,8 @@ import compiler_gym
 import torch
 
 import wandb
-from dqn import train, Agent, validate
+from dqn.dqn import Agent
+from dqn.train import train, validate
 from utils import prepare_datasets, make_env, fix_seed
 
 config = dict(
