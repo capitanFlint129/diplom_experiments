@@ -19,7 +19,7 @@ config = dict(
     replace=500,  # The number of iterations to run before replacing target network
     fc_dim=128,  # The dimension of a fully connected layer
     episodes=4000,  # The number of episodes used to learn
-    episode_length=10,  # The (MAX) number of transformation passes per episode
+    episode_length=20,  # The (MAX) number of transformation passes per episode
     patience=4,  # The (MAX) number of times to apply a series of transformations without observable change
     learn_memory_threshold=32,  # The number of fully exploratory episodes to run before starting learning
     # General section
