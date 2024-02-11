@@ -1,9 +1,9 @@
 # noinspection PyUnresolvedReferences
 import compiler_gym
 import torch
-
 import wandb
-from dqn import train, Agent, validate
+
+from dqn import train, Agent, validate, FINISH_ACTION
 from utils import prepare_datasets, make_env, fix_seed
 
 config = dict(
@@ -159,6 +159,7 @@ config = dict(
         "-strip",
         "-tailcallelim",
         "-mergereturn",
+        FINISH_ACTION,
     ],
     random_state=42,
 )

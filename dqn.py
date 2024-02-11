@@ -25,6 +25,7 @@ from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 """
 
 MODELS_DIR = "models"
+FINISH_ACTION = "finish"
 
 
 class DQN(nn.Module):
@@ -230,29 +231,31 @@ def train(
             observation = process_observation(
                 train_env.observation[config["observation_space"]]
             )
-        done = False
         total = 0
-        actions_taken = 0
         agent.actions_taken = []
-        change_count = 0
 
         losses = []
         chosen_flags = []
-        while (
-            not done
-            and actions_taken < config["episode_length"]
-            and change_count < config["patience"]
-        ):
+        for _ in range(config["episode_length"]):
             action = agent.choose_action(observation)
             flag = config["actions"][action]
-            chosen_flags.append(flag)
-            new_observation, reward, done, info = train_env.step(
-                train_env.action_space.flags.index(flag),
-                observation_spaces=[config["observation_space"]],
-            )
-            new_observation = process_observation(new_observation[0])
-            actions_taken += 1
-            total += reward
+            if flag == FINISH_ACTION:
+                agent.store_transition(action, observation, 0, observation, True)
+                break
+            else:
+                chosen_flags.append(flag)
+                new_observation, reward, done, info = train_env.step(
+                    train_env.action_space.flags.index(flag),
+                    observation_spaces=[config["observation_space"]],
+                )
+                if reward == 0:
+                    reward = -0.1
+                new_observation = process_observation(new_observation[0])
+                total += reward
+                agent.store_transition(
+                    action, observation, reward, new_observation, done
+                )
+                observation = new_observation
 
             if reward == 0:
                 change_count += 1
@@ -373,28 +376,20 @@ def rollout(agent: Agent, env, config):
     observation = process_observation(env.observation[config["observation_space"]])
     action_seq, rewards = [], []
     agent.actions_taken = []
-    change_count = 0
 
-    for i in range(config["episode_length"]):
+    for _ in range(config["episode_length"]):
         action = agent.choose_action(observation, disable_epsilon_greedy=True)
         flag = config["actions"][action]
+        if flag == FINISH_ACTION:
+            break
         action_seq.append(action)
         observation, reward, done, info = env.step(
             env.action_space.flags.index(flag),
             observation_spaces=[config["observation_space"]],
         )
+        if reward == 0:
+            reward = -0.1
         observation = process_observation(observation[0])
         rewards.append(reward)
-
-        if reward == 0:
-            change_count += 1
-        else:
-            change_count = 0
-
-        if len(agent.actions_taken) == len(config["actions"]):
-            done = True
-
-        if done or change_count > config["patience"]:
-            break
 
     return sum(rewards)
