@@ -294,7 +294,13 @@ def train(
         )
         if episode_i % 500 == 0:
             best_val_mean_geomean = _validation(
-                run, episode_i, best_val_mean_geomean, agent, env, config, val_benchmarks
+                run,
+                episode_i,
+                best_val_mean_geomean,
+                agent,
+                env,
+                config,
+                val_benchmarks,
             )
 
     if (config["episodes"] - 1) % 500 != 0:
@@ -364,7 +370,7 @@ def validate(agent, env, config, val_benchmarks: dict[str, list]) -> ValidationR
         for dataset_name, dataset_rewards in rewards.items()
     }
     mean_walltime = arithmetic_mean(times)
-    mean_geomean_reward = arithmetic_mean(rewards.values())
+    mean_geomean_reward = arithmetic_mean(list(geomean_reward_per_dataset.values()))
     return ValidationResult(
         geomean_reward,
         mean_geomean_reward,
