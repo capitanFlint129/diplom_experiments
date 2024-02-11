@@ -146,7 +146,7 @@ class Agent(nn.Module):
         self.h_prev = None
         self.c_prev = None
         self.prev_action = torch.zeros(
-            self.Q_eval.action_embedding.action_embedding_size,
+            self.Q_eval.action_embedding_size,
             device=self.device,
         )
         self.actions_taken = []
