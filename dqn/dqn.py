@@ -18,7 +18,15 @@ import torch.optim as optim
 
 
 class DQN(nn.Module):
-    def __init__(self, ALPHA, input_dims, fc1_dims, fc2_dims, fc3_dims, n_actions):
+    def __init__(
+        self,
+        alpha: float,
+        observation_size: int,
+        action_embedding_size: int,
+        hidden_size: int,
+        fc_dims: int,
+        n_actions: int,
+    ):
         super(DQN, self).__init__()
         self.input_dims = input_dims
         self.fc1_dims = fc1_dims
@@ -29,17 +37,47 @@ class DQN(nn.Module):
         self.fc2 = nn.Linear(self.fc1_dims, self.fc2_dims)
         self.fc3 = nn.Linear(self.fc2_dims, self.fc3_dims)
         self.fc4 = nn.Linear(self.fc3_dims, self.n_actions)
+        self.hidden_size = hidden_size
+        self.action_embedding = nn.Embedding(n_actions, action_embedding_size)
+        self.input_net = nn.Sequential(
+            nn.Linear(action_embedding_size + observation_size, fc_dims),
+            nn.Linear(fc_dims, fc_dims),
+            nn.Linear(fc_dims, fc_dims),
+        )
+        self.rnn_encoder = nn.LSTM(fc_dims, hidden_size, batch_first=True)
+        self.output_net = nn.Sequential(
+            nn.Linear(hidden_size, fc_dims),
+            nn.Linear(fc_dims, fc_dims),
+            nn.Linear(fc_dims, fc_dims),
+        )
         self.softmax = nn.Softmax(dim=-1)
         self.optimizer = optim.Adam(self.parameters(), lr=ALPHA)
+
+        self.optimizer = optim.Adam(self.parameters(), lr=alpha)
         self.loss = nn.SmoothL1Loss()  # try huber loss
 
-    def forward(self, state):
-        x = F.relu(self.fc1(state))
-        x = F.relu(self.fc2(x))
-        x = F.relu(self.fc3(x))
-        x = self.fc4(x)
-        actions = self.softmax(x)
-        return actions
+    def forward(
+        self,
+        observation: torch.Tensor,
+        action: torch.LongTensor,
+        sequence_lengths: torch.LongTensor,
+    ) -> torch.LongTensor:
+        assert (
+            observation.shape == action.shape and len(action.shape) == 3
+        ), f"{observation.shape} - {action.shape}"
+        action_embs = self.action_embedding(action)
+        input = torch.cat((observation, action_embs), dim=-1)
+        rnn_input = self.input_net(input)
+        output, (hn, cn) = self.rnn_encoder(rnn_input)
+        assert (
+            len(output.shape) == 3
+            and output.shape[0] == observation.shape[0]
+            and output.shape[1] == observation.shape[1]
+            and output.shape[0] == observation.shape[2] == self.hidden_size
+        ), f"{output.shape}"
+        final_outputs = torch.index_select(output, 1, sequence_lengths - 1)
+        actions_probabilities = self.output_net(final_outputs)
+        return actions_probabilities
 
 
 class Agent(nn.Module):
