@@ -11,7 +11,7 @@ from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 
 from dqn.dqn import Agent
 
-MODELS_DIR = "../models"
+MODELS_DIR = "models"
 
 
 def process_observation(observation):
@@ -40,6 +40,7 @@ def train(
     config,
     train_benchmarks: list,
     val_benchmarks: dict,
+    enable_validation: bool = True,
 ) -> None:
     env.observation_space = config["observation_space"]
 
@@ -49,9 +50,8 @@ def train(
         rng=np.random.default_rng(config["random_state"]),
     )
 
-    history_size = config["logging_history_size"]
     mem_cntr = 0
-    history = np.zeros(history_size)
+    history = []
     # используем среднее из средних геометрических по всем датасетам,
     # потому что есть неудобные датасеты, на которых среднее геометрическое - 0
     best_val_mean_geomean = 0
@@ -70,6 +70,7 @@ def train(
         actions_taken = 0
         change_count = 0
         agent.episode_reset()
+        prev_action = 0
 
         losses = []
         chosen_flags = []
@@ -81,11 +82,14 @@ def train(
             action = agent.choose_action(observation)
             flag = config["actions"][action]
             chosen_flags.append(flag)
-            new_observation, reward, done, info = train_env.step(
-                train_env.action_space.flags.index(flag),
-                observation_spaces=[config["observation_space"]],
-            )
-            new_observation = process_observation(new_observation[0])
+            if action == 0:
+                new_observation, reward, done = observation, 0, False
+            else:
+                new_observation, reward, done, info = train_env.step(
+                    train_env.action_space.flags.index(flag),
+                    observation_spaces=[config["observation_space"]],
+                )
+                new_observation = process_observation(new_observation[0])
             actions_taken += 1
             total += reward
 
@@ -94,7 +98,10 @@ def train(
             else:
                 change_count = 0
 
-            agent.store_transition(action, observation, reward, new_observation, done)
+            agent.store_transition(
+                prev_action, action, observation, reward, new_observation, done
+            )
+            prev_action = action
             loss_val = agent.learn()
             if loss_val is not None:
                 losses.append(loss_val)
@@ -103,26 +110,27 @@ def train(
             if len(agent.actions_taken) == len(config["actions"]):
                 done = True
 
-        index = mem_cntr % history_size
-        history[index] = total
+        history.append(total)
         mem_cntr += 1
         print(f"{episode_i} - {train_env.benchmark}")
         print(
             "Total: {:.4f}".format(total)
             + " Epsilon: {:.4f}".format(agent.epsilon)
-            + f" Average rewards sum: {str(np.mean(history))}"
+            + f" Average rewards sum: {str(np.mean(history[-config['logging_history_size']:]))}"
             + f" Action: {' '.join(chosen_flags)}"
         )
         run.log(
             {
-                "average_rewards_sum_last_100": np.mean(history),
+                "average_rewards_sum_last_100": np.mean(
+                    history[-config["logging_history_size"] :]
+                ),
                 "std_rewards_sum_last_100": np.std(history),
                 "average_episode_loss": np.mean(losses or [0]),
                 "total_episode_reward": total,
             },
             step=episode_i,
         )
-        if episode_i % 500 == 0:
+        if episode_i % 500 == 0 and enable_validation:
             best_val_mean_geomean = _validation(
                 run,
                 episode_i,
@@ -134,7 +142,7 @@ def train(
             )
         agent.episode_done()
 
-    if (config["episodes"] - 1) % 500 != 0:
+    if (config["episodes"] - 1) % 500 != 0 and enable_validation:
         _validation(
             run,
             config["episodes"] - 1,
@@ -164,7 +172,7 @@ def _validation(
         print(
             f"Save model. New best geomean: {validation_result.mean_geomean_reward}, previous best geomean: {best_val_mean_geomean}"
         )
-        save_model(agent.Q_eval.state_dict(), f"{run.name}")
+        save_model(agent.Q_eval.state_dict(), run.name)
         return validation_result.mean_geomean_reward
     return best_val_mean_geomean
 
@@ -218,14 +226,17 @@ def rollout(agent: Agent, env, config):
     change_count = 0
 
     for i in range(config["episode_length"]):
-        action = agent.choose_action(observation, disable_epsilon_greedy=True)
+        action = agent.choose_action(observation, enable_epsilon_greedy=True)
         flag = config["actions"][action]
         action_seq.append(action)
-        observation, reward, done, info = env.step(
-            env.action_space.flags.index(flag),
-            observation_spaces=[config["observation_space"]],
-        )
-        observation = process_observation(observation[0])
+        if action == 0:
+            observation, reward, done = observation, 0, False
+        else:
+            observation, reward, done, info = env.step(
+                env.action_space.flags.index(flag),
+                observation_spaces=[config["observation_space"]],
+            )
+            observation = process_observation(observation[0])
         rewards.append(reward)
 
         if reward == 0:

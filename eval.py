@@ -2,7 +2,7 @@ import torch
 from compiler_gym.util.statistics import arithmetic_mean, geometric_mean
 from compiler_gym.util.timer import Timer
 
-from dqn import rollout, Agent
+from dqn.train import rollout, Agent
 from train import make_env, config, fix_seed
 from utils import prepare_datasets
 
@@ -15,7 +15,7 @@ if __name__ == "__main__":
     )
 
     agent = Agent(
-        input_dims=config["observation_space_shape"],
+        observation_size=config["observation_size"],
         n_actions=len(config["actions"]),
         config=config,
         device=device,
