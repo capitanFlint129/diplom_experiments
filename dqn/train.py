@@ -10,6 +10,7 @@ from compiler_gym.util.timer import Timer
 from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 
 from dqn.dqn import Agent
+from observation import get_observation
 
 MODELS_DIR = "models"
 
@@ -23,8 +24,7 @@ def train(
     val_benchmarks: dict,
     enable_validation: bool = True,
 ) -> None:
-    env.observation_space = config["observation_space"]
-
+    # env.observation_space = config["observation_space"]
     train_env = RandomOrderBenchmarks(
         env.fork(),
         benchmarks=train_benchmarks,
@@ -39,13 +39,17 @@ def train(
 
     for episode_i in range(config["episodes"]):
         agent.Q_eval.train()
-        observation = np.zeros(1)
         # skip zero vectors
-        while not is_observation_correct(observation):
+        while True:
             train_env.reset()
-            observation = process_observation(
-                train_env.observation[config["observation_space"]]
-            )
+            observation, is_observation_correct = get_observation(train_env, config)
+            if is_observation_correct:
+                break
+            else:
+                print(
+                    f"Skip {env.benchmark} during training. It produces incorrect initial observation",
+                    file=sys.stderr,
+                )
         done = False
         total = 0
         actions_taken = 0
@@ -62,11 +66,10 @@ def train(
             action = agent.choose_action(observation)
             flag = config["actions"][action]
             chosen_flags.append(flag)
-            new_observation, reward, done, info = train_env.step(
-                train_env.action_space.flags.index(flag),
-                observation_spaces=[config["observation_space"]],
+            _, reward, done, info = train_env.step(
+                train_env.action_space.flags.index(flag)
             )
-            new_observation = process_observation(new_observation[0])
+            new_observation, _ = get_observation(env, config)
             actions_taken += 1
             total += reward
 
@@ -168,18 +171,24 @@ def validate(
         rewards[dataset_name] = []
         for benchmark in benchmarks:
             env.reset(benchmark=benchmark)
-            observation = env.observation[config["observation_space"]]
-            if is_observation_correct(observation):
+            observation, is_observation_correct = get_observation(env, config)
+            if is_observation_correct:
                 with Timer() as timer:
                     reward, applied_actions = rollout(agent, env, config)
                 rewards[dataset_name].append(reward)
                 times.append(timer.time)
                 if enable_logs:
+                    applied_actions = [
+                        config["actions"][action_i] for action_i in applied_actions
+                    ]
                     print(
                         f"{benchmark} - reward: {reward} - time: {timer.time} - actions: {' '.join(applied_actions)}"
                     )
             else:
-                print(f"{benchmark} skipped during validation", file=sys.stderr)
+                print(
+                    f"Skip {benchmark} during validation. It produces incorrect initial observation",
+                    file=sys.stderr,
+                )
     geomean_reward = geometric_mean(
         list(itertools.chain.from_iterable(rewards.values()))
     )
@@ -199,20 +208,17 @@ def validate(
 
 @torch.no_grad()
 def rollout(agent: Agent, env, config) -> tuple[float, list[str]]:
-    observation = process_observation(env.observation[config["observation_space"]])
+    observation, _ = get_observation(env, config)
     action_seq, rewards = [], []
-    agent.actions_taken = []
+    agent.episode_reset()
     change_count = 0
 
     for i in range(config["episode_length"]):
         action = agent.choose_action(observation, enable_epsilon_greedy=False)
         flag = config["actions"][action]
         action_seq.append(action)
-        observation, reward, done, info = env.step(
-            env.action_space.flags.index(flag),
-            observation_spaces=[config["observation_space"]],
-        )
-        observation = process_observation(observation[0])
+        _, reward, done, info = env.step(env.action_space.flags.index(flag))
+        observation, _ = get_observation(env, config)
         rewards.append(reward)
 
         if reward == 0:
@@ -227,17 +233,6 @@ def rollout(agent: Agent, env, config) -> tuple[float, list[str]]:
             break
 
     return sum(rewards), action_seq
-
-
-def process_observation(observation):
-    # Autophase
-    # return observation / observation[51]
-    # InstCountNorm
-    return observation
-
-
-def is_observation_correct(observation):
-    return (observation > 0).sum() != 0 and not np.any(np.isnan(observation))
 
 
 def save_model(state_dict, model_name, replace=True):
