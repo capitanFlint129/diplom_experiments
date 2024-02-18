@@ -9,7 +9,10 @@ if __name__ == "__main__":
     env = make_env(config)
     fix_seed(config["random_state"])
     _, _, test_benchmarks = prepare_datasets(
-        env, config["datasets"], no_split=config["no_split"]
+        env,
+        config["datasets"],
+        no_split=config["no_split"],
+        skipped=set(config["skipped_benchmarks"]),
     )
 
     agent = Agent(

@@ -68,7 +68,10 @@ def main():
     env = make_env(config)
     fix_seed(config["random_state"])
     train_benchmarks, val_benchmarks, test_benchmarks = prepare_datasets(
-        env, config["datasets"], no_split=config["no_split"]
+        env,
+        config["datasets"],
+        no_split=config["no_split"],
+        skipped=set(config["skipped_benchmarks"]),
     )
     agent = Agent(
         observation_size=config["observation_size"],

@@ -21,23 +21,17 @@ def fix_seed(seed):
 
 
 def prepare_datasets(
-    env, datasets: list[str], no_split: bool = False
+    env, datasets: list[str], no_split: bool = False, skipped: set[str] = None
 ) -> tuple[list, dict, dict]:
-    # Пока такое решение работает очень медленно
-    # Пример бенчмарка с плохим векторным представлением где все 0: benchmark://tensorflow-v0/1786
-    # def filter_zero(env, benchmarks):
-    #     result = []
-    #     for benchmark in benchmarks:
-    #         env.reset(benchmark=benchmark)
-    #         if np.sum(env.observation[config["observation_space"]] > 0) != 0:
-    #             result.append(benchmark)
-    #     return result
-
+    if skipped is None:
+        skipped = set()
     if no_split:
         train_benchmarks = []
         test_and_val_benchmarks = {}
         for dataset_name in datasets:
-            benchmarks = list(env.datasets[dataset_name].benchmarks())
+            benchmarks = _filter_benchmarks(
+                list(env.datasets[dataset_name].benchmarks()), skipped
+            )
             test_and_val_benchmarks[dataset_name] = benchmarks
             train_benchmarks.extend(test_and_val_benchmarks[dataset_name])
         random.shuffle(train_benchmarks)
@@ -46,7 +40,9 @@ def prepare_datasets(
     val_benchmarks = {}
     test_benchmarks = {}
     for dataset_name in datasets:
-        benchmarks = list(env.datasets[dataset_name].benchmarks())
+        benchmarks = _filter_benchmarks(
+            list(env.datasets[dataset_name].benchmarks()), skipped
+        )
         train, test = train_test_split(benchmarks, test_size=0.2, shuffle=False)
         train, val = train_test_split(benchmarks, test_size=0.125, shuffle=False)
         train_benchmarks.extend(train)
@@ -54,3 +50,7 @@ def prepare_datasets(
         test_benchmarks[dataset_name] = test
     random.shuffle(train_benchmarks)
     return train_benchmarks, val_benchmarks, test_benchmarks
+
+
+def _filter_benchmarks(dataset, skipped):
+    return [becnhmark for becnhmark in dataset if str(becnhmark) not in skipped]
