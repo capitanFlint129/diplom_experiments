@@ -110,28 +110,15 @@ class Agent(nn.Module):
         self.replace_target_network()
         max_mem = min(self.mem_cntr, self.max_mem_size)
         batch = np.random.choice(max_mem, self.batch_size, replace=False)
-        # have to calculate scalar of importance so that we don't update network in a biased way
         batch_index = np.arange(self.batch_size, dtype=np.int32)
-        # sending a batch of states to device
         state_batch = torch.tensor(self.state_mem[batch], device=self.device)
         new_state_batch = torch.tensor(self.new_state_mem[batch], device=self.device)
         reward_batch = torch.tensor(self.reward_mem[batch], device=self.device)
         terminal_batch = torch.tensor(self.terminal_mem[batch], device=self.device)
         action_batch = self.action_mem[batch]
-        """
-		calling forward with a batch of states gives us a batch of Q-values.
-		The batch_index just selects each group of Q-values and action_batch
-		selects the action we took in each group of Q-values.
-		We use batch_index here instead of batch because order no longer
-		matters after passing through the network. Ex.) a batch of [22,74,3,43]
-		would select those respective states from the state memory, and pass them through
-		the network, but after they are passed though we are indexing based on the size of
-		the batch, not the replay buffer.
-		"""
         q_eval = self.Q_eval.forward(state_batch)[batch_index, action_batch]
         with torch.no_grad():
             q_next = self.Q_next.forward(new_state_batch).max(dim=1)[0]
-        # if and index of the batch is done (True), then set next reward to 0
         q_next[terminal_batch] = 0.0
         q_target = reward_batch + self.gamma * q_next
         loss = self.loss(q_target, q_eval).to(self.device)

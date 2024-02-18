@@ -14,25 +14,6 @@ from dqn.dqn import Agent
 MODELS_DIR = "models"
 
 
-def process_observation(observation):
-    # Autophase
-    # return observation / observation[51]
-    # InstCountNorm
-    return observation
-
-
-def save_model(state_dict, model_name, replace=True):
-    if not replace and os.path.exists(f"./{MODELS_DIR}/{model_name}.pth"):
-        return
-    if not os.path.exists(f"./{MODELS_DIR}"):
-        os.makedirs(f"./{MODELS_DIR}")
-    torch.save(state_dict, f"./{MODELS_DIR}/{model_name}.pth")
-
-
-def is_observation_correct(observation):
-    return (observation > 0).sum() != 0 and not np.any(np.isnan(observation))
-
-
 def train(
     run,
     agent: Agent,
@@ -246,3 +227,22 @@ def rollout(agent: Agent, env, config) -> tuple[float, list[str]]:
             break
 
     return sum(rewards), action_seq
+
+
+def process_observation(observation):
+    # Autophase
+    # return observation / observation[51]
+    # InstCountNorm
+    return observation
+
+
+def is_observation_correct(observation):
+    return (observation > 0).sum() != 0 and not np.any(np.isnan(observation))
+
+
+def save_model(state_dict, model_name, replace=True):
+    if not replace and os.path.exists(f"./{MODELS_DIR}/{model_name}.pth"):
+        return
+    if not os.path.exists(f"./{MODELS_DIR}"):
+        os.makedirs(f"./{MODELS_DIR}")
+    torch.save(state_dict, f"./{MODELS_DIR}/{model_name}.pth")
