@@ -1,8 +1,6 @@
 import torch
-from compiler_gym.util.statistics import arithmetic_mean, geometric_mean
-from compiler_gym.util.timer import Timer
 
-from dqn import rollout, Agent
+from dqn.train import Agent, validate
 from train import make_env, config, fix_seed
 from utils import prepare_datasets
 
@@ -15,22 +13,15 @@ if __name__ == "__main__":
     )
 
     agent = Agent(
-        input_dims=config["observation_space_shape"],
+        observation_size=config["observation_size"],
         n_actions=len(config["actions"]),
         config=config,
         device=device,
     )
-    agent.Q_eval.load_state_dict(torch.load("models/wandering-bee-129.pth"))
-
-    rewards = []
-    times = []
-    for benchmark in test_benchmarks:
-        env.reset(benchmark=benchmark)
-        with Timer() as timer:
-            reward = rollout(agent, env, config)
-        print(f"benchmark: {benchmark} - reward: {reward} - time: {timer.time}")
-        rewards.append(reward)
-        times.append(timer.time)
+    agent.Q_eval.load_state_dict(torch.load("models/3500-auspicious-dog-182.pth"))
+    agent.eval()
+    with torch.no_grad():
+        test_result = validate(agent, env, config, test_benchmarks, enable_logs=True)
     env.close()
-    print(f"Geomean reward: {geometric_mean(rewards)}")
-    print(f"Mean walltime: {arithmetic_mean(times)}")
+    print(f"Geomean reward: {test_result.geomean_reward}")
+    print(f"Mean walltime: {test_result.mean_walltime}")

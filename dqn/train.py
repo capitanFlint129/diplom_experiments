@@ -11,7 +11,7 @@ from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 
 from dqn.dqn import Agent
 
-MODELS_DIR = "../models"
+MODELS_DIR = "models"
 
 
 def process_observation(observation):
@@ -40,6 +40,7 @@ def train(
     config,
     train_benchmarks: list,
     val_benchmarks: dict,
+    enable_validation: bool = True,
 ) -> None:
     env.observation_space = config["observation_space"]
 
@@ -49,9 +50,8 @@ def train(
         rng=np.random.default_rng(config["random_state"]),
     )
 
-    history_size = config["logging_history_size"]
     mem_cntr = 0
-    history = np.zeros(history_size)
+    history = []
     # используем среднее из средних геометрических по всем датасетам,
     # потому что есть неудобные датасеты, на которых среднее геометрическое - 0
     best_val_mean_geomean = 0
@@ -103,26 +103,27 @@ def train(
             if len(agent.actions_taken) == len(config["actions"]):
                 done = True
 
-        index = mem_cntr % history_size
-        history[index] = total
+        history.append(total)
         mem_cntr += 1
         print(f"{episode_i} - {train_env.benchmark}")
         print(
             "Total: {:.4f}".format(total)
             + " Epsilon: {:.4f}".format(agent.epsilon)
-            + f" Average rewards sum: {str(np.mean(history))}"
+            + f" Average rewards sum: {str(np.mean(history[-config['logging_history_size']:]))}"
             + f" Action: {' '.join(chosen_flags)}"
         )
         run.log(
             {
-                "average_rewards_sum_last_100": np.mean(history),
+                "average_rewards_sum_last_100": np.mean(
+                    history[-config["logging_history_size"] :]
+                ),
                 "std_rewards_sum_last_100": np.std(history),
                 "average_episode_loss": np.mean(losses or [0]),
                 "total_episode_reward": total,
             },
             step=episode_i,
         )
-        if episode_i % 500 == 0:
+        if episode_i % 500 == 0 and enable_validation:
             best_val_mean_geomean = _validation(
                 run,
                 episode_i,
@@ -132,9 +133,8 @@ def train(
                 config,
                 val_benchmarks,
             )
-        agent.episode_done()
 
-    if (config["episodes"] - 1) % 500 != 0:
+    if (config["episodes"] - 1) % 500 != 0 and enable_validation:
         _validation(
             run,
             config["episodes"] - 1,
@@ -177,8 +177,10 @@ class ValidationResult:
     mean_walltime: float
 
 
-def validate(agent, env, config, val_benchmarks: dict[str, list]) -> ValidationResult:
-    agent.Q_eval.eval()
+def validate(
+    agent, env, config, val_benchmarks: dict[str, list], enable_logs: bool = False
+) -> ValidationResult:
+    agent.eval()
     rewards = {}
     times = []
     for dataset_name, benchmarks in val_benchmarks.items():
@@ -188,9 +190,13 @@ def validate(agent, env, config, val_benchmarks: dict[str, list]) -> ValidationR
             observation = env.observation[config["observation_space"]]
             if is_observation_correct(observation):
                 with Timer() as timer:
-                    reward = rollout(agent, env, config)
+                    reward, applied_actions = rollout(agent, env, config)
                 rewards[dataset_name].append(reward)
                 times.append(timer.time)
+                if enable_logs:
+                    print(
+                        f"{benchmark} - reward: {reward} - time: {timer.time} - actions: {' '.join(applied_actions)}"
+                    )
             else:
                 print(f"{benchmark} skipped during validation", file=sys.stderr)
     geomean_reward = geometric_mean(
@@ -211,14 +217,14 @@ def validate(agent, env, config, val_benchmarks: dict[str, list]) -> ValidationR
 
 
 @torch.no_grad()
-def rollout(agent: Agent, env, config):
+def rollout(agent: Agent, env, config) -> tuple[float, list[str]]:
     observation = process_observation(env.observation[config["observation_space"]])
     action_seq, rewards = [], []
     agent.actions_taken = []
     change_count = 0
 
     for i in range(config["episode_length"]):
-        action = agent.choose_action(observation, disable_epsilon_greedy=True)
+        action = agent.choose_action(observation, enable_epsilon_greedy=False)
         flag = config["actions"][action]
         action_seq.append(action)
         observation, reward, done, info = env.step(
@@ -239,4 +245,4 @@ def rollout(agent: Agent, env, config):
         if done or change_count > config["patience"]:
             break
 
-    return sum(rewards)
+    return sum(rewards), action_seq

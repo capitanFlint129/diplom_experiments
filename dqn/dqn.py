@@ -1,91 +1,31 @@
-from typing import Optional, Any
-
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
-# Start implementing ideas from Deep RL Bootcamp series on youtube
-
-"""
-- concatentate observation with previous observations (they used 4)
-- use huber loss (same from [-1,1], but penalizes less for larger errors)
-- use RMSProp instead of grad descent
-- add more exploration at the beginning
-- could try prioritized experience replay again...
-- could also try dueling _dqn to see the effect of the advantage property
-
-"""
 
 
 class DQN(nn.Module):
     def __init__(
         self,
         observation_size: int,
-        action_embedding_size: int,
-        hidden_size: int,
         fc_dims: int,
         n_actions: int,
     ):
         super(DQN, self).__init__()
-        self.hidden_size = hidden_size
         self.observation_size = observation_size
-        self.action_embedding_size = action_embedding_size
 
-        self.action_embedding = nn.Embedding(n_actions, action_embedding_size)
-        self.input_net = nn.Sequential(
-            nn.Linear(action_embedding_size + observation_size, fc_dims),
+        self.q_net = nn.Sequential(
+            nn.Linear(observation_size, fc_dims),
+            nn.ReLU(),
             nn.Linear(fc_dims, fc_dims),
+            nn.ReLU(),
             nn.Linear(fc_dims, fc_dims),
-        )
-        self.rnn_encoder = nn.LSTM(fc_dims, hidden_size, batch_first=True)
-        self.output_net = nn.Sequential(
-            nn.Linear(hidden_size, fc_dims),
-            nn.Linear(fc_dims, fc_dims),
-            nn.Linear(fc_dims, fc_dims),
+            nn.ReLU(),
+            nn.Linear(fc_dims, n_actions),
         )
 
-    def forward(
-        self,
-        observation: torch.Tensor,
-        prev_action: torch.Tensor,
-        sequence_lengths: torch.Tensor,
-    ) -> torch.LongTensor:
-        assert (
-            observation.shape == prev_action.shape and len(prev_action.shape) == 3
-        ), f"{observation.shape} - {prev_action.shape}"
-        action_embs = self.action_embedding(prev_action)
-        input = torch.cat((observation, action_embs), dim=-1)
-        rnn_input = self.input_net(input)
-        output, (_, _) = self.rnn_encoder(rnn_input)
-        assert (
-            len(output.shape) == 3
-            and output.shape[0] == observation.shape[0]
-            and output.shape[1] == observation.shape[1]
-            and output.shape[0] == observation.shape[2] == self.hidden_size
-        ), f"{output.shape}"
-        final_outputs = torch.index_select(output, 1, sequence_lengths - 1)
-        actions_q = self.output_net(final_outputs)
-        return actions_q
-
-    def forward_step(
-        self,
-        observation: torch.Tensor,
-        prev_action: torch.LongTensor,
-        h_prev: Optional[torch.Tensor] = None,
-        c_prev: Optional[torch.Tensor] = None,
-    ) -> tuple[Any, Any, Any]:
-        assert observation.shape == [1, self.observation_size], f"{observation.shape}"
-        assert prev_action.shape == [1]
-        prev_action_emb = self.action_embedding(prev_action[None, ...])
-        input = torch.cat((observation, prev_action_emb), dim=-1)
-        rnn_input = self.input_net(input)
-        if h_prev is None or c_prev is None:
-            output, (hn, cn) = self.rnn_encoder(rnn_input)
-        else:
-            output, (hn, cn) = self.rnn_encoder(rnn_input, (h_prev, c_prev))
-        actions_probabilities = self.output_net(output)
-        return actions_probabilities, hn, cn
+    def forward(self, observation: torch.Tensor) -> torch.LongTensor:
+        return self.q_net(observation)
 
 
 class Agent(nn.Module):
@@ -108,20 +48,15 @@ class Agent(nn.Module):
         self.mem_cntr = 0
         self.Q_eval = DQN(
             observation_size=observation_size,
-            action_embedding_size=config["action_embedding_size"],
-            hidden_size=config["lstm_hidden_size"],
             fc_dims=config["fc_dim"],
             n_actions=self.n_actions,
         )
         self.Q_next = DQN(
             observation_size=observation_size,
-            action_embedding_size=config["action_embedding_size"],
-            hidden_size=config["lstm_hidden_size"],
             fc_dims=config["fc_dim"],
             n_actions=self.n_actions,
         )
         self.actions_taken = []
-        # star unpacks list into positional arguments
         self.state_mem = np.zeros(
             (self.max_mem_size, observation_size), dtype=np.float32
         )
@@ -133,9 +68,6 @@ class Agent(nn.Module):
         self.terminal_mem = np.zeros(self.max_mem_size, dtype=bool)
         self.learn_step_counter = 0
         self.device = device
-        self.h_prev = None
-        self.c_prev = None
-        self.prev_action = None
         self.to(self.device)
 
         self.optimizer = optim.Adam(self.Q_eval.parameters(), lr=config["alpha"])
@@ -143,12 +75,6 @@ class Agent(nn.Module):
         self.loss = nn.SmoothL1Loss()
 
     def episode_reset(self):
-        self.h_prev = None
-        self.c_prev = None
-        self.prev_action = torch.zeros(
-            self.Q_eval.action_embedding_size,
-            device=self.device,
-        )
         self.actions_taken = []
 
     def store_transition(self, action, state, reward, new_state, done):
@@ -161,21 +87,15 @@ class Agent(nn.Module):
         self.mem_cntr += 1
 
     @torch.no_grad()
-    def choose_action(self, observation, disable_epsilon_greedy=False):
+    def choose_action(self, observation, enable_epsilon_greedy: bool = True):
         observation = observation.astype(np.float32)
-        state = torch.tensor(observation, device=self.device)[None, ...]
-        actions_q, self.h_prev, self.c_prev = self.Q_eval.forward_step(
-            state, self.prev_action
+        actions_q = self.Q_eval(
+            torch.tensor(observation, device=self.device)[None, ...]
         )
-        # network seems to choose same action over and over, even with zero reward,
-        # trying giving negative reward for choosing same action multiple times
-        # while torch.argmax(actions).item() in self.actions_taken:
-        #     actions[0][torch.argmax(actions).item()] = 0.0
         action = torch.argmax(actions_q).item()
-        if not (np.random.random() > self.epsilon or disable_epsilon_greedy):
+        if np.random.random() <= self.epsilon and enable_epsilon_greedy:
             action = np.random.choice(self.action_space)
         self.actions_taken.append(action)
-        self.prev_action = action
         return action
 
     def replace_target_network(self):
@@ -209,11 +129,12 @@ class Agent(nn.Module):
 		the batch, not the replay buffer.
 		"""
         q_eval = self.Q_eval.forward(state_batch)[batch_index, action_batch]
-        q_next = self.Q_next.forward(new_state_batch).max(dim=1)[0]
+        with torch.no_grad():
+            q_next = self.Q_next.forward(new_state_batch).max(dim=1)[0]
         # if and index of the batch is done (True), then set next reward to 0
         q_next[terminal_batch] = 0.0
         q_target = reward_batch + self.gamma * q_next
-        loss = self.Q_eval.loss(q_target, q_eval).to(self.device)
+        loss = self.loss(q_target, q_eval).to(self.device)
         loss_val = loss.item()
         loss.backward()
         self.optimizer.step()
@@ -224,17 +145,3 @@ class Agent(nn.Module):
         else:
             self.epsilon = self.eps_end
         return loss_val
-
-
-def _get_range_for_cyclic(
-    begin_index: int, end_index: int, array_size: int
-) -> np.ndarray:
-    if end_index < begin_index:
-        end_index += array_size
-    indexes = np.arange(begin_index, end_index) % array_size
-    return indexes
-
-
-def _pad_seq_to_len(seq: np.ndarray, seq_len: int) -> np.ndarray:
-    pad_width = tuple([(0, seq_len - seq.shape[0])] + [(0, 0)] * (len(seq.shape) - 1))
-    return np.pad(seq, pad_width)
