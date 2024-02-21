@@ -74,7 +74,7 @@ class Agent(nn.Module):
         self.device = device
         self.to(self.device)
 
-        self.optimizer = optim.Adam(self.Q_eval.parameters(), lr=config["alpha"])
+        self.optimizer = optim.Adam(self.Q_eval.parameters(), lr=config.alpha)
         # todo : try huber loss
         self.loss = nn.SmoothL1Loss()
 
