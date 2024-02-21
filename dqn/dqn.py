@@ -14,8 +14,6 @@ class DQN(nn.Module):
         n_actions: int,
     ):
         super(DQN, self).__init__()
-        self.observation_size = observation_size
-
         self.q_net = nn.Sequential(
             nn.Linear(observation_size, fc_dims),
             nn.ReLU(),
@@ -80,6 +78,9 @@ class Agent(nn.Module):
 
     def episode_reset(self):
         self.actions_taken = []
+
+    def episode_done(self):
+        pass
 
     def store_transition(self, action, state, reward, new_state, done):
         index = self.mem_cntr % self.max_mem_size

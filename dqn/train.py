@@ -1,4 +1,4 @@
-import dataclasses
+from dataclasses import dataclass, field
 import itertools
 import os
 import sys
@@ -16,6 +16,16 @@ from observation import get_observation
 MODELS_DIR = "models"
 
 
+@dataclass
+class EpisodeData:
+    done: bool = False
+    total_reward: float = 0
+    actions_count: int = 0
+    patience_count: int = 0
+    losses: list[float] = field(default_factory=lambda: [])
+    chosen_flags: list[str] = field(default_factory=lambda: [])
+
+
 def train(
     run,
     agent: Agent,
@@ -25,14 +35,11 @@ def train(
     val_benchmarks: dict,
     enable_validation: bool = True,
 ) -> None:
-    # env.observation_space = config["observation_space"]
     train_env = RandomOrderBenchmarks(
         env.fork(),
         benchmarks=train_benchmarks,
         rng=np.random.default_rng(config.random_state),
     )
-
-    mem_cntr = 0
     history = []
     # используем среднее из средних геометрических по всем датасетам,
     # потому что есть неудобные датасеты, на которых среднее геометрическое почти всегда 0
@@ -40,7 +47,6 @@ def train(
 
     for episode_i in range(config.episodes):
         agent.Q_eval.train()
-        # skip zero vectors
         while True:
             train_env.reset()
             observation, is_observation_correct = get_observation(train_env, config)
@@ -51,60 +57,56 @@ def train(
                     f"Skip {env.benchmark} during training. It produces incorrect initial observation",
                     file=sys.stderr,
                 )
-        done = False
-        total = 0
-        actions_taken = 0
-        change_count = 0
-        agent.episode_reset()
 
-        losses = []
-        chosen_flags = []
+        episode_data = EpisodeData()
+        agent.episode_reset()
         while (
-            not done
-            and actions_taken < config.episode_length
-            and change_count < config.patience
+            not episode_data.done
+            and episode_data.actions_count < config.episode_length
+            and episode_data.patience_count < config.patience
         ):
             action = agent.choose_action(observation)
             flag = config.actions[action]
-            chosen_flags.append(flag)
-            _, reward, done, info = train_env.step(
+            episode_data.chosen_flags.append(flag)
+            _, reward, episode_data.done, info = train_env.step(
                 train_env.action_space.flags.index(flag)
             )
             new_observation, _ = get_observation(env, config)
-            actions_taken += 1
-            total += reward
+            episode_data.actions_count += 1
+            episode_data.total_reward += reward
 
             if reward == 0:
-                change_count += 1
+                episode_data.patience_count += 1
             else:
-                change_count = 0
+                episode_data.patience_count = 0
 
-            agent.store_transition(action, observation, reward, new_observation, done)
+            agent.store_transition(
+                action, observation, reward, new_observation, episode_data.done
+            )
             loss_val = agent.learn()
             if loss_val is not None:
-                losses.append(loss_val)
+                episode_data.losses.append(loss_val)
             observation = new_observation
 
             if len(agent.actions_taken) == len(config.actions):
-                done = True
+                episode_data.done = True
 
-        history.append(total)
-        mem_cntr += 1
-        print(f"{episode_i} - {train_env.benchmark}")
+        agent.episode_done()
+        history.append(episode_data.total_reward)
+        average_rewards_sum = np.mean(history[-config.logging_history_size :])
         print(
-            "Total: {:.4f}".format(total)
+            f"{episode_i} - {train_env.benchmark}\n"
+            + "Total: {:.4f}".format(episode_data.total_reward)
             + " Epsilon: {:.4f}".format(agent.epsilon)
-            + f" Average rewards sum: {str(np.mean(history[-config.logging_history_size:]))}"
-            + f" Action: {' '.join(chosen_flags)}"
+            + f" Average rewards sum: {average_rewards_sum}"
+            + f" Action: {' '.join(episode_data.chosen_flags)}"
         )
         run.log(
             {
-                "average_rewards_sum_last_100": np.mean(
-                    history[-config.logging_history_size :]
-                ),
-                "std_rewards_sum_last_100": np.std(history),
-                "average_episode_loss": np.mean(losses or [0]),
-                "total_episode_reward": total,
+                "average_rewards_sum_for_last_episodes": average_rewards_sum,
+                "std_rewards_sum_for_last_episodes": np.std(history),
+                "average_episode_loss": np.mean(episode_data.losses or [0]),
+                "total_episode_reward": episode_data.total_reward,
             },
             step=episode_i,
         )
@@ -132,8 +134,14 @@ def train(
     save_model(agent.Q_eval.state_dict(), run.name, replace=False)
 
 
-def _validation(
-    run, episode_i, best_val_mean_geomean, agent, env, config, val_benchmarks: dict
+def _validation_during_train(
+    run,
+    episode_i,
+    best_val_mean_geomean,
+    agent: Agent,
+    env,
+    config: TrainConfig,
+    val_benchmarks: dict,
 ) -> float:
     validation_result = validate(agent, env, config, val_benchmarks)
     log_data = {
@@ -154,7 +162,7 @@ def _validation(
     return best_val_mean_geomean
 
 
-@dataclasses.dataclass
+@dataclass
 class ValidationResult:
     geomean_reward: float
     mean_geomean_reward: float
