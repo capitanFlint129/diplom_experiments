@@ -3,10 +3,10 @@ from absl import app
 from compiler_gym.envs import LlvmEnv
 from compiler_gym.leaderboard.llvm_instcount import eval_llvm_instcount_policy
 
+from config import TrainConfig
 from dqn.dqn import Agent
 from dqn.train import rollout
 from utils import fix_seed
-from config import TrainConfig
 
 
 def run(env: LlvmEnv) -> None:
