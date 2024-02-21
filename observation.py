@@ -28,9 +28,8 @@ def _get_one_observation(env, observation_name: str) -> tuple[np.ndarray, bool]:
     if observation_name == "AutophaseNorm":
         observation = env.observation["Autophase"]
         observation = observation / observation[51]
-        return observation, _is_observation_correct(observation)
+        return observation, _is_count_observation_correct(observation)
     elif observation_name == "IR2Vec" or observation_name == "IR2VecNormalized":
-        # observation = np.random.rand(300)
         result_queue = multiprocessing.Queue()
         ir_text = str(env.observation[RAW_IR_OBSERVATION_NAME])
         proc = multiprocessing.Process(
@@ -40,12 +39,14 @@ def _get_one_observation(env, observation_name: str) -> tuple[np.ndarray, bool]:
         proc.join()
         observation = result_queue.get()
         if observation_name == "IR2VecNormalized":
-            # observation = normalize(observation, axis=0)
             observation = observation / np.linalg.norm(observation)
-        return observation, _is_observation_correct(observation)
+        return observation, proc.exitcode == 0
+    elif observation_name == "InstCount" or observation_name == "InstCountNorm":
+        observation = env.observation[observation_name]
+        return observation, _is_count_observation_correct(observation)
 
     observation = env.observation[observation_name]
-    return observation, _is_observation_correct(observation)
+    return observation, True
 
 
 def _get_ir2vec_observation(ir_text: str, result_queue: multiprocessing.Queue) -> None:
@@ -58,5 +59,9 @@ def _get_ir2vec_observation(ir_text: str, result_queue: multiprocessing.Queue) -
     result_queue.put(observation)
 
 
-def _is_observation_correct(observation):
+def _is_count_observation_correct(observation):
+    # в некоторых датасетах встречаются странные программы,
+    # дающие нулевые вектора для observation в которых используется
+    # подсчет инструкций, что явно является ошибкой если программа не пустая
+    # возможно это баг compiler gym
     return (observation > 0).sum() != 0 and not np.any(np.isnan(observation))
