@@ -4,13 +4,15 @@ import tempfile
 import ir2vec
 import numpy as np
 
+from config import TrainConfig
+
 RAW_IR_OBSERVATION_NAME = "Ir"
 
 
-def get_observation(env, config) -> tuple[np.ndarray, bool]:
+def get_observation(env, config: TrainConfig) -> tuple[np.ndarray, bool]:
     observations = []
     are_all_observations_correct = True
-    for observation_name in config["observation_space"]:
+    for observation_name in config.observation_space:
         observation, is_observation_correct = _get_one_observation(
             env, observation_name
         )
@@ -47,10 +49,10 @@ def _get_one_observation(env, observation_name: str) -> tuple[np.ndarray, bool]:
 
 
 def _get_ir2vec_observation(ir_text: str, result_queue: multiprocessing.Queue) -> None:
-    with tempfile.NamedTemporaryFile("w") as llfile:
-        llfile.write(ir_text)
-        llfile.flush()
-        init_obj = ir2vec.initEmbedding(llfile.name, "fa", "p")
+    with tempfile.NamedTemporaryFile("w") as ll_file:
+        ll_file.write(ir_text)
+        ll_file.flush()
+        init_obj = ir2vec.initEmbedding(ll_file.name, "fa", "p")
         observation = ir2vec.getProgramVector(init_obj)
     observation = np.array(observation)
     result_queue.put(observation)

@@ -9,6 +9,7 @@ from compiler_gym.util.statistics import arithmetic_mean, geometric_mean
 from compiler_gym.util.timer import Timer
 from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 
+from config import TrainConfig
 from dqn.dqn import Agent
 from observation import get_observation
 
@@ -19,7 +20,7 @@ def train(
     run,
     agent: Agent,
     env,
-    config,
+    config: TrainConfig,
     train_benchmarks: list,
     val_benchmarks: dict,
     enable_validation: bool = True,
@@ -28,16 +29,16 @@ def train(
     train_env = RandomOrderBenchmarks(
         env.fork(),
         benchmarks=train_benchmarks,
-        rng=np.random.default_rng(config["random_state"]),
+        rng=np.random.default_rng(config.random_state),
     )
 
     mem_cntr = 0
     history = []
     # используем среднее из средних геометрических по всем датасетам,
-    # потому что есть неудобные датасеты, на которых среднее геометрическое - 0
+    # потому что есть неудобные датасеты, на которых среднее геометрическое почти всегда 0
     best_val_mean_geomean = 0
 
-    for episode_i in range(config["episodes"]):
+    for episode_i in range(config.episodes):
         agent.Q_eval.train()
         # skip zero vectors
         while True:
@@ -60,11 +61,11 @@ def train(
         chosen_flags = []
         while (
             not done
-            and actions_taken < config["episode_length"]
-            and change_count < config["patience"]
+            and actions_taken < config.episode_length
+            and change_count < config.patience
         ):
             action = agent.choose_action(observation)
-            flag = config["actions"][action]
+            flag = config.actions[action]
             chosen_flags.append(flag)
             _, reward, done, info = train_env.step(
                 train_env.action_space.flags.index(flag)
@@ -84,7 +85,7 @@ def train(
                 losses.append(loss_val)
             observation = new_observation
 
-            if len(agent.actions_taken) == len(config["actions"]):
+            if len(agent.actions_taken) == len(config.actions):
                 done = True
 
         history.append(total)
@@ -93,13 +94,13 @@ def train(
         print(
             "Total: {:.4f}".format(total)
             + " Epsilon: {:.4f}".format(agent.epsilon)
-            + f" Average rewards sum: {str(np.mean(history[-config['logging_history_size']:]))}"
+            + f" Average rewards sum: {str(np.mean(history[-config.logging_history_size:]))}"
             + f" Action: {' '.join(chosen_flags)}"
         )
         run.log(
             {
                 "average_rewards_sum_last_100": np.mean(
-                    history[-config["logging_history_size"] :]
+                    history[-config.logging_history_size :]
                 ),
                 "std_rewards_sum_last_100": np.std(history),
                 "average_episode_loss": np.mean(losses or [0]),
@@ -118,10 +119,10 @@ def train(
                 val_benchmarks,
             )
 
-    if (config["episodes"] - 1) % 500 != 0 and enable_validation:
+    if (config.episodes - 1) % 500 != 0 and enable_validation:
         _validation(
             run,
-            config["episodes"] - 1,
+            config.episodes - 1,
             best_val_mean_geomean,
             agent,
             env,
@@ -162,7 +163,11 @@ class ValidationResult:
 
 
 def validate(
-    agent, env, config, val_benchmarks: dict[str, list], enable_logs: bool = False
+    agent,
+    env,
+    config: TrainConfig,
+    val_benchmarks: dict[str, list],
+    enable_logs: bool = False,
 ) -> ValidationResult:
     agent.eval()
     rewards = {}
@@ -179,7 +184,7 @@ def validate(
                 times.append(timer.time)
                 if enable_logs:
                     applied_actions = [
-                        config["actions"][action_i] for action_i in applied_actions
+                        config.actions[action_i] for action_i in applied_actions
                     ]
                     print(
                         f"{benchmark} - reward: {reward} - time: {timer.time} - actions: {' '.join(applied_actions)}"
@@ -207,15 +212,15 @@ def validate(
 
 
 @torch.no_grad()
-def rollout(agent: Agent, env, config) -> tuple[float, list[str]]:
+def rollout(agent: Agent, env, config: TrainConfig) -> tuple[float, list[str]]:
     observation, _ = get_observation(env, config)
     action_seq, rewards = [], []
     agent.episode_reset()
     change_count = 0
 
-    for i in range(config["episode_length"]):
+    for i in range(config.episode_length):
         action = agent.choose_action(observation, enable_epsilon_greedy=False)
-        flag = config["actions"][action]
+        flag = config.actions[action]
         action_seq.append(action)
         _, reward, done, info = env.step(env.action_space.flags.index(flag))
         observation, _ = get_observation(env, config)
@@ -226,10 +231,10 @@ def rollout(agent: Agent, env, config) -> tuple[float, list[str]]:
         else:
             change_count = 0
 
-        if len(agent.actions_taken) == len(config["actions"]):
+        if len(agent.actions_taken) == len(config.actions):
             done = True
 
-        if done or change_count > config["patience"]:
+        if done or change_count > config.patience:
             break
 
     return sum(rewards), action_seq

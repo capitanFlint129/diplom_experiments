@@ -5,15 +5,17 @@ import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 
+from config import TrainConfig
 
-def make_env(config):
+
+def make_env(config: TrainConfig):
     return compiler_gym.make(
-        config["compiler_gym_env"],
-        reward_space=config["reward_space"],
+        config.compiler_gym_env,
+        reward_space=config.reward_space,
     )
 
 
-def fix_seed(seed):
+def fix_seed(seed: int) -> None:
     np.random.seed(seed)
     torch.manual_seed(seed)
     random.seed(seed)

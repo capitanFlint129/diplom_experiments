@@ -3,6 +3,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 
+from config import TrainConfig
+
 
 class DQN(nn.Module):
     def __init__(
@@ -29,31 +31,33 @@ class DQN(nn.Module):
 
 
 class Agent(nn.Module):
-    def __init__(self, observation_size, n_actions, config, device):
+    def __init__(
+        self, observation_size: int, n_actions: int, config: TrainConfig, device
+    ):
         super(Agent, self).__init__()
-        self.eps_dec = config["epsilon_dec"]
-        self.eps_end = config["epsilon_end"]
-        self.max_mem_size = config["max_mem_size"]
-        self.replace_target_cnt = config["replace"]
-        self.gamma = config["gamma"]
-        self.epsilon = config["epsilon"]
-        self.eps_end = config["epsilon_end"]
-        self.eps_dec = config["epsilon_dec"]
+        self.eps_dec = config.epsilon_dec
+        self.eps_end = config.epsilon_end
+        self.max_mem_size = config.max_mem_size
+        self.replace_target_cnt = config.replace
+        self.gamma = config.gamma
+        self.epsilon = config.epsilon
+        self.eps_end = config.epsilon_end
+        self.eps_dec = config.epsilon_dec
         self.n_actions = n_actions
         self.action_space = [i for i in range(n_actions)]
-        self.max_mem_size = config["max_mem_size"]
-        self.batch_size = config["batch_size"]
-        self.learn_memory_threshold = config["learn_memory_threshold"]
+        self.max_mem_size = config.max_mem_size
+        self.batch_size = config.batch_size
+        self.learn_memory_threshold = config.learn_memory_threshold
         # keep track of position of first available memory
         self.mem_cntr = 0
         self.Q_eval = DQN(
             observation_size=observation_size,
-            fc_dims=config["fc_dim"],
+            fc_dims=config.fc_dim,
             n_actions=self.n_actions,
         )
         self.Q_next = DQN(
             observation_size=observation_size,
-            fc_dims=config["fc_dim"],
+            fc_dims=config.fc_dim,
             n_actions=self.n_actions,
         )
         self.actions_taken = []
