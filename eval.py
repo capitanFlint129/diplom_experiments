@@ -11,7 +11,7 @@ if __name__ == "__main__":
     _, _, test_benchmarks = prepare_datasets(
         env,
         config["datasets"],
-        no_split=config["no_split"],
+        train_val_test_split=config["train_val_test_split"],
         skipped=set(config["skipped_benchmarks"]),
     )
 

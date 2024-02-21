@@ -42,7 +42,7 @@ config = dict(
         "benchmark://cbench-v1/jpeg-c",
         "benchmark://cbench-v1/jpeg-d",
     ],
-    no_split=True,
+    train_val_test_split=True,
     compiler_gym_env="llvm-v0",
     observation_space="IR2Vec",
     observation_size=300,
@@ -81,7 +81,7 @@ def main():
     train_benchmarks, val_benchmarks, test_benchmarks = prepare_datasets(
         env,
         config["datasets"],
-        no_split=config["no_split"],
+        train_val_test_split=config["train_val_test_split"],
         skipped=set(config["skipped_benchmarks"]),
     )
     agent = Agent(

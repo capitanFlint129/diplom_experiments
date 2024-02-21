@@ -1,6 +1,5 @@
 import random
 
-# noinspection PyUnresolvedReferences
 import compiler_gym
 import numpy as np
 import torch
@@ -21,11 +20,14 @@ def fix_seed(seed):
 
 
 def prepare_datasets(
-    env, datasets: list[str], no_split: bool = False, skipped: set[str] = None
+    env,
+    datasets: list[str],
+    train_val_test_split: bool = True,
+    skipped: set[str] = None,
 ) -> tuple[list, dict, dict]:
     if skipped is None:
         skipped = set()
-    if no_split:
+    if not train_val_test_split:
         train_benchmarks = []
         test_and_val_benchmarks = {}
         for dataset_name in datasets:
