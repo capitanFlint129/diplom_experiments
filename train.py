@@ -18,7 +18,7 @@ config = dict(
     batch_size=32,  # The batch size
     max_mem_size=100000,  # The maximum memory size
     replace=500,  # The number of iterations to run before replacing target network
-    fc_dim=128,  # The dimension of a fully connected layer
+    fc_dim=512,  # The dimension of a fully connected layer
     lstm_hidden_size=128,  # The dimension of a fully connected layer
     action_embedding_size=50,
     episodes=4000,  # The number of episodes used to learn
@@ -28,7 +28,7 @@ config = dict(
     # General section
     datasets=[
         "benchmark://cbench-v1",
-        # "benchmark://mibench-v1",
+        "benchmark://mibench-v1",
         # "benchmark://opencv-v0",
     ],
     skipped_benchmarks=[
@@ -44,7 +44,10 @@ config = dict(
     ],
     train_val_test_split=True,
     compiler_gym_env="llvm-v0",
-    observation_space="IR2Vec",
+    observation_space=[
+        "IR2VecNormalized",
+        # "InstCountNorm",
+    ],
     observation_size=300,
     reward_space="IrInstructionCountOz",
     logging_history_size=100,
