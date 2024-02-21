@@ -108,8 +108,8 @@ def train(
             },
             step=episode_i,
         )
-        if episode_i % 500 == 0 and enable_validation:
-            best_val_mean_geomean = _validation(
+        if episode_i % config.validation_interval == 0 and enable_validation:
+            best_val_mean_geomean = _validation_during_train(
                 run,
                 episode_i,
                 best_val_mean_geomean,
@@ -119,8 +119,8 @@ def train(
                 val_benchmarks,
             )
 
-    if (config.episodes - 1) % 500 != 0 and enable_validation:
-        _validation(
+    if (config.episodes - 1) % config.validation_interval != 0 and enable_validation:
+        _validation_during_train(
             run,
             config.episodes - 1,
             best_val_mean_geomean,

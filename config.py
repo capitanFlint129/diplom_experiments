@@ -19,6 +19,7 @@ class TrainConfig:
     lstm_hidden_size = 128  # The dimension of a fully connected layer
     action_embedding_size = 50
     episodes = 4000  # The number of episodes used to learn
+    validation_interval = 500  # The number of episodes used to learn
     episode_length = 10  # The (MAX) number of transformation passes per episode
     patience = 4  # The (MAX) number of times to apply a series of transformations without observable change
     learn_memory_threshold = (
