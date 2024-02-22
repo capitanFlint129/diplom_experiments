@@ -23,7 +23,7 @@ if __name__ == "__main__":
         config=config,
         device=device,
     )
-    agent.Q_eval.load_state_dict(torch.load("models/3500-auspicious-dog-182.pth"))
+    agent.Q_eval.load_state_dict(torch.load("_models/3500-auspicious-dog-182.pth"))
     agent.eval()
     with torch.no_grad():
         test_result = validate(agent, env, config, test_benchmarks, enable_logs=True)

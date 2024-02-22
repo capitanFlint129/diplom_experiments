@@ -13,7 +13,7 @@ from config import TrainConfig
 from dqn.dqn import Agent
 from observation import get_observation
 
-MODELS_DIR = "models"
+MODELS_DIR = "_models"
 
 
 @dataclass

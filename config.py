@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from action import COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
+from action_config import COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
 
 
 @dataclass
