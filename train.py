@@ -7,7 +7,7 @@ import torch
 import wandb
 from config import TrainConfig
 from dqn.dqn import Agent
-from dqn.train import train, validate
+from dqn.train import train, validate, MODELS_DIR
 from utils import prepare_datasets, make_env, fix_seed
 
 
@@ -51,7 +51,7 @@ def main():
             config=config,
             device=device,
         )
-        agent.Q_eval.load_state_dict(torch.load(f"models/{run.name}.pth"))
+        agent.Q_eval.load_state_dict(torch.load(f"{MODELS_DIR}/{run.name}.pth"))
         agent.eval()
         with torch.no_grad():
             test_result = validate(agent, test_env, config, test_benchmarks)
