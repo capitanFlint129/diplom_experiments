@@ -2,8 +2,8 @@ import torch
 
 from config import TrainConfig
 from dqn.train import Agent, validate
-from train import make_env, fix_seed
-from utils import prepare_datasets
+from train import make_env, fix_seed, MODELS_DIR
+from utils import prepare_datasets, get_last_model_wandb_naming
 
 if __name__ == "__main__":
     config = TrainConfig()
@@ -23,7 +23,8 @@ if __name__ == "__main__":
         config=config,
         device=device,
     )
-    agent.Q_eval.load_state_dict(torch.load("_models/3500-auspicious-dog-182.pth"))
+    last_model_filename = get_last_model_wandb_naming(MODELS_DIR)
+    agent.Q_eval.load_state_dict(torch.load(f"{MODELS_DIR}/{last_model_filename}"))
     agent.eval()
     with torch.no_grad():
         test_result = validate(agent, env, config, test_benchmarks, enable_logs=True)
