@@ -1,3 +1,4 @@
+import os
 import random
 
 import compiler_gym
@@ -54,6 +55,19 @@ def prepare_datasets(
         test_benchmarks[dataset_name] = test
     random.shuffle(train_benchmarks)
     return train_benchmarks, val_benchmarks, test_benchmarks
+
+
+def get_last_model_wandb_naming(models_dir: str) -> str:
+    models_files_with_run_id = [
+        (filename.split("-")[-1].split(".")[0], filename)
+        for filename in list(os.listdir(models_dir))
+    ]
+    models_files_with_run_id = [
+        (int(int_run_id), filename)
+        for (int_run_id, filename) in models_files_with_run_id
+        if int_run_id.isdecimal()
+    ]
+    return sorted(models_files_with_run_id)[-1][1]
 
 
 def _filter_benchmarks(dataset, skipped):
