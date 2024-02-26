@@ -1,5 +1,6 @@
 # https://github.com/facebookresearch/CompilerGym/blob/development/leaderboard/llvm_instcount/dqn/README.md
 COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET = [
+    "noop",
     "-break-crit-edges",
     "-early-cse-memssa",
     "-gvn-hoist",
@@ -18,6 +19,7 @@ COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET = [
 ]
 
 COMPLETE_ACTION_SET = [
+    "noop",
     "-add-discriminators",
     "-adce",
     "-aggressive-instcombine",

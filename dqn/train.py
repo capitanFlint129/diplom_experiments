@@ -1,7 +1,7 @@
-from dataclasses import dataclass, field
 import itertools
 import os
 import sys
+from dataclasses import dataclass, field
 
 import numpy as np
 import torch
@@ -59,6 +59,7 @@ def train(
                 )
 
         episode_data = EpisodeData()
+        prev_action = 0
         agent.episode_reset()
         while (
             not episode_data.done
@@ -68,10 +69,13 @@ def train(
             action = agent.choose_action(observation)
             flag = config.actions[action]
             episode_data.chosen_flags.append(flag)
-            _, reward, episode_data.done, info = train_env.step(
-                train_env.action_space.flags.index(flag)
-            )
-            new_observation, _ = get_observation(env, config)
+            if action == 0:
+                new_observation, reward, done = observation, 0, False
+            else:
+                _, reward, episode_data.done, info = train_env.step(
+                    train_env.action_space.flags.index(flag)
+                )
+                new_observation, _ = get_observation(env, config)
             episode_data.actions_count += 1
             episode_data.total_reward += reward
 
@@ -81,17 +85,19 @@ def train(
                 episode_data.patience_count = 0
 
             agent.store_transition(
-                action, observation, reward, new_observation, episode_data.done
+                prev_action,
+                action,
+                observation,
+                reward,
+                new_observation,
+                episode_data.done,
             )
             loss_val = agent.learn()
             if loss_val is not None:
                 episode_data.losses.append(loss_val)
             observation = new_observation
-
-            if len(agent.actions_taken) == len(config.actions):
-                episode_data.done = True
-
         agent.episode_done()
+
         history.append(episode_data.total_reward)
         average_rewards_sum = np.mean(history[-config.logging_history_size :])
         print(
@@ -153,6 +159,7 @@ def _validation_during_train(
         log_data,
         step=episode_i,
     )
+    print(validation_result)
     if validation_result.mean_geomean_reward > best_val_mean_geomean:
         print(
             f"Save model. New best geomean: {validation_result.mean_geomean_reward}, previous best geomean: {best_val_mean_geomean}"
@@ -168,6 +175,10 @@ class ValidationResult:
     mean_geomean_reward: float
     geomean_reward_per_dataset: dict[str, float]
     mean_walltime: float
+
+    def __str__(self):
+        rewards = list(self.geomean_reward_per_dataset.values())
+        return f"Geomean reward: {self.geomean_reward} - Mean walltime: {self.mean_walltime} - Max geomean reward: {max(rewards)} - Min geomean reward: {min(rewards)}"
 
 
 def validate(
@@ -230,17 +241,18 @@ def rollout(agent: Agent, env, config: TrainConfig) -> tuple[float, list[str]]:
         action = agent.choose_action(observation, enable_epsilon_greedy=False)
         flag = config.actions[action]
         action_seq.append(action)
-        _, reward, done, info = env.step(env.action_space.flags.index(flag))
-        observation, _ = get_observation(env, config)
+
+        if action == 0:
+            reward, done = 0, False
+        else:
+            _, reward, done, info = env.step(env.action_space.flags.index(flag))
+            observation, _ = get_observation(env, config)
         rewards.append(reward)
 
         if reward == 0:
             change_count += 1
         else:
             change_count = 0
-
-        if len(agent.actions_taken) == len(config.actions):
-            done = True
 
         if done or change_count > config.patience:
             break
