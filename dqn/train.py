@@ -60,12 +60,15 @@ def train(
 
         episode_data = EpisodeData()
         agent.episode_reset()
+        forbidden_actions = {0}
         while (
             not episode_data.done
             and episode_data.actions_count < config.episode_length
             and episode_data.patience_count < config.patience
         ):
-            action = agent.choose_action(observation)
+            action = agent.choose_action(
+                observation, forbidden_actions=forbidden_actions
+            )
             flag = config.actions[action]
             episode_data.chosen_flags.append(flag)
             _, reward, episode_data.done, info = train_env.step(
@@ -77,8 +80,10 @@ def train(
 
             if reward == 0:
                 episode_data.patience_count += 1
+                forbidden_actions.add(action)
             else:
                 episode_data.patience_count = 0
+                forbidden_actions = {0}
 
             agent.store_transition(
                 action, observation, reward, new_observation, episode_data.done
