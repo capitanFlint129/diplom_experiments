@@ -92,14 +92,33 @@ class Agent(nn.Module):
         self.mem_cntr += 1
 
     @torch.no_grad()
-    def choose_action(self, observation, enable_epsilon_greedy: bool = True):
-        observation = observation.astype(np.float32)
-        actions_q = self.Q_eval(
-            torch.tensor(observation, device=self.device)[None, ...]
-        )
-        action = torch.argmax(actions_q).item()
+    def choose_action(
+        self,
+        observation,
+        enable_epsilon_greedy: bool = True,
+        forbidden_actions: set = None,
+    ):
+        if forbidden_actions is None:
+            forbidden_actions = set()
+        if forbidden_actions is not None and len(forbidden_actions) >= len(
+            self.action_space
+        ):
+            print("Warning: all actions are forbidden, choose 0", file=sys.stderr)
+            return 0
+        action = 0
         if np.random.random() <= self.epsilon and enable_epsilon_greedy:
-            action = np.random.choice(self.action_space)
+            while action in forbidden_actions:
+                action = np.random.choice(self.action_space)
+        else:
+            observation = observation.astype(np.float32)
+            actions_q, self.h_prev, self.c_prev = self.Q_eval.forward_step(
+                torch.tensor(observation, device=self.device)[None, ...],
+                self.prev_action,
+            )
+            actions_q = actions_q.sqeeze()
+            while action in forbidden_actions:
+                action = torch.argmax(actions_q).item()
+                actions_q[action] = float("-inf")
         self.actions_taken.append(action)
         return action
 
