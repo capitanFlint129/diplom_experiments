@@ -7,31 +7,32 @@ from action_config import COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
 class TrainConfig:
     # Algorithm section
     algorithm = "DQN"
-    gamma = 0.90  # The percent of how often the actor stays on policy
+    gamma = 0.999
     epsilon = 1.0  # The starting value for epsilon
     epsilon_end = 0.05  # The ending value for epsilon
     epsilon_dec = 5e-5  # The decrement value for epsilon
     lr = 0.001  # The learning rate
-    batch_size = 64  # The batch size
-    max_mem_size = 300000  # The maximum memory size
+    batch_size = 128  # The batch size
+    max_mem_size = 5000  # The maximum memory size
     replace = 500  # The number of iterations to run before replacing target network
     fc_dim = 256  # The dimension of a fully connected layer
     lstm_hidden_size = 512  # The dimension of a fully connected layer
     action_embedding_size = 100
     episodes = 10000  # The number of episodes used to learn
     validation_interval = 500  # The number of episodes used to learn
-    episode_length = 10  # The (MAX) number of transformation passes per episode
-    patience = 1  # The (MAX) number of times to apply a series of transformations without observable change
+    episode_length = 50  # The (MAX) number of transformation passes per episode
+    patience = 10  # The (MAX) number of times to apply a series of transformations without observable change
     learn_memory_threshold = max(
         batch_size, 32
     )  # The number of fully exploratory episodes to run before starting learning
     # General section
     datasets = [
-        "benchmark://cbench-v1",
+        ("benchmark://anghabench-v1", 1500),
+        # "benchmark://cbench-v1",
         # "benchmark://mibench-v1",
         # "benchmark://opencv-v0",
     ]
-    train_val_test_split = False
+    train_val_test_split = True
     # некоторые программы очень большие и вычисление observation на них может занимать много
     # времени и памяти, поэтому для начальных экспериментов удобно пропускать некоторые бенчмарки
     skipped_benchmarks = [
