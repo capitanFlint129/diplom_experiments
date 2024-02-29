@@ -41,6 +41,7 @@ def main():
             train_benchmarks,
             val_benchmarks,
             # enable_validation=False,
+            enable_validation_logs=True,
         )
 
     # final test

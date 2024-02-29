@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -72,9 +74,8 @@ class Agent(nn.Module):
         self.device = device
         self.to(self.device)
 
-        self.optimizer = optim.Adam(self.Q_eval.parameters(), lr=config.alpha)
-        # todo : try huber loss
-        self.loss = nn.SmoothL1Loss()
+        self.optimizer = optim.Adam(self.Q_eval.parameters(), lr=config.lr)
+        self.loss = nn.HuberLoss()
 
     def episode_reset(self):
         self.actions_taken = []
@@ -111,11 +112,11 @@ class Agent(nn.Module):
                 action = np.random.choice(self.action_space)
         else:
             observation = observation.astype(np.float32)
-            actions_q, self.h_prev, self.c_prev = self.Q_eval.forward_step(
-                torch.tensor(observation, device=self.device)[None, ...],
-                self.prev_action,
+            actions_q = self.Q_eval(
+                torch.tensor(observation, device=self.device)[None, ...]
             )
-            actions_q = actions_q.sqeeze()
+            actions_q = actions_q.squeeze()
+            action = torch.argmax(actions_q).item()
             while action in forbidden_actions:
                 action = torch.argmax(actions_q).item()
                 actions_q[action] = float("-inf")

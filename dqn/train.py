@@ -34,6 +34,7 @@ def train(
     train_benchmarks: list,
     val_benchmarks: dict,
     enable_validation: bool = True,
+    enable_validation_logs: bool = False,
 ) -> None:
     train_env = RandomOrderBenchmarks(
         env.fork(),
@@ -60,7 +61,7 @@ def train(
 
         episode_data = EpisodeData()
         agent.episode_reset()
-        forbidden_actions = {0}
+        forbidden_actions = set()
         while (
             not episode_data.done
             and episode_data.actions_count < config.episode_length
@@ -83,7 +84,7 @@ def train(
                 forbidden_actions.add(action)
             else:
                 episode_data.patience_count = 0
-                forbidden_actions = {0}
+                forbidden_actions = set()
 
             agent.store_transition(
                 action, observation, reward, new_observation, episode_data.done
@@ -135,6 +136,7 @@ def train(
             env,
             config,
             val_benchmarks,
+            enable_logs=enable_validation_logs,
         )
     save_model(agent.Q_eval.state_dict(), run.name, replace=False)
 
@@ -147,8 +149,11 @@ def _validation_during_train(
     env,
     config: TrainConfig,
     val_benchmarks: dict,
+    enable_logs: bool = False,
 ) -> float:
-    validation_result = validate(agent, env, config, val_benchmarks)
+    validation_result = validate(
+        agent, env, config, val_benchmarks, enable_logs=enable_logs
+    )
     log_data = {
         f"val_geomean_reward_{dataset_name}": geomean_reward
         for dataset_name, geomean_reward in validation_result.geomean_reward_per_dataset.items()

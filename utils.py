@@ -1,5 +1,7 @@
+import itertools
 import os
 import random
+from typing import Union
 
 import compiler_gym
 import numpy as np
@@ -24,7 +26,7 @@ def fix_seed(seed: int) -> None:
 
 def prepare_datasets(
     env,
-    datasets: list[str],
+    datasets: list[Union[str, tuple[str, int]]],
     train_val_test_split: bool = True,
     skipped: set[str] = None,
 ) -> tuple[list, dict, dict]:
@@ -33,26 +35,22 @@ def prepare_datasets(
     if not train_val_test_split:
         train_benchmarks = []
         test_and_val_benchmarks = {}
-        for dataset_name in datasets:
-            benchmarks = _filter_benchmarks(
-                list(env.datasets[dataset_name].benchmarks()), skipped
-            )
-            test_and_val_benchmarks[dataset_name] = benchmarks
-            train_benchmarks.extend(test_and_val_benchmarks[dataset_name])
+        for dataset_config in datasets:
+            benchmarks = _get_benchmarks(env, dataset_config, skipped)
+            test_and_val_benchmarks[dataset_config] = benchmarks
+            train_benchmarks.extend(test_and_val_benchmarks[dataset_config])
         random.shuffle(train_benchmarks)
         return train_benchmarks, test_and_val_benchmarks, test_and_val_benchmarks
     train_benchmarks = []
     val_benchmarks = {}
     test_benchmarks = {}
-    for dataset_name in datasets:
-        benchmarks = _filter_benchmarks(
-            list(env.datasets[dataset_name].benchmarks()), skipped
-        )
+    for dataset_config in datasets:
+        benchmarks = _get_benchmarks(env, dataset_config, skipped)
         train, test = train_test_split(benchmarks, test_size=0.2, shuffle=False)
         train, val = train_test_split(benchmarks, test_size=0.125, shuffle=False)
         train_benchmarks.extend(train)
-        val_benchmarks[dataset_name] = val
-        test_benchmarks[dataset_name] = test
+        val_benchmarks[dataset_config] = val
+        test_benchmarks[dataset_config] = test
     random.shuffle(train_benchmarks)
     return train_benchmarks, val_benchmarks, test_benchmarks
 
@@ -72,3 +70,15 @@ def get_last_model_wandb_naming(models_dir: str) -> str:
 
 def _filter_benchmarks(dataset, skipped):
     return [becnhmark for becnhmark in dataset if str(becnhmark) not in skipped]
+
+
+def _get_benchmarks(env, dataset_config, skipped) -> list:
+    if isinstance(dataset_config, tuple):
+        dataset_config, dataset_size = dataset_config
+        benchmarks = list(
+            itertools.islice(env.datasets[dataset_config].benchmarks(), dataset_size)
+        )
+    else:
+        benchmarks = list(env.datasets[dataset_config].benchmarks())
+    benchmarks = _filter_benchmarks(benchmarks, skipped)
+    return benchmarks
