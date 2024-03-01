@@ -94,16 +94,13 @@ def train(
                 episode_data.losses.append(loss_val)
             observation = new_observation
 
-            if len(agent.actions_taken) == len(config.actions):
-                episode_data.done = True
-
         agent.episode_done()
         history.append(episode_data.total_reward)
         average_rewards_sum = np.mean(history[-config.logging_history_size :])
         print(
             f"{episode_i} - {train_env.benchmark}\n"
             + "Total: {:.4f}".format(episode_data.total_reward)
-            + " Epsilon: {:.4f}".format(agent.epsilon)
+            + " Epsilon: {:.4f}".format(agent._epsilon)
             + f" Average rewards sum: {average_rewards_sum}"
             + f" Action: {' '.join(episode_data.chosen_flags)}"
         )
@@ -248,9 +245,6 @@ def rollout(agent: Agent, env, config: TrainConfig) -> tuple[float, list[str]]:
             change_count += 1
         else:
             change_count = 0
-
-        if len(agent.actions_taken) == len(config.actions):
-            done = True
 
         if done or change_count > config.patience:
             break

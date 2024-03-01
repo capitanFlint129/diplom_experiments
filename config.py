@@ -27,12 +27,12 @@ class TrainConfig:
     )  # The number of fully exploratory episodes to run before starting learning
     # General section
     datasets = [
-        ("benchmark://anghabench-v1", 1500),
-        # "benchmark://cbench-v1",
+        # ("benchmark://anghabench-v1", 1500),
+        "benchmark://cbench-v1",
         # "benchmark://mibench-v1",
         # "benchmark://opencv-v0",
     ]
-    train_val_test_split = True
+    train_val_test_split = False
     # некоторые программы очень большие и вычисление observation на них может занимать много
     # времени и памяти, поэтому для начальных экспериментов удобно пропускать некоторые бенчмарки
     skipped_benchmarks = [
