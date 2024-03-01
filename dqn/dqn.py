@@ -19,7 +19,7 @@ class Agent:
             buffer_size=config.max_mem_size,
             observation_size=config.observation_size,
         )
-        self._epsilon = config.epsilon
+        self.epsilon = config.epsilon
         self._n_actions = n_actions
         self.Q_eval = DQN(
             observation_size=observation_size,
@@ -57,7 +57,7 @@ class Agent:
             print("Warning: all actions are forbidden, choose 0", file=sys.stderr)
             return 0
         action = 0
-        if np.random.random() <= self._epsilon and enable_epsilon_greedy:
+        if np.random.random() <= self.epsilon and enable_epsilon_greedy:
             while action in forbidden_actions:
                 action = np.random.choice(self._n_actions)
         else:
@@ -89,10 +89,10 @@ class Agent:
         loss.backward()
         self._optimizer.step()
         self._learn_step_counter += 1
-        if self._epsilon > self._config.epsilon_end:
-            self._epsilon -= self._config.epsilon_dec
+        if self.epsilon > self._config.epsilon_end:
+            self.epsilon -= self._config.epsilon_dec
         else:
-            self._epsilon = self._config.epsilon_end
+            self.epsilon = self._config.epsilon_end
         return loss_val
 
     def store_transition(self, action, observation, reward, new_observation, done):

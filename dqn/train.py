@@ -1,7 +1,6 @@
-from dataclasses import dataclass, field
 import itertools
-import os
 import sys
+from dataclasses import dataclass, field
 
 import numpy as np
 import torch
@@ -12,8 +11,7 @@ from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 from config import TrainConfig
 from dqn.dqn import Agent
 from observation import get_observation
-
-MODELS_DIR = "_models"
+from utils import save_model
 
 
 @dataclass
@@ -97,21 +95,15 @@ def train(
         agent.episode_done()
         history.append(episode_data.total_reward)
         average_rewards_sum = np.mean(history[-config.logging_history_size :])
-        print(
-            f"{episode_i} - {train_env.benchmark}\n"
-            + "Total: {:.4f}".format(episode_data.total_reward)
-            + " Epsilon: {:.4f}".format(agent._epsilon)
-            + f" Average rewards sum: {average_rewards_sum}"
-            + f" Action: {' '.join(episode_data.chosen_flags)}"
-        )
-        run.log(
-            {
-                "average_rewards_sum_for_last_episodes": average_rewards_sum,
-                "std_rewards_sum_for_last_episodes": np.std(history),
-                "average_episode_loss": np.mean(episode_data.losses or [0]),
-                "total_episode_reward": episode_data.total_reward,
-            },
-            step=episode_i,
+        std_rewards_sum = np.std(history[-config.logging_history_size :])
+        _log_episode_results(
+            run,
+            train_env,
+            agent.epsilon,
+            episode_i,
+            average_rewards_sum,
+            std_rewards_sum,
+            episode_data,
         )
         if episode_i % config.validation_interval == 0 and enable_validation:
             best_val_mean_geomean = _validation_during_train(
@@ -122,6 +114,7 @@ def train(
                 env,
                 config,
                 val_benchmarks,
+                enable_logs=enable_validation_logs,
             )
 
     if (config.episodes - 1) % config.validation_interval != 0 and enable_validation:
@@ -167,6 +160,33 @@ def _validation_during_train(
         save_model(agent.Q_eval.state_dict(), f"{run.name}")
         return validation_result.mean_geomean_reward
     return best_val_mean_geomean
+
+
+def _log_episode_results(
+    run,
+    env,
+    epsilon: float,
+    episode_i: int,
+    average_rewards_sum: float,
+    std_rewards_sum: float,
+    episode_data: EpisodeData,
+) -> None:
+    print(
+        f"{episode_i} - {env.benchmark}\n"
+        + "Total: {:.4f}".format(episode_data.total_reward)
+        + " Epsilon: {:.4f}".format(epsilon)
+        + f" Average rewards sum: {average_rewards_sum}"
+        + f" Action: {' '.join(episode_data.chosen_flags)}"
+    )
+    run.log(
+        {
+            "average_rewards_sum_for_last_episodes": average_rewards_sum,
+            "std_rewards_sum_for_last_episodes": std_rewards_sum,
+            "average_episode_loss": np.mean(episode_data.losses or [0]),
+            "total_episode_reward": episode_data.total_reward,
+        },
+        step=episode_i,
+    )
 
 
 @dataclass
@@ -250,11 +270,3 @@ def rollout(agent: Agent, env, config: TrainConfig) -> tuple[float, list[str]]:
             break
 
     return sum(rewards), action_seq
-
-
-def save_model(state_dict, model_name, replace=True):
-    if not replace and os.path.exists(f"./{MODELS_DIR}/{model_name}.pth"):
-        return
-    if not os.path.exists(f"./{MODELS_DIR}"):
-        os.makedirs(f"./{MODELS_DIR}")
-    torch.save(state_dict, f"./{MODELS_DIR}/{model_name}.pth")

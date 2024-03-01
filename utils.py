@@ -10,6 +10,16 @@ from sklearn.model_selection import train_test_split
 
 from config import TrainConfig
 
+MODELS_DIR = "_models"
+
+
+def save_model(state_dict, model_name, replace=True):
+    if not replace and os.path.exists(f"./{MODELS_DIR}/{model_name}.pth"):
+        return
+    if not os.path.exists(f"./{MODELS_DIR}"):
+        os.makedirs(f"./{MODELS_DIR}")
+    torch.save(state_dict, f"./{MODELS_DIR}/{model_name}.pth")
+
 
 def make_env(config: TrainConfig):
     return compiler_gym.make(
