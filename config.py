@@ -1,6 +1,11 @@
+import os
 from dataclasses import dataclass
 
 from action_config import COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
+
+COMPILER_GYM_PATH = "~/.local/share/compiler_gym"
+LLVM_BINS_PATH = os.path.join(COMPILER_GYM_PATH, "llvm-v0/bin")
+MODELS_DIR = "_models"
 
 
 @dataclass

@@ -8,9 +8,7 @@ import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 
-from config import TrainConfig
-
-MODELS_DIR = "_models"
+from config import TrainConfig, MODELS_DIR
 
 
 def save_model(state_dict, model_name, replace=True):
