@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from config import TrainConfig
-from dqn.q_value import DQN
+from dqn.q_value import DQN, OneValueDQN
 from dqn.replay_buffer import ReplayBuffer
 
 

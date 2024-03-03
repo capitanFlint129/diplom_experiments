@@ -7,8 +7,8 @@ import torch
 import wandb
 from config import TrainConfig
 from dqn.dqn import Agent
-from dqn.train import train, validate, MODELS_DIR
-from utils import prepare_datasets, make_env, fix_seed
+from dqn.train import train, validate
+from utils import prepare_datasets, make_env, fix_seed, MODELS_DIR
 
 
 def main():
