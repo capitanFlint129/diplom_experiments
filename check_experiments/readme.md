@@ -1,3 +1,7 @@
+# LLVM 10.0.0
+https://github.com/llvm/llvm-project/tree/d32170dbd5b0d54436537b6b75beaf44324e0c28
+
+
 # Команды
 Команда генерации ll файла:
 ```bash
@@ -5,12 +9,18 @@ opt -Oz -o qsort_opt.bc cbench-v1/contents/cBench-v1/qsort.bc
 llvm-dis qsort_opt.ll -o qsort_opt.ll
 ```
 
+Флаг для замера времени -time-passes
+
 Получение списка флагов Oz:
 ```bash
 llvm-as < /dev/null | opt -Oz -disable-output -debug-pass=Arguments
 ```
 
+# Команда из Anghabench
 
+```bash
+opt -mem2reg -O0 -instcount -load VarCounter.so -VarCounter -load EdgeCounter.so -EdgeCounter -stats -S /home/flint/diplom/experiments/check_experiments/file.ll -disable-output 2>> stats.txt
+```
 
 # OZ список пасов (с аналитическими)
 -ee-instrument,
