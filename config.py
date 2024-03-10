@@ -16,9 +16,8 @@ class TrainConfig:
     epsilon = 1.0  # The starting value for epsilon
     epsilon_end = 0.05  # The ending value for epsilon
     epsilon_dec = 5e-5  # The decrement value for epsilon
-    lr = 0.001  # The learning rate
-    tau = 0.99 # soft update coefficient
     lr = 5e-4  # The learning rate
+    tau = 0.99  # soft update coefficient
     batch_size = 128  # The batch size
     max_mem_size = 5000  # The maximum memory size
     replace = 500  # The number of iterations to run before replacing target network
@@ -32,6 +31,7 @@ class TrainConfig:
     learn_memory_threshold = max(
         batch_size, 32
     )  # The number of fully exploratory episodes to run before starting learning
+
     # General section
     datasets = [
         # ("benchmark://anghabench-v1", 1500),
@@ -56,11 +56,13 @@ class TrainConfig:
     compiler_gym_env = "llvm-v0"
     observation_space = [
         # "IR2VecNormalized",
-        "InstCountNorm",
+        # "InstCountNorm",
         "AutophaseNorm",
     ]
-    observation_size = 125
+    observation_size = 56
     reward_space = "IrInstructionCountOz"
+    actions = POSET_RL_ODG
+    # Experiment section (logging and reproduce)
     logging_history_size = 100
-    actions = COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
     random_state = 42
+    codesize_bins_number = 23
