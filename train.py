@@ -2,15 +2,14 @@ from dataclasses import asdict
 
 # noinspection PyUnresolvedReferences
 import compiler_gym
-import numpy as np
 import plotly.graph_objects as go
 import torch
 
 import wandb
 from config import TrainConfig
 from dqn.dqn import Agent
-from dqn.train import train, validate, BinnedStatistic
-from utils import prepare_datasets, make_env, fix_seed, MODELS_DIR
+from dqn.train import train, validate
+from utils import prepare_datasets, make_env, fix_seed, MODELS_DIR, get_binned_statistics_plot
 
 
 def main():
@@ -61,7 +60,7 @@ def main():
         print(f"Test geomean: {test_result.geomean_reward}")
         fig = go.Figure()
         fig.add_trace(
-            _add_binned_statistics_plot(test_result.rewards_sum_by_codesize_bins)
+            get_binned_statistics_plot(test_result.rewards_sum_by_codesize_bins)
         )
         run.log({"rewards_sum_by_codesize_bins": fig})
         run.summary["test_geomean_reward"] = test_result.geomean_reward
@@ -71,37 +70,6 @@ def main():
             geomean_reward,
         ) in test_result.geomean_reward_per_dataset.items():
             run.summary[f"test_geomean_reward_{dataset_name}"] = geomean_reward
-
-
-def _add_binned_statistics_plot(rewards_sum_by_codesize_bins: BinnedStatistic):
-    means = rewards_sum_by_codesize_bins.mean
-    stds = rewards_sum_by_codesize_bins.std
-    bin_edges = rewards_sum_by_codesize_bins.bin_edges
-    bin_width = bin_edges[1] - bin_edges[0]
-    bin_centers = bin_edges[1:] - bin_width / 2
-    not_nan_mask = ~np.isnan(means)
-    fig = go.Scatter(
-        x=bin_centers[not_nan_mask],
-        y=means[not_nan_mask],
-        mode="markers",
-        name="measured",
-        error_y=dict(
-            type="data",
-            array=stds[not_nan_mask],
-            color="purple",
-            thickness=1.5,
-            width=3,
-        ),
-        error_x=dict(
-            type="constant",
-            value=bin_width / 2,
-            color="purple",
-            thickness=1.5,
-            width=3,
-        ),
-        marker=dict(color="purple", size=8),
-    )
-    return fig
 
 
 if __name__ == "__main__":

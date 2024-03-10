@@ -3,12 +3,14 @@ import os
 import random
 from typing import Union
 
+import plotly.graph_objects as go
 import compiler_gym
 import numpy as np
 import torch
 from sklearn.model_selection import train_test_split
 
 from config import TrainConfig, MODELS_DIR
+from dqn.train import BinnedStatistic
 
 
 def save_model(state_dict, model_name, replace=True):
@@ -74,6 +76,37 @@ def get_last_model_wandb_naming(models_dir: str) -> str:
         if int_run_id.isdecimal()
     ]
     return sorted(models_files_with_run_id)[-1][1]
+
+
+def get_binned_statistics_plot(rewards_sum_by_codesize_bins: BinnedStatistic):
+    means = rewards_sum_by_codesize_bins.mean
+    stds = rewards_sum_by_codesize_bins.std
+    bin_edges = rewards_sum_by_codesize_bins.bin_edges
+    bin_width = bin_edges[1] - bin_edges[0]
+    bin_centers = bin_edges[1:] - bin_width / 2
+    not_nan_mask = ~np.isnan(means)
+    fig = go.Scatter(
+        x=bin_centers[not_nan_mask],
+        y=means[not_nan_mask],
+        mode="markers",
+        name="measured",
+        error_y=dict(
+            type="data",
+            array=stds[not_nan_mask],
+            color="purple",
+            thickness=1.5,
+            width=3,
+        ),
+        error_x=dict(
+            type="constant",
+            value=bin_width / 2,
+            color="purple",
+            thickness=1.5,
+            width=3,
+        ),
+        marker=dict(color="purple", size=8),
+    )
+    return fig
 
 
 def _filter_benchmarks(dataset, skipped):
