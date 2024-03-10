@@ -190,9 +190,6 @@ def _log_episode_results(
     )
 
 
-
-
-
 def validate(
     agent,
     env,
