@@ -52,7 +52,7 @@ def main():
             config=config,
             device=device,
         )
-        agent.Q_eval.load_state_dict(torch.load(f"{MODELS_DIR}/{run.name}.pth"))
+        agent.policy_net.load_state_dict(torch.load(f"{MODELS_DIR}/{run.name}.pth"))
         agent.eval()
         with torch.no_grad():
             test_result = validate(agent, test_env, config, test_benchmarks)

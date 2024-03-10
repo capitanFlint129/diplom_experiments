@@ -25,7 +25,7 @@ if __name__ == "__main__":
     )
     last_model_filename = get_last_model_wandb_naming(MODELS_DIR)
     print(f"Load model from {last_model_filename}\n")
-    agent.Q_eval.load_state_dict(torch.load(f"{MODELS_DIR}/{last_model_filename}"))
+    agent.policy_net.load_state_dict(torch.load(f"{MODELS_DIR}/{last_model_filename}"))
     agent.eval()
     with torch.no_grad():
         test_result = validate(agent, env, config, test_benchmarks, enable_logs=True)

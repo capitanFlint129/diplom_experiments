@@ -45,7 +45,7 @@ def train(
     best_val_mean_geomean = 0
 
     for episode_i in range(config.episodes):
-        agent.Q_eval.train()
+        agent.policy_net.train()
         while True:
             train_env.reset()
             observation, is_observation_correct = get_observation(train_env, config)
@@ -128,7 +128,7 @@ def train(
             val_benchmarks,
             enable_logs=enable_validation_logs,
         )
-    save_model(agent.Q_eval.state_dict(), run.name, replace=False)
+    save_model(agent.policy_net.state_dict(), run.name, replace=False)
 
 
 def _validation_during_train(
@@ -157,7 +157,7 @@ def _validation_during_train(
         print(
             f"Save model. New best geomean: {validation_result.mean_geomean_reward}, previous best geomean: {best_val_mean_geomean}"
         )
-        save_model(agent.Q_eval.state_dict(), f"{run.name}")
+        save_model(agent.policy_net.state_dict(), f"{run.name}")
         return validation_result.mean_geomean_reward
     return best_val_mean_geomean
 

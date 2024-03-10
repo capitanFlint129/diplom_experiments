@@ -17,7 +17,7 @@ def run(env: LlvmEnv) -> None:
         config=config,
         device=device,
     )
-    agent.Q_eval.load_state_dict(torch.load("_models/wandering-bee-129.pth"))
+    agent.policy_net.load_state_dict(torch.load("_models/wandering-bee-129.pth"))
     rollout(agent, env, config)
 
 

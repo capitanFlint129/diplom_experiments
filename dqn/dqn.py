@@ -21,12 +21,12 @@ class Agent:
         )
         self.epsilon = config.epsilon
         self._n_actions = n_actions
-        self.Q_eval = DQN(
+        self.policy_net = DQN(
             observation_size=observation_size,
             fc_dims=config.fc_dim,
             n_actions=self._n_actions,
         ).to(device)
-        self.Q_next = DQN(
+        self.target_net = DQN(
             observation_size=observation_size,
             fc_dims=config.fc_dim,
             n_actions=self._n_actions,
@@ -35,7 +35,7 @@ class Agent:
         self._learn_step_counter = 0
         self._device = device
 
-        self._optimizer = optim.Adam(self.Q_eval.parameters(), lr=config.lr)
+        self._optimizer = optim.Adam(self.policy_net.parameters(), lr=config.lr)
         self._loss = nn.HuberLoss()
 
     def episode_reset(self):
@@ -62,7 +62,7 @@ class Agent:
                 action = np.random.choice(self._n_actions)
         else:
             observation = observation.astype(np.float32)
-            actions_q = self.Q_eval(
+            actions_q = self.policy_net(
                 torch.tensor(observation, device=self._device)[None, ...]
             )
             actions_q = actions_q.squeeze()
@@ -79,9 +79,9 @@ class Agent:
         self._optimizer.zero_grad()
         self._replace_target_network()
         dqn_batch = self._replay_buffer.get_batch(self._config.batch_size, self._device)
-        q_eval = self.Q_eval.forward(dqn_batch.state_batch)[:, dqn_batch.action_batch]
+        q_eval = self.policy_net.forward(dqn_batch.state_batch)[:, dqn_batch.action_batch]
         with torch.no_grad():
-            q_next = self.Q_next.forward(dqn_batch.new_state_batch).max(dim=1)[0]
+            q_next = self.target_net.forward(dqn_batch.new_state_batch).max(dim=1)[0]
         q_next[dqn_batch.terminal_batch] = 0.0
         q_target = dqn_batch.reward_batch + self._config.gamma * q_next
         loss = self._loss(q_target, q_eval).to(self._device)
@@ -101,14 +101,22 @@ class Agent:
         )
 
     def eval(self):
-        self.Q_eval.eval()
-        self.Q_next.eval()
+        self.policy_net.eval()
+        self.target_net.eval()
 
     def train(self):
-        self.Q_eval.train()
-        self.Q_next.train()
+        self.policy_net.train()
+        self.target_net.train()
 
     def _replace_target_network(self):
         if self._learn_step_counter % self._config.replace == 0:
-            self.Q_next.load_state_dict(self.Q_eval.state_dict())
-            self.Q_next.eval()
+            self.target_net.load_state_dict(self.policy_net.state_dict())
+            self.target_net.eval()
+
+            target_net_state_dict = self.target_net.state_dict()
+            policy_net_state_dict = self.policy_net.state_dict()
+            for key in policy_net_state_dict:
+                target_net_state_dict[key] = policy_net_state_dict[
+                    key
+                ] * self._config.tau + target_net_state_dict[key] * (1 - self._config.tau)
+            self.target_net.load_state_dict(target_net_state_dict)

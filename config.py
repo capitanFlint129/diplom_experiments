@@ -17,6 +17,8 @@ class TrainConfig:
     epsilon_end = 0.05  # The ending value for epsilon
     epsilon_dec = 5e-5  # The decrement value for epsilon
     lr = 0.001  # The learning rate
+    tau = 0.99 # soft update coefficient
+    lr = 5e-4  # The learning rate
     batch_size = 128  # The batch size
     max_mem_size = 5000  # The maximum memory size
     replace = 500  # The number of iterations to run before replacing target network
