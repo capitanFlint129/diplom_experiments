@@ -6,7 +6,7 @@ import torch.nn as nn
 import torch.optim as optim
 
 from config import TrainConfig
-from dqn.q_value import DQN, OneValueDQN
+from dqn.q_value import DQN
 from dqn.replay_buffer import ReplayBuffer
 
 
@@ -79,7 +79,9 @@ class Agent:
         self._optimizer.zero_grad()
         self._replace_target_network()
         dqn_batch = self._replay_buffer.get_batch(self._config.batch_size, self._device)
-        q_eval = self.policy_net.forward(dqn_batch.state_batch)[:, dqn_batch.action_batch]
+        q_eval = self.policy_net.forward(dqn_batch.state_batch)[
+            :, dqn_batch.action_batch
+        ]
         with torch.no_grad():
             q_next = self.target_net.forward(dqn_batch.new_state_batch).max(dim=1)[0]
         q_next[dqn_batch.terminal_batch] = 0.0
@@ -118,5 +120,7 @@ class Agent:
             for key in policy_net_state_dict:
                 target_net_state_dict[key] = policy_net_state_dict[
                     key
-                ] * self._config.tau + target_net_state_dict[key] * (1 - self._config.tau)
+                ] * self._config.tau + target_net_state_dict[key] * (
+                    1 - self._config.tau
+                )
             self.target_net.load_state_dict(target_net_state_dict)
