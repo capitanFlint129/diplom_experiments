@@ -5,3 +5,5 @@ IR2Vec==2.1.1
 numpy==1.26.3
 torch==2.1.2+cu118
 wandb==0.16.2
+plotly==5.19.0
+PyQt5==5.15.10
