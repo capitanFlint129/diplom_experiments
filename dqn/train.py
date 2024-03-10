@@ -3,6 +3,7 @@ import sys
 from dataclasses import dataclass, field
 
 import numpy as np
+import scipy
 import torch
 from compiler_gym.util.statistics import arithmetic_mean, geometric_mean
 from compiler_gym.util.timer import Timer
@@ -190,11 +191,21 @@ def _log_episode_results(
 
 
 @dataclass
+class BinnedStatistic:
+    mean: np.ndarray
+    std: np.ndarray
+    bin_edges: np.ndarray
+    binnumber: np.ndarray
+
+
+@dataclass
 class ValidationResult:
     geomean_reward: float
     mean_geomean_reward: float
     geomean_reward_per_dataset: dict[str, float]
     mean_walltime: float
+    rewards_sum_by_codesize_bins: BinnedStatistic
+    rewards_sum_by_codesize_bins_per_dataset: dict[str, BinnedStatistic]
 
 
 def validate(
@@ -207,11 +218,14 @@ def validate(
     agent.eval()
     rewards = {}
     times = []
+    binned_statistic_data = {}
     for dataset_name, benchmarks in val_benchmarks.items():
+        codesize = []
         rewards[dataset_name] = []
         for benchmark in benchmarks:
             env.reset(benchmark=benchmark)
             observation, is_observation_correct = get_observation(env, config)
+            codesize.append(env.observation["IrInstructionCount"])
             if is_observation_correct:
                 with Timer() as timer:
                     reward, applied_actions = rollout(agent, env, config)
@@ -229,6 +243,7 @@ def validate(
                     f"Skip {benchmark} during validation. It produces incorrect initial observation",
                     file=sys.stderr,
                 )
+        binned_statistic_data[dataset_name] = (codesize, rewards[dataset_name])
     geomean_reward = geometric_mean(
         list(itertools.chain.from_iterable(rewards.values()))
     )
@@ -238,11 +253,17 @@ def validate(
     }
     mean_walltime = arithmetic_mean(times)
     mean_geomean_reward = arithmetic_mean(list(geomean_reward_per_dataset.values()))
+    (
+        rewards_sum_by_codesize_bins,
+        rewards_sum_by_codesize_bins_per_dataset,
+    ) = _get_binned_statistics(binned_statistic_data)
     return ValidationResult(
         geomean_reward,
         mean_geomean_reward,
         geomean_reward_per_dataset,
         mean_walltime,
+        rewards_sum_by_codesize_bins,
+        rewards_sum_by_codesize_bins_per_dataset,
     )
 
 
@@ -270,3 +291,43 @@ def rollout(agent: Agent, env, config: TrainConfig) -> tuple[float, list[str]]:
             break
 
     return sum(rewards), action_seq
+
+
+def _get_binned_statistics(
+    binned_statistic_data: dict[str, tuple[list[int], list[float]]]
+) -> tuple[BinnedStatistic, dict[str, BinnedStatistic]]:
+    rewards_sum_by_codesize_bins_per_dataset = {}
+    all_codesizes = []
+    all_rewards = []
+    for dataset_name, (
+        dataset_codesizes,
+        dataset_rewards,
+    ) in binned_statistic_data.items():
+        all_codesizes.extend(dataset_codesizes)
+        all_rewards.extend(dataset_rewards)
+        rewards_sum_by_codesize_bins_per_dataset[
+            dataset_name
+        ] = _get_mean_and_std_binned(dataset_codesizes, dataset_rewards)
+    rewards_sum_by_codesize_bins = _get_mean_and_std_binned(all_codesizes, all_rewards)
+    return rewards_sum_by_codesize_bins, rewards_sum_by_codesize_bins_per_dataset
+
+
+def _get_mean_and_std_binned(dataset_codesizes, dataset_rewards):
+    mean, bin_edges, binnumber = scipy.stats.binned_statistic(
+        x=dataset_codesizes,
+        values=dataset_rewards,
+        bins=TrainConfig.codesize_bins_number,
+        statistic="mean",
+    )
+    std, _, _ = scipy.stats.binned_statistic(
+        x=dataset_codesizes,
+        values=dataset_rewards,
+        bins=TrainConfig.codesize_bins_number,
+        statistic="std",
+    )
+    return BinnedStatistic(
+        mean=mean,
+        std=std,
+        bin_edges=bin_edges,
+        binnumber=binnumber,
+    )
