@@ -9,7 +9,13 @@ import wandb
 from config import TrainConfig
 from dqn.dqn import Agent
 from dqn.train import train, validate
-from utils import prepare_datasets, make_env, fix_seed, MODELS_DIR, get_binned_statistics_plot
+from utils import (
+    prepare_datasets,
+    make_env,
+    fix_seed,
+    MODELS_DIR,
+    get_binned_statistics_plot,
+)
 
 
 def main():
