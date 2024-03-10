@@ -1,16 +1,34 @@
 import itertools
 import os
 import random
+from dataclasses import dataclass
 from typing import Union
 
-import plotly.graph_objects as go
 import compiler_gym
 import numpy as np
+import plotly.graph_objects as go
 import torch
 from sklearn.model_selection import train_test_split
 
 from config import TrainConfig, MODELS_DIR
-from dqn.train import BinnedStatistic
+
+
+@dataclass
+class BinnedStatistic:
+    mean: np.ndarray
+    std: np.ndarray
+    bin_edges: np.ndarray
+    binnumber: np.ndarray
+
+
+@dataclass
+class ValidationResult:
+    geomean_reward: float
+    mean_geomean_reward: float
+    geomean_reward_per_dataset: dict[str, float]
+    mean_walltime: float
+    rewards_sum_by_codesize_bins: BinnedStatistic
+    rewards_sum_by_codesize_bins_per_dataset: dict[str, BinnedStatistic]
 
 
 def save_model(state_dict, model_name, replace=True):

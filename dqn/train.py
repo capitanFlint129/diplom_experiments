@@ -12,7 +12,7 @@ from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 from config import TrainConfig
 from dqn.dqn import Agent
 from observation import get_observation
-from utils import save_model
+from utils import save_model, BinnedStatistic, ValidationResult
 
 
 @dataclass
@@ -190,22 +190,7 @@ def _log_episode_results(
     )
 
 
-@dataclass
-class BinnedStatistic:
-    mean: np.ndarray
-    std: np.ndarray
-    bin_edges: np.ndarray
-    binnumber: np.ndarray
 
-
-@dataclass
-class ValidationResult:
-    geomean_reward: float
-    mean_geomean_reward: float
-    geomean_reward_per_dataset: dict[str, float]
-    mean_walltime: float
-    rewards_sum_by_codesize_bins: BinnedStatistic
-    rewards_sum_by_codesize_bins_per_dataset: dict[str, BinnedStatistic]
 
 
 def validate(
