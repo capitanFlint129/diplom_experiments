@@ -22,10 +22,10 @@ class TrainConfig:
     # Learning
     lr = 1e-4  # The learning rate
     tau = 0.99  # soft update coefficient
-    batch_size = 1024  # The batch size
+    batch_size = 512  # The batch size
     max_mem_size = 100000  # The maximum memory size
     replace = 500  # The number of iterations to run before replacing target network
-    episodes = 4000  # The number of episodes used to learn
+    episodes = 2500  # The number of episodes used to learn
     validation_interval = 500  # The number of episodes used to learn
     episode_length = 50  # The (MAX) number of transformation passes per episode
     patience = 10  # The (MAX) number of times to apply a series of transformations without observable change
@@ -37,13 +37,13 @@ class TrainConfig:
 
     # General section
     datasets = [
+        "benchmark://cbench-v1",
         # ("benchmark://anghabench-v1", 2000),
-        ("/home/flint/diplom/datasets/bc/angha_kernels_largest_10k/", 2000),
-        # "benchmark://cbench-v1",
+        # ("/home/flint/diplom/datasets/bc/angha_kernels_largest_10k/", 2000),
         # "benchmark://mibench-v1",
         # "benchmark://opencv-v0",
     ]
-    train_val_test_split = False
+    train_val_test_split = True
     # некоторые программы очень большие и вычисление observation на них может занимать много
     # времени и памяти, поэтому для начальных экспериментов удобно пропускать некоторые бенчмарки
     skipped_benchmarks = [

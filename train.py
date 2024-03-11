@@ -4,25 +4,19 @@ from dataclasses import asdict
 import compiler_gym
 import plotly.graph_objects as go
 import torch
-
 import wandb
+
 from config import TrainConfig
 from dqn.train import train, validate
-from utils import (
-    prepare_datasets,
-    make_env,
-    get_agent,
-    fix_seed,
-    MODELS_DIR,
-    get_binned_statistics_plot,
-)
+from utils import (MODELS_DIR, fix_seed, get_agent, get_binned_statistics_plot,
+                   make_env, prepare_datasets)
 
 
 def main():
     config = TrainConfig()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     run = wandb.init(
-        project="rl-compilers-experiments",
+        project="rl-compilers-experiments-DQN-fix-results",
         config=asdict(config),
         # mode="disabled",
     )
