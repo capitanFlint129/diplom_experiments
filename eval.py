@@ -1,9 +1,9 @@
 import torch
 
 from config import TrainConfig
-from dqn.train import Agent, validate
+from dqn.train import validate
 from train import make_env, fix_seed, MODELS_DIR
-from utils import prepare_datasets, get_last_model_wandb_naming
+from utils import get_agent, prepare_datasets, get_last_model_wandb_naming
 
 if __name__ == "__main__":
     config = TrainConfig()
@@ -17,12 +17,7 @@ if __name__ == "__main__":
         skipped=set(config.skipped_benchmarks),
     )
 
-    agent = Agent(
-        observation_size=config.observation_size,
-        n_actions=len(config.actions),
-        config=config,
-        device=device,
-    )
+    agent = get_agent(config, device)
     last_model_filename = get_last_model_wandb_naming(MODELS_DIR)
     print(f"Load model from {last_model_filename}\n")
     agent.policy_net.load_state_dict(torch.load(f"{MODELS_DIR}/{last_model_filename}"))

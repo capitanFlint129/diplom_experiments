@@ -10,7 +10,7 @@ from compiler_gym.util.timer import Timer
 from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 
 from config import TrainConfig
-from dqn.dqn import Agent
+from dqn.dqn import DQNAgent
 from observation import get_observation
 from utils import save_model, BinnedStatistic, ValidationResult
 
@@ -19,15 +19,21 @@ from utils import save_model, BinnedStatistic, ValidationResult
 class EpisodeData:
     done: bool = False
     total_reward: float = 0
+    total_negative_reward: float = 0
     actions_count: int = 0
     patience_count: int = 0
     losses: list[float] = field(default_factory=lambda: [])
     chosen_flags: list[str] = field(default_factory=lambda: [])
 
+    def update_reward(self, reward: float) -> None:
+        self.total_reward += reward
+        if reward < 0:
+            self.total_negative_reward += reward
+
 
 def train(
     run,
-    agent: Agent,
+    agent: DQNAgent,
     env,
     config: TrainConfig,
     train_benchmarks: list,
@@ -76,7 +82,7 @@ def train(
             )
             new_observation, _ = get_observation(env, config)
             episode_data.actions_count += 1
-            episode_data.total_reward += reward
+            episode_data.update_reward(reward)
 
             if reward == 0:
                 episode_data.patience_count += 1
@@ -136,7 +142,7 @@ def _validation_during_train(
     run,
     episode_i,
     best_val_mean_geomean,
-    agent: Agent,
+    agent: DQNAgent,
     env,
     config: TrainConfig,
     val_benchmarks: dict,
@@ -175,6 +181,7 @@ def _log_episode_results(
     print(
         f"{episode_i} - {env.benchmark}\n"
         + "Total: {:.4f}".format(episode_data.total_reward)
+        + "Total neg: {:.4f}".format(episode_data.total_negative_reward)
         + " Epsilon: {:.4f}".format(epsilon)
         + f" Average rewards sum: {average_rewards_sum}"
         + f" Action: {' '.join(episode_data.chosen_flags)}"
@@ -250,7 +257,7 @@ def validate(
 
 
 @torch.no_grad()
-def rollout(agent: Agent, env, config: TrainConfig) -> tuple[float, list[str]]:
+def rollout(agent: DQNAgent, env, config: TrainConfig) -> tuple[float, list[str]]:
     observation, _ = get_observation(env, config)
     action_seq, rewards = [], []
     agent.episode_reset()

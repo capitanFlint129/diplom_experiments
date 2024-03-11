@@ -7,11 +7,11 @@ import torch
 
 import wandb
 from config import TrainConfig
-from dqn.dqn import Agent
 from dqn.train import train, validate
 from utils import (
     prepare_datasets,
     make_env,
+    get_agent,
     fix_seed,
     MODELS_DIR,
     get_binned_statistics_plot,
@@ -34,12 +34,7 @@ def main():
             train_val_test_split=config.train_val_test_split,
             skipped=set(config.skipped_benchmarks),
         )
-        agent = Agent(
-            observation_size=config.observation_size,
-            n_actions=len(config.actions),
-            config=config,
-            device=device,
-        )
+        agent = get_agent(config, device)
         train(
             run,
             agent,
@@ -53,12 +48,7 @@ def main():
 
     # final test
     with make_env(config) as test_env:
-        agent = Agent(
-            observation_size=config.observation_size,
-            n_actions=len(config.actions),
-            config=config,
-            device=device,
-        )
+        agent = get_agent(config, device)
         agent.policy_net.load_state_dict(torch.load(f"{MODELS_DIR}/{run.name}.pth"))
         agent.eval()
         with torch.no_grad():

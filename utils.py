@@ -11,6 +11,7 @@ import torch
 from sklearn.model_selection import train_test_split
 
 from config import TrainConfig, MODELS_DIR
+from dqn.dqn import DQNAgent, DoubleDQNAgent, TwinDQNAgent, LSTMDQNAgent
 
 
 @dataclass
@@ -29,6 +30,40 @@ class ValidationResult:
     mean_walltime: float
     rewards_sum_by_codesize_bins: BinnedStatistic
     rewards_sum_by_codesize_bins_per_dataset: dict[str, BinnedStatistic]
+
+
+def get_agent(config: TrainConfig, device):
+    if config.algorithm == "DQN":
+        agent = DQNAgent(
+            observation_size=config.observation_size,
+            n_actions=len(config.actions),
+            config=config,
+            device=device,
+        )
+    elif config.algorithm == "DoubleDQN":
+        agent = DoubleDQNAgent(
+            observation_size=config.observation_size,
+            n_actions=len(config.actions),
+            config=config,
+            device=device,
+        )
+    elif config.algorithm == "TwinDQN":
+        agent = TwinDQNAgent(
+            observation_size=config.observation_size,
+            n_actions=len(config.actions),
+            config=config,
+            device=device,
+        )
+    elif config.algorithm == "LSTMDQN":
+        agent = LSTMDQNAgent(
+            observation_size=config.observation_size,
+            n_actions=len(config.actions),
+            config=config,
+            device=device,
+        )
+    else:
+        raise Exception("unknown algorithm used")
+    return agent
 
 
 def save_model(state_dict, model_name, replace=True):
