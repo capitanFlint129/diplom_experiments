@@ -24,11 +24,29 @@ class EpisodeData:
     patience_count: int = 0
     losses: list[float] = field(default_factory=lambda: [])
     chosen_flags: list[str] = field(default_factory=lambda: [])
+    base_observations_history: list[np.ndarray] = field(default_factory=lambda: [])
+    remains: int = TrainConfig.episode_length
 
     def update_reward(self, reward: float) -> None:
         self.total_reward += reward
         if reward < 0:
             self.total_negative_reward += reward
+
+
+def apply_modifiers(observation, modifiers, episode_data: EpisodeData):
+    for modifier in modifiers:
+        if modifier == "remains-counter":
+            observation = np.concatenate(
+                (observation, np.array([episode_data.remains]))
+            )
+        elif modifier.startswith("prev"):
+            prev_n = int(modifier.split("-")[1])
+            prev = []
+            for i in range(prev_n - 1):
+                index = max(-i, 0)
+                prev.append(episode_data.base_observations_history[index])
+            observation = np.concatenate(prev + [observation])
+    return observation
 
 
 def train(
@@ -55,7 +73,9 @@ def train(
         agent.policy_net.train()
         while True:
             train_env.reset()
-            observation, is_observation_correct = get_observation(train_env, config)
+            base_observation, is_observation_correct = get_observation(
+                train_env, config
+            )
             if is_observation_correct:
                 break
             else:
@@ -64,9 +84,13 @@ def train(
                     file=sys.stderr,
                 )
 
-        episode_data = EpisodeData()
+        episode_data = EpisodeData(remains=config.episode_length)
         agent.episode_reset()
         forbidden_actions = set()
+        episode_data.base_observations_history.append(base_observation)
+        observation = apply_modifiers(
+            base_observation, config.observation_modifiers, episode_data
+        )
         while (
             not episode_data.done
             and episode_data.actions_count < config.episode_length
@@ -80,9 +104,10 @@ def train(
             _, reward, episode_data.done, info = train_env.step(
                 train_env.action_space.flags.index(flag)
             )
-            new_observation, _ = get_observation(env, config)
+            new_base_observation, _ = get_observation(env, config)
             episode_data.actions_count += 1
             episode_data.update_reward(reward)
+            episode_data.remains -= 1
 
             if reward == 0:
                 episode_data.patience_count += 1
@@ -90,7 +115,10 @@ def train(
             else:
                 episode_data.patience_count = 0
                 forbidden_actions = set()
-
+            new_observation = apply_modifiers(
+                new_base_observation, config.observation_modifiers, episode_data
+            )
+            episode_data.base_observations_history.append(new_base_observation)
             agent.store_transition(
                 action, observation, reward, new_observation, episode_data.done
             )
@@ -181,7 +209,7 @@ def _log_episode_results(
     print(
         f"{episode_i} - {env.benchmark}\n"
         + "Total: {:.4f}".format(episode_data.total_reward)
-        + "Total neg: {:.4f}".format(episode_data.total_negative_reward)
+        + " Total neg: {:.4f}".format(episode_data.total_negative_reward)
         + " Epsilon: {:.4f}".format(epsilon)
         + f" Average rewards sum: {average_rewards_sum}"
         + f" Action: {' '.join(episode_data.chosen_flags)}"
@@ -258,17 +286,24 @@ def validate(
 
 @torch.no_grad()
 def rollout(agent: DQNAgent, env, config: TrainConfig) -> tuple[float, list[str]]:
-    observation, _ = get_observation(env, config)
+    base_observation, _ = get_observation(env, config)
     action_seq, rewards = [], []
     agent.episode_reset()
     change_count = 0
-
+    episode_data = EpisodeData(remains=config.episode_length)
+    episode_data.base_observations_history.append(base_observation)
+    observation = apply_modifiers(
+        base_observation, config.observation_modifiers, episode_data
+    )
     for i in range(config.episode_length):
         action = agent.choose_action(observation, enable_epsilon_greedy=False)
         flag = config.actions[action]
         action_seq.append(action)
         _, reward, done, info = env.step(env.action_space.flags.index(flag))
-        observation, _ = get_observation(env, config)
+        base_observation, _ = get_observation(env, config)
+        observation = apply_modifiers(
+            base_observation, config.observation_modifiers, episode_data
+        )
         rewards.append(reward)
 
         if reward == 0:

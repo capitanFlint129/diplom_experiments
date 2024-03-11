@@ -60,7 +60,11 @@ class TrainConfig:
         # "InstCountNorm",
         "AutophaseNorm",
     ]
-    observation_size = 56
+    observation_modifiers = [
+        # "remains-counter",
+        # "prev-2",
+    ]
+    observation_size = 113
     reward_space = "IrInstructionCountOz"
     actions = POSET_RL_ODG
     # Experiment section (logging and reproduce)
