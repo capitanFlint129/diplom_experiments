@@ -61,7 +61,7 @@ class TrainConfig:
     observation_space = [
         # "IR2VecNormalized",
         "InstCountNorm",
-        # "AutophaseNorm",
+        "AutophaseNorm",
     ]
     observation_modifiers = [
         # "remains-counter",
