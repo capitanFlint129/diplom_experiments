@@ -29,6 +29,8 @@ class TrainConfig:
     validation_interval = 500  # The number of episodes used to learn
     episode_length = 50  # The (MAX) number of transformation passes per episode
     patience = 10  # The (MAX) number of times to apply a series of transformations without observable change
+    val_patience = 5
+    eval_with_forbidden_actions = True
     learn_memory_threshold = max(
         batch_size, 32
     )  # The number of fully exploratory episodes to run before starting learning

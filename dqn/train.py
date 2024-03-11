@@ -295,8 +295,12 @@ def rollout(agent: DQNAgent, env, config: TrainConfig) -> tuple[float, list[str]
     observation = apply_modifiers(
         base_observation, config.observation_modifiers, episode_data
     )
+    forbidden_actions = set()
     for i in range(config.episode_length):
-        action = agent.choose_action(observation, enable_epsilon_greedy=False)
+        if config.eval_with_forbidden_actions:
+            action = agent.choose_action(observation, enable_epsilon_greedy=False, forbidden_actions=forbidden_actions)
+        else:
+            action = agent.choose_action(observation, enable_epsilon_greedy=False)
         flag = config.actions[action]
         action_seq.append(action)
         _, reward, done, info = env.step(env.action_space.flags.index(flag))
@@ -307,11 +311,18 @@ def rollout(agent: DQNAgent, env, config: TrainConfig) -> tuple[float, list[str]
         rewards.append(reward)
 
         if reward == 0:
+            episode_data.patience_count += 1
+            forbidden_actions.add(action)
+        else:
+            episode_data.patience_count = 0
+            forbidden_actions = set()
+
+        if reward == 0:
             change_count += 1
         else:
             change_count = 0
 
-        if done or change_count > config.patience:
+        if done or change_count > config.val_patience:
             break
 
     return sum(rewards), action_seq
