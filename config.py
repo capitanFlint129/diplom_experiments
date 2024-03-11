@@ -36,7 +36,7 @@ class TrainConfig:
     # General section
     datasets = [
         # ("benchmark://anghabench-v1", 2000),
-        ("/home/flint/diplom/datasets/angha_kernels_largest_10k", 2000),
+        ("/home/flint/diplom/datasets/bc/angha_kernels_largest_10k/", 2000),
         # "benchmark://cbench-v1",
         # "benchmark://mibench-v1",
         # "benchmark://opencv-v0",
@@ -62,12 +62,12 @@ class TrainConfig:
         "AutophaseNorm",
     ]
     observation_modifiers = [
-        # "remains-counter",
-        # "prev-2",
+        "remains-counter",
+        "prev-2",
     ]
     observation_size = 113
     reward_space = "IrInstructionCountOz"
-    actions = POSET_RL_ODG
+    actions = COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
     # Experiment section (logging and reproduce)
     logging_history_size = 100
     random_state = 42

@@ -185,8 +185,8 @@ def _load_dataset(env, dataset_name):
     if os.path.exists(os.path.dirname(dataset_name)):
         return FilesDataset(
             dataset_root=dataset_name,
-            benchmark_file_suffix="c",
-            name="",
+            benchmark_file_suffix=".bc",
+            name="custom_dataset",
             description="",
             license="",
         )

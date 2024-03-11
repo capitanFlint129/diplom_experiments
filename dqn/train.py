@@ -239,7 +239,7 @@ def validate(
     for dataset_name, benchmarks in val_benchmarks.items():
         codesize = []
         rewards[dataset_name] = []
-        for benchmark in benchmarks:
+        for i, benchmark in enumerate(benchmarks):
             env.reset(benchmark=benchmark)
             observation, is_observation_correct = get_observation(env, config)
             codesize.append(env.observation["IrInstructionCount"])
@@ -253,7 +253,7 @@ def validate(
                         config.actions[action_i] for action_i in applied_actions
                     ]
                     print(
-                        f"{benchmark} - reward: {reward} - time: {timer.time} - actions: {' '.join(applied_actions)}"
+                        f"{i} - {benchmark} - reward: {reward} - time: {timer.time} - actions: {' '.join(applied_actions)}"
                     )
             else:
                 print(
