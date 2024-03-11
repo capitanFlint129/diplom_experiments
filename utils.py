@@ -111,7 +111,7 @@ def prepare_datasets(
     for dataset_config in datasets:
         benchmarks = _get_benchmarks(env, dataset_config, skipped)
         train, test = train_test_split(benchmarks, test_size=0.2, shuffle=False)
-        train, val = train_test_split(benchmarks, test_size=0.125, shuffle=False)
+        train, val = train_test_split(benchmarks, test_size=0.0625, shuffle=False)
         train_benchmarks.extend(train)
         val_benchmarks[dataset_config] = val
         test_benchmarks[dataset_config] = test
