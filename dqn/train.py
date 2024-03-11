@@ -298,7 +298,11 @@ def rollout(agent: DQNAgent, env, config: TrainConfig) -> tuple[float, list[str]
     forbidden_actions = set()
     for i in range(config.episode_length):
         if config.eval_with_forbidden_actions:
-            action = agent.choose_action(observation, enable_epsilon_greedy=False, forbidden_actions=forbidden_actions)
+            action = agent.choose_action(
+                observation,
+                enable_epsilon_greedy=False,
+                forbidden_actions=forbidden_actions,
+            )
         else:
             action = agent.choose_action(observation, enable_epsilon_greedy=False)
         flag = config.actions[action]
