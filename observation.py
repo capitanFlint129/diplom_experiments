@@ -28,7 +28,7 @@ def _get_one_observation(env, observation_name: str) -> tuple[np.ndarray, bool]:
     if observation_name == "AutophaseNorm":
         observation = env.observation["Autophase"]
         observation = observation / observation[51]
-        return observation, _is_count_observation_correct(observation)
+        is_count_observation_correct = _is_count_observation_correct(observation)
     elif observation_name == "IR2Vec" or observation_name == "IR2VecNormalized":
         result_queue = multiprocessing.Queue()
         ir_text = str(env.observation[RAW_IR_OBSERVATION_NAME])
@@ -40,13 +40,14 @@ def _get_one_observation(env, observation_name: str) -> tuple[np.ndarray, bool]:
         observation = result_queue.get()
         if observation_name == "IR2VecNormalized":
             observation = observation / np.linalg.norm(observation)
-        return observation, proc.exitcode == 0
+        is_count_observation_correct = proc.exitcode == 0
     elif observation_name == "InstCount" or observation_name == "InstCountNorm":
         observation = env.observation[observation_name]
-        return observation, _is_count_observation_correct(observation)
-
-    observation = env.observation[observation_name]
-    return observation, True
+        is_count_observation_correct = _is_count_observation_correct(observation)
+    else:
+        observation = env.observation[observation_name]
+        is_count_observation_correct = True
+    return observation, is_count_observation_correct
 
 
 def _get_ir2vec_observation(ir_text: str, result_queue: multiprocessing.Queue) -> None:
