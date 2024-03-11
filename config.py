@@ -16,15 +16,16 @@ class TrainConfig:
     epsilon = 1.0  # The starting value for epsilon
     epsilon_end = 0.05  # The ending value for epsilon
     epsilon_dec = 5e-5  # The decrement value for epsilon
-    lr = 5e-4  # The learning rate
-    tau = 0.99  # soft update coefficient
-    batch_size = 128  # The batch size
-    max_mem_size = 5000  # The maximum memory size
-    replace = 500  # The number of iterations to run before replacing target network
-    fc_dim = 256  # The dimension of a fully connected layer
+    fc_dim = 128  # The dimension of a fully connected layer
     lstm_hidden_size = 512  # The dimension of a fully connected layer
     action_embedding_size = 100
-    episodes = 10000  # The number of episodes used to learn
+    # Learning
+    lr = 1e-4  # The learning rate
+    tau = 0.99  # soft update coefficient
+    batch_size = 1024  # The batch size
+    max_mem_size = 100000  # The maximum memory size
+    replace = 500  # The number of iterations to run before replacing target network
+    episodes = 4000  # The number of episodes used to learn
     validation_interval = 500  # The number of episodes used to learn
     episode_length = 50  # The (MAX) number of transformation passes per episode
     patience = 10  # The (MAX) number of times to apply a series of transformations without observable change
