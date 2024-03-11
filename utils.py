@@ -8,6 +8,7 @@ import compiler_gym
 import numpy as np
 import plotly.graph_objects as go
 import torch
+from compiler_gym.datasets import FilesDataset
 from sklearn.model_selection import train_test_split
 
 from config import TrainConfig, MODELS_DIR
@@ -168,11 +169,26 @@ def _filter_benchmarks(dataset, skipped):
 
 def _get_benchmarks(env, dataset_config, skipped) -> list:
     if isinstance(dataset_config, tuple):
-        dataset_config, dataset_size = dataset_config
-        benchmarks = list(
-            itertools.islice(env.datasets[dataset_config].benchmarks(), dataset_size)
-        )
+        dataset_name, dataset_size = dataset_config
+    else:
+        dataset_name, dataset_size = dataset_config, None
+    dataset = _load_dataset(env, dataset_name)
+    if dataset_size is not None:
+        benchmarks = list(itertools.islice(dataset.benchmarks(), dataset_size))
     else:
         benchmarks = list(env.datasets[dataset_config].benchmarks())
     benchmarks = _filter_benchmarks(benchmarks, skipped)
     return benchmarks
+
+
+def _load_dataset(env, dataset_name):
+    if os.path.exists(os.path.dirname(dataset_name)):
+        return FilesDataset(
+            dataset_root=dataset_name,
+            benchmark_file_suffix="c",
+            name="",
+            description="",
+            license="",
+        )
+    else:
+        return env.datasets[dataset_name]

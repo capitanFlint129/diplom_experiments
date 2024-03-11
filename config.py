@@ -35,8 +35,9 @@ class TrainConfig:
 
     # General section
     datasets = [
-        # ("benchmark://anghabench-v1", 1500),
-        "benchmark://cbench-v1",
+        # ("benchmark://anghabench-v1", 2000),
+        ("/home/flint/diplom/datasets/angha_kernels_largest_10k", 2000),
+        # "benchmark://cbench-v1",
         # "benchmark://mibench-v1",
         # "benchmark://opencv-v0",
     ]
