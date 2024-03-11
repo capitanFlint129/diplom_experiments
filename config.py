@@ -25,7 +25,7 @@ class TrainConfig:
     batch_size = 512  # The batch size
     max_mem_size = 100000  # The maximum memory size
     replace = 500  # The number of iterations to run before replacing target network
-    episodes = 2500  # The number of episodes used to learn
+    episodes = 4000  # The number of episodes used to learn
     validation_interval = 500  # The number of episodes used to learn
     episode_length = 50  # The (MAX) number of transformation passes per episode
     patience = 10  # The (MAX) number of times to apply a series of transformations without observable change
@@ -60,14 +60,14 @@ class TrainConfig:
     compiler_gym_env = "llvm-v0"
     observation_space = [
         # "IR2VecNormalized",
-        # "InstCountNorm",
-        "AutophaseNorm",
+        "InstCountNorm",
+        # "AutophaseNorm",
     ]
     observation_modifiers = [
-        "remains-counter",
-        "prev-2",
+        # "remains-counter",
+        # "prev-2",
     ]
-    observation_size = 113
+    observation_size = 69
     reward_space = "IrInstructionCountOz"
     actions = COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
     # Experiment section (logging and reproduce)
