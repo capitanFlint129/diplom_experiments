@@ -1,3 +1,4 @@
+from typing import Union
 import itertools
 import sys
 from dataclasses import dataclass, field
@@ -10,7 +11,7 @@ from compiler_gym.util.timer import Timer
 from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 
 from config import TrainConfig
-from dqn.dqn import DQNAgent
+from dqn.dqn import DQNAgent, LSTMDQNAgent
 from observation import get_observation
 from utils import save_model, BinnedStatistic, ValidationResult
 
@@ -51,7 +52,7 @@ def apply_modifiers(observation, modifiers, episode_data: EpisodeData):
 
 def train(
     run,
-    agent: DQNAgent,
+    agent: Union[DQNAgent, LSTMDQNAgent],
     env,
     config: TrainConfig,
     train_benchmarks: list,
@@ -85,6 +86,7 @@ def train(
                 )
 
         episode_data = EpisodeData(remains=config.episode_length)
+        prev_action = 0
         agent.episode_reset()
         forbidden_actions = set()
         episode_data.base_observations_history.append(base_observation)
@@ -101,10 +103,14 @@ def train(
             )
             flag = config.actions[action]
             episode_data.chosen_flags.append(flag)
-            _, reward, episode_data.done, info = train_env.step(
-                train_env.action_space.flags.index(flag)
-            )
-            new_base_observation, _ = get_observation(env, config)
+
+            if action == 0:
+                new_base_observation, reward, episode_data.done = observation, 0, False
+            else:
+                _, reward, episode_data.done, info = train_env.step(
+                    train_env.action_space.flags.index(flag)
+                )
+                new_base_observation, _ = get_observation(env, config)
             episode_data.actions_count += 1
             episode_data.update_reward(reward)
             episode_data.remains -= 1
@@ -120,8 +126,14 @@ def train(
             )
             episode_data.base_observations_history.append(new_base_observation)
             agent.store_transition(
-                action, observation, reward, new_observation, episode_data.done
+                prev_action,
+                action,
+                observation,
+                reward,
+                new_observation,
+                episode_data.done,
             )
+            prev_action = action
             loss_val = agent.learn()
             if loss_val is not None:
                 episode_data.losses.append(loss_val)
@@ -307,8 +319,13 @@ def rollout(agent: DQNAgent, env, config: TrainConfig) -> tuple[float, list[str]
             action = agent.choose_action(observation, enable_epsilon_greedy=False)
         flag = config.actions[action]
         action_seq.append(action)
-        _, reward, done, info = env.step(env.action_space.flags.index(flag))
-        base_observation, _ = get_observation(env, config)
+        if action == 0:
+            reward, episode_data.done = 0, False
+        else:
+            _, reward, episode_data.done, info = env.step(
+                env.action_space.flags.index(flag)
+            )
+            base_observation, _ = get_observation(env, config)
         observation = apply_modifiers(
             base_observation, config.observation_modifiers, episode_data
         )
@@ -326,7 +343,7 @@ def rollout(agent: DQNAgent, env, config: TrainConfig) -> tuple[float, list[str]
         else:
             change_count = 0
 
-        if done or change_count > config.val_patience:
+        if episode_data.done or change_count > config.val_patience:
             break
 
     return sum(rewards), action_seq
