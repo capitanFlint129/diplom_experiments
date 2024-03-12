@@ -11,7 +11,7 @@ MODELS_DIR = "_models"
 @dataclass
 class TrainConfig:
     # Algorithm section
-    algorithm = "TwinDQN"
+    algorithm = "DoubleDQN"
     gamma = 0.99
     epsilon = 1.0  # The starting value for epsilon
     epsilon_end = 0.05  # The ending value for epsilon
@@ -20,7 +20,7 @@ class TrainConfig:
     lstm_hidden_size = 512  # The dimension of a fully connected layer
     action_embedding_size = 100
     # Learning
-    lr = 5e-5  # The learning rate
+    lr = 1e-4  # The learning rate
     tau = 0.99  # soft update coefficient
     batch_size = 512  # The batch size
     max_mem_size = 100000  # The maximum memory size
@@ -69,7 +69,7 @@ class TrainConfig:
     ]
     observation_size = 69
     reward_space = "IrInstructionCountOz"
-    actions = POSET_RL_ODG
+    actions = POSET_RL_MANUAL
     # Experiment section (logging and reproduce)
     logging_history_size = 100
     random_state = 42
