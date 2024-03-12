@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass
 
-from action_config import COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
+from action_config import *
 
 COMPILER_GYM_PATH = "~/.local/share/compiler_gym"
 LLVM_BINS_PATH = os.path.join(COMPILER_GYM_PATH, "llvm-v0/bin")
@@ -59,17 +59,17 @@ class TrainConfig:
     ]
     compiler_gym_env = "llvm-v0"
     observation_space = [
-        "IR2Vec",
-        # "InstCountNorm",
+        # "IR2Vec",
+        "InstCountNorm",
         # "AutophaseNorm",
     ]
     observation_modifiers = [
         # "remains-counter",
         # "prev-2",
     ]
-    observation_size = 300
+    observation_size = 69
     reward_space = "IrInstructionCountOz"
-    actions = COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
+    actions = POSET_RL_ODG
     # Experiment section (logging and reproduce)
     logging_history_size = 100
     random_state = 42
