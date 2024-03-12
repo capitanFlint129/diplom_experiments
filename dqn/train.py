@@ -101,7 +101,9 @@ def train(
             )
             flags = config.actions[action]
             if " " in flags:
-                flags = flags.split(" ")
+                flags = flags.split()
+            else:
+                flags = [flags]
             episode_data.chosen_flags.extend(flags)
             _, reward, episode_data.done, info = train_env.multistep(
                 [train_env.action_space.flags.index(f) for f in flags]
@@ -306,7 +308,9 @@ def rollout(agent: DQNAgent, env, config: TrainConfig) -> EpisodeData:
             action = agent.choose_action(observation, enable_epsilon_greedy=False)
         flags = config.actions[action]
         if " " in flags:
-            flags = flags.split(" ")
+            flags = flags.split()
+        else:
+            flags = [flags]
         episode_data.chosen_flags.extend(flags)
         _, reward, episode_data.done, info = env.multistep(
             [env.action_space.flags.index(f) for f in flags]
