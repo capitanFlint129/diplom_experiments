@@ -99,10 +99,12 @@ def train(
             action = agent.choose_action(
                 observation, forbidden_actions=forbidden_actions
             )
-            flag = config.actions[action]
-            episode_data.chosen_flags.append(flag)
-            _, reward, episode_data.done, info = train_env.step(
-                train_env.action_space.flags.index(flag)
+            flags = config.actions[action]
+            if " " in flags:
+                flags = flags.split(" ")
+            episode_data.chosen_flags.extend(flags)
+            _, reward, episode_data.done, info = train_env.multistep(
+                [train_env.action_space.flags.index(f) for f in flags]
             )
             new_base_observation, _ = get_observation(env, config)
             episode_data.actions_count += 1
@@ -245,15 +247,12 @@ def validate(
             codesize.append(env.observation["IrInstructionCount"])
             if is_observation_correct:
                 with Timer() as timer:
-                    reward, applied_actions = rollout(agent, env, config)
-                rewards[dataset_name].append(reward)
+                    episode_data = rollout(agent, env, config)
+                rewards[dataset_name].append(episode_data.total_reward)
                 times.append(timer.time)
                 if enable_logs:
-                    applied_actions = [
-                        config.actions[action_i] for action_i in applied_actions
-                    ]
                     print(
-                        f"{i} - {benchmark} - reward: {reward} - time: {timer.time} - actions: {' '.join(applied_actions)}"
+                        f"{i} - {benchmark} - reward: {episode_data.total_reward} - time: {timer.time} - actions: {' '.join(episode_data.chosen_flags)}"
                     )
             else:
                 print(
@@ -285,7 +284,7 @@ def validate(
 
 
 @torch.no_grad()
-def rollout(agent: DQNAgent, env, config: TrainConfig) -> tuple[float, list[str]]:
+def rollout(agent: DQNAgent, env, config: TrainConfig) -> EpisodeData:
     base_observation, _ = get_observation(env, config)
     action_seq, rewards = [], []
     agent.episode_reset()
@@ -305,9 +304,13 @@ def rollout(agent: DQNAgent, env, config: TrainConfig) -> tuple[float, list[str]
             )
         else:
             action = agent.choose_action(observation, enable_epsilon_greedy=False)
-        flag = config.actions[action]
-        action_seq.append(action)
-        _, reward, done, info = env.step(env.action_space.flags.index(flag))
+        flags = config.actions[action]
+        if " " in flags:
+            flags = flags.split(" ")
+        episode_data.chosen_flags.extend(flags)
+        _, reward, episode_data.done, info = env.multistep(
+            [env.action_space.flags.index(f) for f in flags]
+        )
         base_observation, _ = get_observation(env, config)
         observation = apply_modifiers(
             base_observation, config.observation_modifiers, episode_data
@@ -326,10 +329,10 @@ def rollout(agent: DQNAgent, env, config: TrainConfig) -> tuple[float, list[str]
         else:
             change_count = 0
 
-        if done or change_count > config.val_patience:
+        if episode_data.done or change_count > config.val_patience:
             break
 
-    return sum(rewards), action_seq
+    return episode_data
 
 
 def _get_binned_statistics(
