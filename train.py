@@ -4,18 +4,12 @@ from dataclasses import asdict
 import compiler_gym
 import plotly.graph_objects as go
 import torch
-import wandb
 
+import wandb
 from config import TrainConfig
 from dqn.train import train, validate
-from utils import (
-    MODELS_DIR,
-    fix_seed,
-    get_agent,
-    get_binned_statistics_plot,
-    make_env,
-    prepare_datasets,
-)
+from utils import (MODELS_DIR, fix_seed, get_agent, get_binned_statistics_plot,
+                   make_env, prepare_datasets)
 
 
 def main():
@@ -24,7 +18,7 @@ def main():
     run = wandb.init(
         project="rl-compilers-experiments-DQN-fix-results",
         config=asdict(config),
-        mode="disabled",
+        # mode="disabled",
     )
     with make_env(config) as train_env:
         fix_seed(config.random_state)
