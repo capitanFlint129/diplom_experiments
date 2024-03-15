@@ -8,8 +8,8 @@ from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 
 from config import TrainConfig
 from dqn.dqn import DQNAgent
-from dqn.train_utils import EpisodeData, apply_modifiers, get_binned_statistics
-from observation import get_observation
+from dqn.train_utils import EpisodeData, get_binned_statistics
+from observation import get_observation, ObservationModifier
 from utils import save_model, ValidationResult
 
 
@@ -35,26 +35,30 @@ def train(
 
     for episode_i in range(config.episodes):
         train_env.reset()
+        observation_modifier = ObservationModifier(
+            config.observation_modifiers, config.episode_length
+        )
         agent.episode_reset()
         base_observation = get_observation(train_env, config)
 
         episode_data = EpisodeData(
             base_observations_history=[base_observation], remains=config.episode_length
         )
-        observation = apply_modifiers(
-            base_observation, config.observation_modifiers, episode_data, config
+        observation = observation_modifier.modify(
+            base_observation, episode_data.remains
         )
         while (
             not episode_data.done
             and episode_data.actions_count < config.episode_length
             and episode_data.patience_count < config.patience
         ):
-            (action, reward, new_obs, base_observation, flags, info,) = episode_step(
+            action, reward, new_obs, base_observation, flags, info = episode_step(
                 env,
                 config,
                 agent,
                 episode_data,
                 observation,
+                observation_modifier,
                 episode_data.forbidden_actions,
             )
 
@@ -236,9 +240,10 @@ def rollout(
     episode_data = EpisodeData(
         base_observations_history=[base_observation], remains=config.episode_length
     )
-    observation = apply_modifiers(
-        base_observation, config.observation_modifiers, episode_data, config
+    observation_modifier = ObservationModifier(
+        config.observation_modifiers, config.episode_length
     )
+    observation = observation_modifier.modify(base_observation, episode_data.remains)
     while (
         not episode_data.done
         and episode_data.actions_count < config.episode_length
@@ -251,11 +256,12 @@ def rollout(
                 agent,
                 episode_data,
                 observation,
+                observation_modifier,
                 episode_data.forbidden_actions,
             )
         else:
             action, reward, observation, base_observation, flags, info = episode_step(
-                env, config, agent, episode_data, observation
+                env, config, agent, episode_data, observation, observation_modifier
             )
         episode_data.update_after_episode_step(
             action=action,
@@ -275,6 +281,7 @@ def episode_step(
     agent,
     episode_data,
     observation,
+    observation_modifier: ObservationModifier,
     forbidden_actions=None,
     enable_epsilon_greedy=True,
 ):
@@ -302,7 +309,5 @@ def episode_step(
             [env.action_space.flags.index(f) for f in flags]
         )
     base_observation = get_observation(env, config)
-    observation = apply_modifiers(
-        base_observation, config.observation_modifiers, episode_data, config
-    )
+    observation = observation_modifier.modify(base_observation, episode_data.remains)
     return action, reward, observation, base_observation, flags, info

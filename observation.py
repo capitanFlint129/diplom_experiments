@@ -24,6 +24,31 @@ def get_observation(env, config: TrainConfig) -> np.ndarray:
     return observation
 
 
+class ObservationModifier:
+    def __init__(self, modifications: list[str], episode_length: int):
+        self._modifications = modifications
+        self._episode_length = episode_length
+        self._base_observations_history = []
+
+    def modify(self, base_observation: np.ndarray, remains: int) -> np.ndarray:
+        for modifier in self._modifications:
+            if modifier.startswith("remains-counter"):
+                counter = remains
+                if modifier == "remains-counter-normalized":
+                    counter /= self._episode_length
+                base_observation = np.concatenate(
+                    (base_observation, np.array([counter]))
+                )
+            elif modifier.startswith("prev"):
+                prev_n = int(modifier.split("-")[1])
+                prev = []
+                for i in range(prev_n - 1):
+                    index = max(-i, 0)
+                    prev.append(self._base_observations_history[index])
+                base_observation = np.concatenate(prev + [base_observation])
+        return base_observation
+
+
 def _get_one_observation(env, observation_name: str) -> tuple[np.ndarray, bool]:
     if observation_name == "AutophaseNorm":
         observation = env.observation["Autophase"]
