@@ -36,7 +36,7 @@ def train(
     for episode_i in range(config.episodes):
         train_env.reset()
         observation_modifier = ObservationModifier(
-            config.observation_modifiers, config.episode_length
+            env, config.observation_modifiers, config.episode_length
         )
         agent.episode_reset()
         base_observation = get_observation(train_env, config)
@@ -241,7 +241,7 @@ def rollout(
         base_observations_history=[base_observation], remains=config.episode_length
     )
     observation_modifier = ObservationModifier(
-        config.observation_modifiers, config.episode_length
+        env, config.observation_modifiers, config.episode_length
     )
     observation = observation_modifier.modify(base_observation, episode_data.remains)
     while (
