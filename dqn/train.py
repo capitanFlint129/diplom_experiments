@@ -1,9 +1,7 @@
 import itertools
 import sys
-from dataclasses import dataclass, field
 
 import numpy as np
-import scipy
 import torch
 from compiler_gym.util.statistics import arithmetic_mean, geometric_mean
 from compiler_gym.util.timer import Timer
@@ -12,41 +10,8 @@ from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 from config import TrainConfig
 from dqn.dqn import DQNAgent
 from observation import get_observation
-from utils import save_model, BinnedStatistic, ValidationResult
-
-
-@dataclass
-class EpisodeData:
-    done: bool = False
-    total_reward: float = 0
-    total_negative_reward: float = 0
-    actions_count: int = 0
-    patience_count: int = 0
-    losses: list[float] = field(default_factory=lambda: [])
-    chosen_flags: list[str] = field(default_factory=lambda: [])
-    base_observations_history: list[np.ndarray] = field(default_factory=lambda: [])
-    remains: int = TrainConfig.episode_length
-
-    def update_reward(self, reward: float) -> None:
-        self.total_reward += reward
-        if reward < 0:
-            self.total_negative_reward += reward
-
-
-def apply_modifiers(observation, modifiers, episode_data: EpisodeData):
-    for modifier in modifiers:
-        if modifier == "remains-counter":
-            observation = np.concatenate(
-                (observation, np.array([episode_data.remains]))
-            )
-        elif modifier.startswith("prev"):
-            prev_n = int(modifier.split("-")[1])
-            prev = []
-            for i in range(prev_n - 1):
-                index = max(-i, 0)
-                prev.append(episode_data.base_observations_history[index])
-            observation = np.concatenate(prev + [observation])
-    return observation
+from train_utils import EpisodeData, apply_modifiers, get_binned_statistics
+from utils import save_model, ValidationResult
 
 
 def train(
@@ -64,7 +29,7 @@ def train(
         benchmarks=train_benchmarks,
         rng=np.random.default_rng(config.random_state),
     )
-    history = []
+    rewards_history = []
     # используем среднее из средних геометрических по всем датасетам,
     # потому что есть неудобные датасеты, на которых среднее геометрическое почти всегда 0
     best_val_mean_geomean = 0
@@ -84,10 +49,10 @@ def train(
                     file=sys.stderr,
                 )
 
-        episode_data = EpisodeData(remains=config.episode_length)
+        episode_data = EpisodeData(
+            base_observations_history=[base_observation], remains=config.episode_length
+        )
         agent.episode_reset()
-        forbidden_actions = set()
-        episode_data.base_observations_history.append(base_observation)
         observation = apply_modifiers(
             base_observation, config.observation_modifiers, episode_data
         )
@@ -97,44 +62,39 @@ def train(
             and episode_data.patience_count < config.patience
         ):
             action = agent.choose_action(
-                observation, forbidden_actions=forbidden_actions
+                observation, forbidden_actions=episode_data.forbidden_actions
             )
             flags = config.actions[action]
             if " " in flags:
                 flags = flags.split()
             else:
                 flags = [flags]
-            episode_data.chosen_flags.extend(flags)
             _, reward, episode_data.done, info = train_env.multistep(
                 [train_env.action_space.flags.index(f) for f in flags]
             )
             new_base_observation, _ = get_observation(env, config)
-            episode_data.actions_count += 1
-            episode_data.update_reward(reward)
-            episode_data.remains -= 1
 
-            if reward == 0:
-                episode_data.patience_count += 1
-                forbidden_actions.add(action)
-            else:
-                episode_data.patience_count = 0
-                forbidden_actions = set()
             new_observation = apply_modifiers(
                 new_base_observation, config.observation_modifiers, episode_data
             )
-            episode_data.base_observations_history.append(new_base_observation)
+
             agent.store_transition(
                 action, observation, reward, new_observation, episode_data.done
             )
             loss_val = agent.learn()
-            if loss_val is not None:
-                episode_data.losses.append(loss_val)
+            episode_data.update_after_episode(
+                action=action,
+                reward=reward,
+                base_observation=new_base_observation,
+                flags=flags,
+                loss_val=loss_val,
+            )
             observation = new_observation
 
         agent.episode_done()
-        history.append(episode_data.total_reward)
-        average_rewards_sum = np.mean(history[-config.logging_history_size :])
-        std_rewards_sum = np.std(history[-config.logging_history_size :])
+        rewards_history.append(episode_data.total_reward)
+        average_rewards_sum = np.mean(rewards_history[-config.logging_history_size :])
+        std_rewards_sum = np.std(rewards_history[-config.logging_history_size :])
         _log_episode_results(
             run,
             train_env,
@@ -274,7 +234,7 @@ def validate(
     (
         rewards_sum_by_codesize_bins,
         rewards_sum_by_codesize_bins_per_dataset,
-    ) = _get_binned_statistics(binned_statistic_data)
+    ) = get_binned_statistics(binned_statistic_data)
     return ValidationResult(
         geomean_reward,
         mean_geomean_reward,
@@ -287,22 +247,26 @@ def validate(
 
 @torch.no_grad()
 def rollout(agent: DQNAgent, env, config: TrainConfig) -> EpisodeData:
-    base_observation, _ = get_observation(env, config)
-    action_seq, rewards = [], []
     agent.episode_reset()
-    change_count = 0
-    episode_data = EpisodeData(remains=config.episode_length)
-    episode_data.base_observations_history.append(base_observation)
+
+    base_observation, _ = get_observation(env, config)
+    episode_data = EpisodeData(
+        base_observations_history=[base_observation], remains=config.episode_length
+    )
     observation = apply_modifiers(
         base_observation, config.observation_modifiers, episode_data
     )
-    forbidden_actions = set()
-    for i in range(config.episode_length):
+
+    while (
+        not episode_data.done
+        and episode_data.actions_count < config.episode_length
+        and episode_data.patience_count < config.val_patience
+    ):
         if config.eval_with_forbidden_actions:
             action = agent.choose_action(
                 observation,
                 enable_epsilon_greedy=False,
-                forbidden_actions=forbidden_actions,
+                forbidden_actions=episode_data.forbidden_actions,
             )
         else:
             action = agent.choose_action(observation, enable_epsilon_greedy=False)
@@ -311,7 +275,6 @@ def rollout(agent: DQNAgent, env, config: TrainConfig) -> EpisodeData:
             flags = flags.split()
         else:
             flags = [flags]
-        episode_data.chosen_flags.extend(flags)
         _, reward, episode_data.done, info = env.multistep(
             [env.action_space.flags.index(f) for f in flags]
         )
@@ -319,61 +282,12 @@ def rollout(agent: DQNAgent, env, config: TrainConfig) -> EpisodeData:
         observation = apply_modifiers(
             base_observation, config.observation_modifiers, episode_data
         )
-        rewards.append(reward)
-
-        if reward == 0:
-            episode_data.patience_count += 1
-            forbidden_actions.add(action)
-        else:
-            episode_data.patience_count = 0
-            forbidden_actions = set()
-
-        if reward == 0:
-            change_count += 1
-        else:
-            change_count = 0
-
-        if episode_data.done or change_count > config.val_patience:
-            break
+        episode_data.update_after_episode(
+            action=action,
+            reward=reward,
+            base_observation=base_observation,
+            flags=flags,
+            loss_val=None,
+        )
 
     return episode_data
-
-
-def _get_binned_statistics(
-    binned_statistic_data: dict[str, tuple[list[int], list[float]]]
-) -> tuple[BinnedStatistic, dict[str, BinnedStatistic]]:
-    rewards_sum_by_codesize_bins_per_dataset = {}
-    all_codesizes = []
-    all_rewards = []
-    for dataset_name, (
-        dataset_codesizes,
-        dataset_rewards,
-    ) in binned_statistic_data.items():
-        all_codesizes.extend(dataset_codesizes)
-        all_rewards.extend(dataset_rewards)
-        rewards_sum_by_codesize_bins_per_dataset[
-            dataset_name
-        ] = _get_mean_and_std_binned(dataset_codesizes, dataset_rewards)
-    rewards_sum_by_codesize_bins = _get_mean_and_std_binned(all_codesizes, all_rewards)
-    return rewards_sum_by_codesize_bins, rewards_sum_by_codesize_bins_per_dataset
-
-
-def _get_mean_and_std_binned(dataset_codesizes, dataset_rewards):
-    mean, bin_edges, binnumber = scipy.stats.binned_statistic(
-        x=dataset_codesizes,
-        values=dataset_rewards,
-        bins=TrainConfig.codesize_bins_number,
-        statistic="mean",
-    )
-    std, _, _ = scipy.stats.binned_statistic(
-        x=dataset_codesizes,
-        values=dataset_rewards,
-        bins=TrainConfig.codesize_bins_number,
-        statistic="std",
-    )
-    return BinnedStatistic(
-        mean=mean,
-        std=std,
-        bin_edges=bin_edges,
-        binnumber=binnumber,
-    )

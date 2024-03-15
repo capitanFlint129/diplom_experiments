@@ -51,6 +51,7 @@ class DQNAgent:
         enable_epsilon_greedy: bool = True,
         forbidden_actions: set = None,
     ):
+        self.policy_net.eval()
         if forbidden_actions is None:
             forbidden_actions = set()
         if forbidden_actions is not None and len(forbidden_actions) >= self._n_actions:

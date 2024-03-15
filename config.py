@@ -65,6 +65,7 @@ class TrainConfig:
     ]
     observation_modifiers = [
         # "remains-counter",
+        # "remains-counter-normalized",
         # "prev-2",
     ]
     observation_size = 56
