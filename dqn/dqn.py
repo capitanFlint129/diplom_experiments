@@ -120,9 +120,10 @@ class DQNAgent:
     def _get_q_current_and_target(
         self, dqn_batch: DQNTrainBatch
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        q_current = self.policy_net.forward(dqn_batch.state_batch)[
-            :, dqn_batch.action_batch
-        ]
+        q_values_current = self.policy_net.forward(dqn_batch.state_batch)
+        q_current = q_values_current.gather(
+            1, dqn_batch.action_batch[..., None]
+        ).squeeze()
         with torch.no_grad():
             q_next = self.target_net.forward(dqn_batch.new_state_batch).max(dim=1)[0]
         q_next[dqn_batch.terminal_batch] = 0.0
@@ -136,7 +137,9 @@ class DoubleDQNAgent(DQNAgent):
     ) -> tuple[torch.Tensor, torch.Tensor]:
         q_values_current = self.policy_net.forward(dqn_batch.state_batch)
         q_current_argmax = torch.argmax(q_values_current, dim=1)
-        q_current = q_values_current[:, dqn_batch.action_batch]
+        q_current = q_values_current.gather(
+            1, dqn_batch.action_batch[..., None]
+        ).squeeze()
         with torch.no_grad():
             q_next = (
                 self.target_net.forward(dqn_batch.new_state_batch)
@@ -236,7 +239,9 @@ class _TwinDQNSubAgent:
     ) -> tuple[torch.Tensor, torch.Tensor]:
         q_values_current = self.policy_net.forward(dqn_batch.state_batch)
         q_current_argmax = torch.argmax(q_values_current, dim=1)
-        q_current = q_values_current[:, dqn_batch.action_batch]
+        q_current = q_values_current.gather(
+            1, dqn_batch.action_batch[..., None]
+        ).squeeze()
         with torch.no_grad():
             q_next = torch.min(
                 torch.stack(
