@@ -28,6 +28,7 @@ class EpisodeData:
         base_observation: np.ndarray,
         flags: list[str],
         loss_val: Optional[float],
+        info: dict,
     ) -> None:
         self.chosen_flags.extend(flags)
         self.actions_count += 1
@@ -36,7 +37,7 @@ class EpisodeData:
         if reward < 0:
             self.total_negative_reward += reward
 
-        if reward == 0:
+        if info.get("action_had_no_effect", False):
             self.patience_count += 1
             self.forbidden_actions.add(action)
         else:

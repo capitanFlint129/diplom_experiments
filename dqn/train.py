@@ -49,7 +49,7 @@ def train(
             and episode_data.actions_count < config.episode_length
             and episode_data.patience_count < config.patience
         ):
-            action, reward, new_observation, base_observation, flags = episode_step(
+            (action, reward, new_obs, base_observation, flags, info,) = episode_step(
                 env,
                 config,
                 agent,
@@ -59,7 +59,7 @@ def train(
             )
 
             agent.store_transition(
-                action, observation, reward, new_observation, episode_data.done
+                action, observation, reward, new_obs, episode_data.done
             )
             loss_val = agent.learn()
             episode_data.update_after_episode_step(
@@ -68,8 +68,9 @@ def train(
                 base_observation=base_observation,
                 flags=flags,
                 loss_val=loss_val,
+                info=info,
             )
-            observation = new_observation
+            observation = new_obs
 
         agent.episode_done()
         rewards_history.append(episode_data.total_reward)
@@ -244,7 +245,7 @@ def rollout(
         and episode_data.patience_count < config.val_patience
     ):
         if use_actions_masking:
-            action, reward, observation, base_observation, flags = episode_step(
+            action, reward, observation, base_observation, flags, info = episode_step(
                 env,
                 config,
                 agent,
@@ -253,7 +254,7 @@ def rollout(
                 episode_data.forbidden_actions,
             )
         else:
-            action, reward, observation, base_observation, flags = episode_step(
+            action, reward, observation, base_observation, flags, info = episode_step(
                 env, config, agent, episode_data, observation
             )
         episode_data.update_after_episode_step(
@@ -262,6 +263,7 @@ def rollout(
             base_observation=base_observation,
             flags=flags,
             loss_val=None,
+            info=info,
         )
 
     return episode_data
@@ -276,6 +278,7 @@ def episode_step(
     forbidden_actions=None,
     enable_epsilon_greedy=True,
 ):
+    info = {}
     if forbidden_actions is not None:
         action = agent.choose_action(
             observation,
@@ -295,11 +298,11 @@ def episode_step(
             flags = flags.split()
         else:
             flags = [flags]
-        _, reward, episode_data.done, _ = env.multistep(
+        _, reward, episode_data.done, info = env.multistep(
             [env.action_space.flags.index(f) for f in flags]
         )
     base_observation = get_observation(env, config)
     observation = apply_modifiers(
         base_observation, config.observation_modifiers, episode_data, config
     )
-    return action, reward, observation, base_observation, flags
+    return action, reward, observation, base_observation, flags, info
