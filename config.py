@@ -65,10 +65,10 @@ class TrainConfig:
     ]
     observation_modifiers = [
         # "remains-counter",
-        # "remains-counter-normalized",
+        "remains-counter-normalized",
         # "prev-2",
     ]
-    observation_size = 69
+    observation_size = 70
     reward_space = "IrInstructionCountOz"
     actions = COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
     # Experiment section (logging and reproduce)
