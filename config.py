@@ -60,16 +60,16 @@ class TrainConfig:
     compiler_gym_env = "llvm-v0"
     observation_space = [
         # "IR2Vec",
-        "InstCountNorm",
-        # "AutophaseNorm",
+        # "InstCountNorm",
+        "Autophase",
     ]
     observation_modifiers = [
         # "remains-counter",
         # "prev-2",
     ]
-    observation_size = 69
+    observation_size = 56
     reward_space = "IrInstructionCountOz"
-    actions = POSET_RL_MANUAL
+    actions = COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
     # Experiment section (logging and reproduce)
     logging_history_size = 100
     random_state = 42
