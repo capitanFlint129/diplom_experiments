@@ -35,7 +35,7 @@ def train(
     best_val_mean_geomean = 0
 
     for episode_i in range(config.episodes):
-        agent.policy_net.train()
+        agent.episode_reset()
         while True:
             train_env.reset()
             base_observation, is_observation_correct = get_observation(
@@ -52,9 +52,8 @@ def train(
         episode_data = EpisodeData(
             base_observations_history=[base_observation], remains=config.episode_length
         )
-        agent.episode_reset()
         observation = apply_modifiers(
-            base_observation, config.observation_modifiers, episode_data
+            base_observation, config.observation_modifiers, episode_data, config
         )
         while (
             not episode_data.done
@@ -75,7 +74,7 @@ def train(
             new_base_observation, _ = get_observation(env, config)
 
             new_observation = apply_modifiers(
-                new_base_observation, config.observation_modifiers, episode_data
+                new_base_observation, config.observation_modifiers, episode_data, config
             )
 
             agent.store_transition(
@@ -196,7 +195,6 @@ def validate(
     val_benchmarks: dict[str, list],
     enable_logs: bool = False,
 ) -> ValidationResult:
-    agent.eval()
     rewards = {}
     times = []
     binned_statistic_data = {}
@@ -254,7 +252,7 @@ def rollout(agent: DQNAgent, env, config: TrainConfig) -> EpisodeData:
         base_observations_history=[base_observation], remains=config.episode_length
     )
     observation = apply_modifiers(
-        base_observation, config.observation_modifiers, episode_data
+        base_observation, config.observation_modifiers, episode_data, config
     )
 
     while (
@@ -280,7 +278,7 @@ def rollout(agent: DQNAgent, env, config: TrainConfig) -> EpisodeData:
         )
         base_observation, _ = get_observation(env, config)
         observation = apply_modifiers(
-            base_observation, config.observation_modifiers, episode_data
+            base_observation, config.observation_modifiers, episode_data, config
         )
         episode_data.update_after_episode(
             action=action,

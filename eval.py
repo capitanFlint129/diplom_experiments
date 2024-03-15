@@ -17,11 +17,9 @@ if __name__ == "__main__":
         skipped=set(config.skipped_benchmarks),
     )
 
-    agent = get_agent(config, device)
     last_model_filename = get_last_model_wandb_naming(MODELS_DIR)
     print(f"Load model from {last_model_filename}\n")
-    agent.policy_net.load_state_dict(torch.load(f"{MODELS_DIR}/{last_model_filename}"))
-    agent.eval()
+    agent = get_agent(config, device, f"{MODELS_DIR}/{last_model_filename}")
     with torch.no_grad():
         test_result = validate(agent, env, config, test_benchmarks, enable_logs=True)
     env.close()

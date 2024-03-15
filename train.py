@@ -50,7 +50,6 @@ def main():
     with make_env(config) as test_env:
         agent = get_agent(config, device)
         agent.policy_net.load_state_dict(torch.load(f"{MODELS_DIR}/{run.name}.pth"))
-        agent.eval()
         with torch.no_grad():
             test_result = validate(agent, test_env, config, test_benchmarks)
         print(f"Test geomean: {test_result.geomean_reward}")

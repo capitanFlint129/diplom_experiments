@@ -37,6 +37,8 @@ class DQNAgent:
 
         self._optimizer = optim.Adam(self.policy_net.parameters(), lr=config.lr)
         self._loss = nn.HuberLoss()
+        self.policy_net.eval()
+        self.target_net.eval()
 
     def episode_reset(self):
         self._actions_taken = []
@@ -51,7 +53,6 @@ class DQNAgent:
         enable_epsilon_greedy: bool = True,
         forbidden_actions: set = None,
     ):
-        self.policy_net.eval()
         if forbidden_actions is None:
             forbidden_actions = set()
         if forbidden_actions is not None and len(forbidden_actions) >= self._n_actions:
@@ -75,6 +76,8 @@ class DQNAgent:
         return action
 
     def learn(self):
+        self.policy_net.train()
+        self.target_net.eval()
         if self._replay_buffer.size < self._config.learn_memory_threshold:
             return
         self._optimizer.zero_grad()
@@ -90,20 +93,14 @@ class DQNAgent:
             self.epsilon -= self._config.epsilon_dec
         else:
             self.epsilon = self._config.epsilon_end
+        self.policy_net.eval()
+        self.target_net.eval()
         return loss_val
 
     def store_transition(self, action, observation, reward, new_observation, done):
         self._replay_buffer.store_transition(
             action, observation, reward, new_observation, done
         )
-
-    def eval(self):
-        self.policy_net.eval()
-        self.target_net.eval()
-
-    def train(self):
-        self.policy_net.train()
-        self.target_net.train()
 
     def _replace_target_network(self):
         if self._learn_step_counter % self._config.replace == 0:
@@ -172,6 +169,7 @@ class _TwinDQNSubAgent:
         self._device = device
         self._optimizer = optim.Adam(self.policy_net.parameters(), lr=config.lr)
         self._loss = nn.HuberLoss()
+        self.policy_net.eval()
 
     def episode_reset(self):
         self._actions_taken = []
@@ -213,16 +211,11 @@ class _TwinDQNSubAgent:
             action, observation, reward, new_observation, done
         )
 
-    def eval(self):
-        self.policy_net.eval()
-
-    def train(self):
-        self.policy_net.train()
-
     def is_ready_for_train(self) -> bool:
         return self._replay_buffer.size >= self._config.learn_memory_threshold
 
     def learn(self, twin_net):
+        self.policy_net.train()
         self._optimizer.zero_grad()
         dqn_batch = self._replay_buffer.get_batch(self._config.batch_size, self._device)
         q_current, q_target = self._get_q_current_and_target(dqn_batch, twin_net)
@@ -235,6 +228,7 @@ class _TwinDQNSubAgent:
             self.epsilon -= self._config.epsilon_dec
         else:
             self.epsilon = self._config.epsilon_end
+        self.policy_net.eval()
         return loss_val
 
     def _get_q_current_and_target(
@@ -321,14 +315,6 @@ class TwinDQNAgent:
         self._cur_agent.store_transition(
             action, observation, reward, new_observation, done
         )
-
-    def eval(self):
-        self._agent_1.eval()
-        self._agent_2.eval()
-
-    def train(self):
-        self._agent_1.train()
-        self._agent_2.train()
 
 
 class LSTMDQNAgent(DQNAgent):
