@@ -25,28 +25,40 @@ def get_observation(env, config: TrainConfig) -> np.ndarray:
 
 
 class ObservationModifier:
-    def __init__(self, modifications: list[str], episode_length: int):
+    def __init__(self, env, modifications: list[str], episode_length: int):
         self._modifications = modifications
         self._episode_length = episode_length
         self._base_observations_history = []
+        self._start_observation = None
+
+        start_observations = []
+        for modification in modifications:
+            if modification.startswith("start"):
+                observation_name = modification.split("-")[1]
+                observation, _ = _get_one_observation(env, observation_name)
+                start_observations.append(observation)
+        if len(start_observations) > 0:
+            self._start_observation = np.concatenate(start_observations)
 
     def modify(self, base_observation: np.ndarray, remains: int) -> np.ndarray:
+        observation = base_observation.copy()
+        if self._start_observation is not None:
+            observation = np.concatenate((observation, self._start_observation))
         for modifier in self._modifications:
             if modifier.startswith("remains-counter"):
                 counter = remains
                 if modifier == "remains-counter-normalized":
                     counter /= self._episode_length
-                base_observation = np.concatenate(
-                    (base_observation, np.array([counter]))
-                )
+                observation = np.concatenate((observation, np.array([counter])))
             elif modifier.startswith("prev"):
                 prev_n = int(modifier.split("-")[1])
                 prev = []
                 for i in range(prev_n - 1):
                     index = max(-i, 0)
                     prev.append(self._base_observations_history[index])
-                base_observation = np.concatenate(prev + [base_observation])
-        return base_observation
+                observation = np.concatenate(prev + [observation])
+        self._base_observations_history.append(base_observation)
+        return observation
 
 
 def _get_one_observation(env, observation_name: str) -> tuple[np.ndarray, bool]:
