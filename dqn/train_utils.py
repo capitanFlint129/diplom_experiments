@@ -21,7 +21,7 @@ class EpisodeData:
     forbidden_actions: set[int] = field(default_factory=lambda: set())
     remains: int = TrainConfig.episode_length
 
-    def update_after_episode(
+    def update_after_episode_step(
         self,
         action: int,
         reward: float,

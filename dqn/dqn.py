@@ -58,8 +58,8 @@ class DQNAgent:
         if forbidden_actions is not None and len(forbidden_actions) >= self._n_actions:
             print("Warning: all actions are forbidden, choose 0", file=sys.stderr)
             return 0
-        action = 0
         if np.random.random() <= self.epsilon and enable_epsilon_greedy:
+            action = np.random.choice(self._n_actions)
             while action in forbidden_actions:
                 action = np.random.choice(self._n_actions)
         else:

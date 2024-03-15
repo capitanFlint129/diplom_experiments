@@ -1,5 +1,4 @@
 import itertools
-import sys
 
 import numpy as np
 import torch
@@ -63,7 +62,7 @@ def train(
                 action, observation, reward, new_observation, episode_data.done
             )
             loss_val = agent.learn()
-            episode_data.update_after_episode(
+            episode_data.update_after_episode_step(
                 action=action,
                 reward=reward,
                 base_observation=base_observation,
@@ -122,7 +121,12 @@ def _validation_during_train(
     enable_logs: bool = False,
 ) -> float:
     validation_result = validate(
-        agent, env, config, val_benchmarks, enable_logs=enable_logs
+        agent,
+        env,
+        config,
+        val_benchmarks,
+        enable_logs=enable_logs,
+        use_actions_masking=config.eval_with_forbidden_actions,
     )
     log_data = {
         f"val_geomean_reward_{dataset_name}": geomean_reward
@@ -252,7 +256,7 @@ def rollout(
             action, reward, observation, base_observation, flags = episode_step(
                 env, config, agent, episode_data, observation
             )
-        episode_data.update_after_episode(
+        episode_data.update_after_episode_step(
             action=action,
             reward=reward,
             base_observation=base_observation,
