@@ -29,7 +29,7 @@ class ReplayBuffer:
         self.new_state_mem = np.zeros(
             (self._max_buffer_size, observation_size), dtype=np.float32
         )
-        self.action_mem = np.zeros(self._max_buffer_size, dtype=np.int32)
+        self.action_mem = np.zeros(self._max_buffer_size, dtype=np.int64)
         self.reward_mem = np.zeros(self._max_buffer_size, dtype=np.float32)
         self.terminal_mem = np.zeros(self._max_buffer_size, dtype=bool)
 
