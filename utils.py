@@ -2,7 +2,7 @@ import itertools
 import os
 import random
 from dataclasses import dataclass
-from typing import Union
+from typing import Union, Optional
 
 import compiler_gym
 import numpy as np
@@ -33,7 +33,7 @@ class ValidationResult:
     rewards_sum_by_codesize_bins_per_dataset: dict[str, BinnedStatistic]
 
 
-def get_agent(config: TrainConfig, device):
+def get_agent(config: TrainConfig, device, policy_net_path: Optional[str] = None):
     if config.algorithm == "DQN":
         agent = DQNAgent(
             observation_size=config.observation_size,
@@ -64,6 +64,9 @@ def get_agent(config: TrainConfig, device):
         )
     else:
         raise Exception("unknown algorithm used")
+    if policy_net_path is not None:
+        agent.policy_net.load_state_dict(torch.load(policy_net_path))
+        agent.policy_net.eval()
     return agent
 
 

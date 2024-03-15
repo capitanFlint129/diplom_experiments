@@ -4,17 +4,17 @@ from dataclasses import asdict
 import compiler_gym
 import plotly.graph_objects as go
 import torch
-
 import wandb
+
 from config import TrainConfig
 from dqn.train import train, validate
 from utils import (
-    prepare_datasets,
-    make_env,
-    get_agent,
-    fix_seed,
     MODELS_DIR,
+    fix_seed,
+    get_agent,
     get_binned_statistics_plot,
+    make_env,
+    prepare_datasets,
 )
 
 
@@ -22,7 +22,7 @@ def main():
     config = TrainConfig()
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     run = wandb.init(
-        project="rl-compilers-experiments",
+        project="rl-compilers-experiments-DQN-fix-results",
         config=asdict(config),
         # mode="disabled",
     )
@@ -50,7 +50,6 @@ def main():
     with make_env(config) as test_env:
         agent = get_agent(config, device)
         agent.policy_net.load_state_dict(torch.load(f"{MODELS_DIR}/{run.name}.pth"))
-        agent.eval()
         with torch.no_grad():
             test_result = validate(agent, test_env, config, test_benchmarks)
         print(f"Test geomean: {test_result.geomean_reward}")

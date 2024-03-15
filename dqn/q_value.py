@@ -14,6 +14,7 @@ class DQN(nn.Module):
     ):
         super(DQN, self).__init__()
         self.q_net = nn.Sequential(
+            nn.BatchNorm1d(observation_size),
             nn.Linear(observation_size, fc_dims),
             nn.ReLU(),
             nn.Linear(fc_dims, fc_dims),
@@ -115,8 +116,10 @@ class OneValueDQN(nn.Module):
         self.device = device
         self._n_actions = n_actions
         self.action_emb = nn.Embedding(n_actions, action_emb_dims)
+        input_dims = observation_size + action_emb_dims
         self.q_net = nn.Sequential(
-            nn.Linear(observation_size + action_emb_dims, fc_dims),
+            nn.BatchNorm1d(input_dims),
+            nn.Linear(input_dims, fc_dims),
             nn.ReLU(),
             nn.Linear(fc_dims, fc_dims),
             nn.ReLU(),

@@ -1,3 +1,5 @@
+setuptools==65.5.1
+wheel==0.38.4
 absl-py==2.1.0
 compiler-gym==0.2.5
 gym==0.21.0
