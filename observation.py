@@ -9,7 +9,7 @@ from config import TrainConfig
 RAW_IR_OBSERVATION_NAME = "Ir"
 
 
-def get_observation(env, config: TrainConfig) -> tuple[np.ndarray, bool]:
+def get_observation(env, config: TrainConfig) -> np.ndarray:
     observations = []
     are_all_observations_correct = True
     for observation_name in config.observation_space:
@@ -21,7 +21,7 @@ def get_observation(env, config: TrainConfig) -> tuple[np.ndarray, bool]:
         )
         observations.append(observation)
     observation = np.concatenate(observations)
-    return observation, are_all_observations_correct
+    return observation
 
 
 def _get_one_observation(env, observation_name: str) -> tuple[np.ndarray, bool]:

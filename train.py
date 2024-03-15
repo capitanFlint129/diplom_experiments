@@ -24,7 +24,7 @@ def main():
     run = wandb.init(
         project="rl-compilers-experiments-DQN-fix-results",
         config=asdict(config),
-        # mode="disabled",
+        mode="disabled",
     )
     with make_env(config) as train_env:
         fix_seed(config.random_state)
@@ -51,20 +51,35 @@ def main():
         agent = get_agent(config, device)
         agent.policy_net.load_state_dict(torch.load(f"{MODELS_DIR}/{run.name}.pth"))
         with torch.no_grad():
-            test_result = validate(agent, test_env, config, test_benchmarks)
+            test_result = validate(
+                agent, test_env, config, test_benchmarks, use_actions_masking=True
+            )
+        with torch.no_grad():
+            test_result_no_actions_masking = validate(
+                agent, test_env, config, test_benchmarks, use_actions_masking=False
+            )
         print(f"Test geomean: {test_result.geomean_reward}")
-        fig = go.Figure()
-        fig.add_trace(
-            get_binned_statistics_plot(test_result.rewards_sum_by_codesize_bins)
+        print(
+            f"Test geomean without actions masking: {test_result_no_actions_masking.geomean_reward}"
         )
-        run.log({"rewards_sum_by_codesize_bins": fig})
+        # fig = go.Figure()
+        # fig.add_trace(
+        #     get_binned_statistics_plot(test_result.rewards_sum_by_codesize_bins)
+        # )
+        # run.log({"rewards_sum_by_codesize_bins": fig})
         run.summary["test_geomean_reward"] = test_result.geomean_reward
+        run.summary[
+            "test_geomean_no_actions_masking"
+        ] = test_result_no_actions_masking.geomean_reward
         run.summary["test_mean_walltime"] = test_result.mean_walltime
         for (
             dataset_name,
             geomean_reward,
         ) in test_result.geomean_reward_per_dataset.items():
             run.summary[f"test_geomean_reward_{dataset_name}"] = geomean_reward
+            run.summary[
+                f"test_geomean_reward_no_actions_masking_{dataset_name}"
+            ] = test_result_no_actions_masking.geomean_reward_per_dataset[dataset_name]
 
 
 if __name__ == "__main__":

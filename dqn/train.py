@@ -9,8 +9,8 @@ from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 
 from config import TrainConfig
 from dqn.dqn import DQNAgent
-from observation import get_observation
 from dqn.train_utils import EpisodeData, apply_modifiers, get_binned_statistics
+from observation import get_observation
 from utils import save_model, ValidationResult
 
 
@@ -35,19 +35,9 @@ def train(
     best_val_mean_geomean = 0
 
     for episode_i in range(config.episodes):
+        train_env.reset()
         agent.episode_reset()
-        while True:
-            train_env.reset()
-            base_observation, is_observation_correct = get_observation(
-                train_env, config
-            )
-            if is_observation_correct:
-                break
-            else:
-                print(
-                    f"Skip {env.benchmark} during training. It produces incorrect initial observation",
-                    file=sys.stderr,
-                )
+        base_observation = get_observation(train_env, config)
 
         episode_data = EpisodeData(
             base_observations_history=[base_observation], remains=config.episode_length
@@ -60,21 +50,13 @@ def train(
             and episode_data.actions_count < config.episode_length
             and episode_data.patience_count < config.patience
         ):
-            action = agent.choose_action(
-                observation, forbidden_actions=episode_data.forbidden_actions
-            )
-            flags = config.actions[action]
-            if " " in flags:
-                flags = flags.split()
-            else:
-                flags = [flags]
-            _, reward, episode_data.done, info = train_env.multistep(
-                [train_env.action_space.flags.index(f) for f in flags]
-            )
-            new_base_observation, _ = get_observation(env, config)
-
-            new_observation = apply_modifiers(
-                new_base_observation, config.observation_modifiers, episode_data, config
+            action, reward, new_observation, base_observation, flags = episode_step(
+                env,
+                config,
+                agent,
+                episode_data,
+                observation,
+                episode_data.forbidden_actions,
             )
 
             agent.store_transition(
@@ -84,7 +66,7 @@ def train(
             episode_data.update_after_episode(
                 action=action,
                 reward=reward,
-                base_observation=new_base_observation,
+                base_observation=base_observation,
                 flags=flags,
                 loss_val=loss_val,
             )
@@ -194,6 +176,7 @@ def validate(
     config: TrainConfig,
     val_benchmarks: dict[str, list],
     enable_logs: bool = False,
+    use_actions_masking: bool = False,
 ) -> ValidationResult:
     rewards = {}
     times = []
@@ -203,22 +186,18 @@ def validate(
         rewards[dataset_name] = []
         for i, benchmark in enumerate(benchmarks):
             env.reset(benchmark=benchmark)
-            observation, is_observation_correct = get_observation(env, config)
             codesize.append(env.observation["IrInstructionCount"])
-            if is_observation_correct:
-                with Timer() as timer:
-                    episode_data = rollout(agent, env, config)
-                rewards[dataset_name].append(episode_data.total_reward)
-                times.append(timer.time)
-                if enable_logs:
-                    print(
-                        f"{i} - {benchmark} - reward: {episode_data.total_reward} - time: {timer.time} - actions: {' '.join(episode_data.chosen_flags)}"
-                    )
-            else:
-                print(
-                    f"Skip {benchmark} during validation. It produces incorrect initial observation",
-                    file=sys.stderr,
+            with Timer() as timer:
+                episode_data = rollout(
+                    agent, env, config, use_actions_masking=use_actions_masking
                 )
+            rewards[dataset_name].append(episode_data.total_reward)
+            times.append(timer.time)
+            if enable_logs:
+                print(
+                    f"{i} - {benchmark} - reward: {episode_data.total_reward} - time: {timer.time} - actions: {' '.join(episode_data.chosen_flags)}"
+                )
+
         binned_statistic_data[dataset_name] = (codesize, rewards[dataset_name])
     geomean_reward = geometric_mean(
         list(itertools.chain.from_iterable(rewards.values()))
@@ -244,42 +223,35 @@ def validate(
 
 
 @torch.no_grad()
-def rollout(agent: DQNAgent, env, config: TrainConfig) -> EpisodeData:
+def rollout(
+    agent: DQNAgent, env, config: TrainConfig, use_actions_masking
+) -> EpisodeData:
     agent.episode_reset()
-
-    base_observation, _ = get_observation(env, config)
+    base_observation = get_observation(env, config)
     episode_data = EpisodeData(
         base_observations_history=[base_observation], remains=config.episode_length
     )
     observation = apply_modifiers(
         base_observation, config.observation_modifiers, episode_data, config
     )
-
     while (
         not episode_data.done
         and episode_data.actions_count < config.episode_length
         and episode_data.patience_count < config.val_patience
     ):
-        if config.eval_with_forbidden_actions:
-            action = agent.choose_action(
+        if use_actions_masking:
+            action, reward, observation, base_observation, flags = episode_step(
+                env,
+                config,
+                agent,
+                episode_data,
                 observation,
-                enable_epsilon_greedy=False,
-                forbidden_actions=episode_data.forbidden_actions,
+                episode_data.forbidden_actions,
             )
         else:
-            action = agent.choose_action(observation, enable_epsilon_greedy=False)
-        flags = config.actions[action]
-        if " " in flags:
-            flags = flags.split()
-        else:
-            flags = [flags]
-        _, reward, episode_data.done, info = env.multistep(
-            [env.action_space.flags.index(f) for f in flags]
-        )
-        base_observation, _ = get_observation(env, config)
-        observation = apply_modifiers(
-            base_observation, config.observation_modifiers, episode_data, config
-        )
+            action, reward, observation, base_observation, flags = episode_step(
+                env, config, agent, episode_data, observation
+            )
         episode_data.update_after_episode(
             action=action,
             reward=reward,
@@ -289,3 +261,41 @@ def rollout(agent: DQNAgent, env, config: TrainConfig) -> EpisodeData:
         )
 
     return episode_data
+
+
+def episode_step(
+    env,
+    config,
+    agent,
+    episode_data,
+    observation,
+    forbidden_actions=None,
+    enable_epsilon_greedy=True,
+):
+    if forbidden_actions is not None:
+        action = agent.choose_action(
+            observation,
+            enable_epsilon_greedy=enable_epsilon_greedy,
+            forbidden_actions=episode_data.forbidden_actions,
+        )
+    else:
+        action = agent.choose_action(
+            observation, enable_epsilon_greedy=enable_epsilon_greedy
+        )
+    flags = config.actions[action]
+    if flags == "noop":
+        flags = [flags]
+        reward, episode_data.done = 0, False
+    else:
+        if " " in flags:
+            flags = flags.split()
+        else:
+            flags = [flags]
+        _, reward, episode_data.done, _ = env.multistep(
+            [env.action_space.flags.index(f) for f in flags]
+        )
+    base_observation = get_observation(env, config)
+    observation = apply_modifiers(
+        base_observation, config.observation_modifiers, episode_data, config
+    )
+    return action, reward, observation, base_observation, flags
