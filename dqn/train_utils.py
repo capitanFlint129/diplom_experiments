@@ -49,25 +49,6 @@ class EpisodeData:
             self.losses.append(loss_val)
 
 
-def apply_modifiers(
-    observation, modifiers, episode_data: EpisodeData, config: TrainConfig
-):
-    for modifier in modifiers:
-        if modifier.startswith("remains-counter"):
-            counter = episode_data.remains
-            if modifier == "remains-counter-normalized":
-                counter /= config.episode_length
-            observation = np.concatenate((observation, np.array([counter])))
-        elif modifier.startswith("prev"):
-            prev_n = int(modifier.split("-")[1])
-            prev = []
-            for i in range(prev_n - 1):
-                index = max(-i, 0)
-                prev.append(episode_data.base_observations_history[index])
-            observation = np.concatenate(prev + [observation])
-    return observation
-
-
 def get_binned_statistics(
     binned_statistic_data: dict[str, tuple[list[int], list[float]]]
 ) -> tuple[BinnedStatistic, dict[str, BinnedStatistic]]:

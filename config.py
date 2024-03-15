@@ -64,6 +64,7 @@ class TrainConfig:
         # "Autophase",
     ]
     observation_modifiers = [
+        # "start-IR2Vec",
         # "remains-counter",
         "remains-counter-normalized",
         # "prev-2",
