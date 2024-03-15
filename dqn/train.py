@@ -10,7 +10,7 @@ from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 from config import TrainConfig
 from dqn.dqn import DQNAgent
 from observation import get_observation
-from train_utils import EpisodeData, apply_modifiers, get_binned_statistics
+from dqn.train_utils import EpisodeData, apply_modifiers, get_binned_statistics
 from utils import save_model, ValidationResult
 
 

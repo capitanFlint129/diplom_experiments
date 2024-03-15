@@ -8,8 +8,14 @@ import wandb
 
 from config import TrainConfig
 from dqn.train import train, validate
-from utils import (MODELS_DIR, fix_seed, get_agent, get_binned_statistics_plot,
-                   make_env, prepare_datasets)
+from utils import (
+    MODELS_DIR,
+    fix_seed,
+    get_agent,
+    get_binned_statistics_plot,
+    make_env,
+    prepare_datasets,
+)
 
 
 def main():
