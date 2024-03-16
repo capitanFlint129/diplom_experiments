@@ -12,7 +12,7 @@ from compiler_gym.datasets import FilesDataset
 from sklearn.model_selection import train_test_split
 
 from config import TrainConfig, MODELS_DIR, WANDB_PROJECT_NAME
-from dqn.dqn import DQNAgent, DoubleDQNAgent, TwinDQNAgent, LSTMDQNAgent
+from dqn.dqn import SimpleDQNAgent, DoubleDQNAgent, TwinDQNAgent, LSTMDQNAgent, DQNAgent
 
 
 @dataclass
@@ -33,9 +33,11 @@ class ValidationResult:
     rewards_sum_by_codesize_bins_per_dataset: dict[str, BinnedStatistic]
 
 
-def get_agent(config: TrainConfig, device, policy_net_path: Optional[str] = None):
+def get_agent(
+    config: TrainConfig, device, policy_net_path: Optional[str] = None
+) -> DQNAgent:
     if config.algorithm == "DQN":
-        agent = DQNAgent(
+        agent = SimpleDQNAgent(
             observation_size=config.observation_size,
             n_actions=len(config.actions),
             config=config,

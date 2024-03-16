@@ -1,4 +1,6 @@
 import sys
+from abc import abstractmethod, ABC
+from typing import Optional
 
 import numpy as np
 import torch
@@ -10,7 +12,50 @@ from dqn.q_value import DQN, DQNLSTM
 from dqn.replay_buffer import ReplayBuffer, DQNTrainBatch, ReplayBufferForLSTM
 
 
-class DQNAgent:
+class DQNAgent(ABC):
+    @abstractmethod
+    def get_epsilon(self) -> float:
+        pass
+
+    @abstractmethod
+    def get_policy_net_state_dict(self) -> dict:
+        pass
+
+    @abstractmethod
+    def episode_reset(self) -> None:
+        pass
+
+    @abstractmethod
+    def episode_done(self) -> None:
+        pass
+
+    @abstractmethod
+    def choose_action(
+        self,
+        observation: np.ndarray,
+        enable_epsilon_greedy: bool = True,
+        forbidden_actions: set = None,
+    ) -> int:
+        pass
+
+    @abstractmethod
+    def learn(self) -> None:
+        pass
+
+    @abstractmethod
+    def store_transition(
+        self,
+        action: int,
+        observation: np.ndarray,
+        reward: float,
+        new_observation: np.ndarray,
+        done: bool,
+        prev_action: Optional[int] = None,
+    ) -> None:
+        pass
+
+
+class SimpleDQNAgent(DQNAgent):
     def __init__(
         self, observation_size: int, n_actions: int, config: TrainConfig, device
     ):
@@ -40,19 +85,25 @@ class DQNAgent:
         self.policy_net.eval()
         self.target_net.eval()
 
-    def episode_reset(self):
+    def get_epsilon(self) -> float:
+        return self.epsilon
+
+    def get_policy_net_state_dict(self) -> dict:
+        return self.policy_net.state_dict()
+
+    def episode_reset(self) -> None:
         self._actions_taken = []
 
-    def episode_done(self):
+    def episode_done(self) -> None:
         pass
 
     @torch.no_grad()
     def choose_action(
         self,
-        observation,
+        observation: np.ndarray,
         enable_epsilon_greedy: bool = True,
         forbidden_actions: set = None,
-    ):
+    ) -> int:
         if forbidden_actions is None:
             forbidden_actions = set()
         if forbidden_actions is not None and len(forbidden_actions) >= self._n_actions:
@@ -75,7 +126,7 @@ class DQNAgent:
         self._actions_taken.append(action)
         return action
 
-    def learn(self):
+    def learn(self) -> None:
         self.policy_net.train()
         self.target_net.eval()
         if self._replay_buffer.size < self._config.learn_memory_threshold:
@@ -97,12 +148,20 @@ class DQNAgent:
         self.target_net.eval()
         return loss_val
 
-    def store_transition(self, action, observation, reward, new_observation, done):
+    def store_transition(
+        self,
+        action: int,
+        observation: np.ndarray,
+        reward: float,
+        new_observation: np.ndarray,
+        done: bool,
+        prev_action: Optional[int] = None,
+    ) -> None:
         self._replay_buffer.store_transition(
             action, observation, reward, new_observation, done
         )
 
-    def _replace_target_network(self):
+    def _replace_target_network(self) -> None:
         if self._learn_step_counter % self._config.replace == 0:
             self.target_net.load_state_dict(self.policy_net.state_dict())
             self.target_net.eval()
@@ -116,6 +175,7 @@ class DQNAgent:
                     1 - self._config.tau
                 )
             self.target_net.load_state_dict(target_net_state_dict)
+            self.target_net.eval()
 
     def _get_q_current_and_target(
         self, dqn_batch: DQNTrainBatch
@@ -131,7 +191,7 @@ class DQNAgent:
         return q_current, q_target
 
 
-class DoubleDQNAgent(DQNAgent):
+class DoubleDQNAgent(SimpleDQNAgent):
     def _get_q_current_and_target(
         self, dqn_batch: DQNTrainBatch
     ) -> tuple[torch.Tensor, torch.Tensor]:
@@ -174,19 +234,19 @@ class _TwinDQNSubAgent:
         self._loss = nn.HuberLoss()
         self.policy_net.eval()
 
-    def episode_reset(self):
+    def episode_reset(self) -> None:
         self._actions_taken = []
 
-    def episode_done(self):
+    def episode_done(self) -> None:
         pass
 
     @torch.no_grad()
     def choose_action(
         self,
-        observation,
+        observation: np.ndarray,
         enable_epsilon_greedy: bool = True,
         forbidden_actions: set = None,
-    ):
+    ) -> int:
         if forbidden_actions is None:
             forbidden_actions = set()
         if forbidden_actions is not None and len(forbidden_actions) >= self._n_actions:
@@ -209,7 +269,15 @@ class _TwinDQNSubAgent:
         self._actions_taken.append(action)
         return action
 
-    def store_transition(self, action, observation, reward, new_observation, done):
+    def store_transition(
+            self,
+            action: int,
+            observation: np.ndarray,
+            reward: float,
+            new_observation: np.ndarray,
+            done: bool,
+            prev_action: Optional[int] = None,
+    ) -> None:
         self._replay_buffer.store_transition(
             action, observation, reward, new_observation, done
         )
@@ -262,7 +330,7 @@ class _TwinDQNSubAgent:
         return q_current, q_target
 
 
-class TwinDQNAgent:
+class TwinDQNAgent(DQNAgent):
     def __init__(
         self, observation_size: int, n_actions: int, config: TrainConfig, device
     ):
@@ -276,13 +344,11 @@ class TwinDQNAgent:
         self._agent_2 = _TwinDQNSubAgent(observation_size, n_actions, config, device)
         self._cur_agent = self._agent_1
 
-    @property
-    def epsilon(self):
+    def get_epsilon(self) -> float:
         return self._agent_1.epsilon
 
-    @property
-    def policy_net(self):
-        return self._agent_1.policy_net
+    def get_policy_net_state_dict(self) -> dict:
+        return self._agent_1.policy_net.state_dict()
 
     def episode_reset(self):
         if self._cur_agent is self._agent_1:
@@ -291,21 +357,21 @@ class TwinDQNAgent:
             self._cur_agent = self._agent_1
         self._cur_agent.episode_reset()
 
-    def episode_done(self):
+    def episode_done(self) -> None:
         self._cur_agent.episode_done()
 
     @torch.no_grad()
     def choose_action(
         self,
-        observation,
+        observation: np.ndarray,
         enable_epsilon_greedy: bool = True,
         forbidden_actions: set = None,
-    ):
+    ) -> int:
         return self._cur_agent.choose_action(
             observation, enable_epsilon_greedy, forbidden_actions
         )
 
-    def learn(self):
+    def learn(self) -> None:
         if not (
             self._agent_1.is_ready_for_train() and self._agent_2.is_ready_for_train()
         ):
@@ -316,13 +382,21 @@ class TwinDQNAgent:
         self._agent_2.learn(self.tmp_net)
         return loss_val
 
-    def store_transition(self, action, observation, reward, new_observation, done):
+    def store_transition(
+            self,
+            action: int,
+            observation: np.ndarray,
+            reward: float,
+            new_observation: np.ndarray,
+            done: bool,
+            prev_action: Optional[int] = None,
+    ) -> None:
         self._cur_agent.store_transition(
             action, observation, reward, new_observation, done
         )
 
 
-class LSTMDQNAgent:
+class LSTMDQNAgent(DQNAgent):
     def __init__(
         self, observation_size: int, n_actions: int, config: TrainConfig, device
     ):
@@ -355,6 +429,12 @@ class LSTMDQNAgent:
         self._optimizer = optim.Adam(self.policy_net.parameters(), lr=config.lr)
         self._loss = nn.HuberLoss()
 
+    def get_epsilon(self) -> float:
+        return self.epsilon
+
+    def get_policy_net_state_dict(self) -> dict:
+        return self.policy_net.state_dict()
+
     def episode_reset(self):
         self._actions_taken = []
         self.h_prev = None
@@ -362,16 +442,16 @@ class LSTMDQNAgent:
         self.prev_action = 0
         self._replay_buffer.episode_reset()
 
-    def episode_done(self):
+    def episode_done(self) -> None:
         self._replay_buffer.episode_done()
 
     @torch.no_grad()
     def choose_action(
         self,
-        observation,
+        observation: np.ndarray,
         enable_epsilon_greedy: bool = True,
         forbidden_actions: set = None,
-    ):
+    ) -> int:
         if forbidden_actions is None:
             forbidden_actions = set()
         if forbidden_actions is not None and len(forbidden_actions) >= self._n_actions:
@@ -401,7 +481,9 @@ class LSTMDQNAgent:
         self.prev_action = action
         return action
 
-    def learn(self):
+    def learn(self) -> None:
+        self.policy_net.train()
+        self.target_net.eval()
         if self._replay_buffer.size < self._config.learn_memory_threshold:
             return
         self._optimizer.zero_grad()
@@ -417,22 +499,24 @@ class LSTMDQNAgent:
             self.epsilon -= self._config.epsilon_dec
         else:
             self.epsilon = self._config.epsilon_end
+        self.policy_net.eval()
+        self.target_net.eval()
         return loss_val
 
     def store_transition(
-        self, prev_action, action, observation, reward, new_observation, done
-    ):
+        self,
+        action: int,
+        observation: np.ndarray,
+        reward: float,
+        new_observation: np.ndarray,
+        done: bool,
+        prev_action: Optional[int] = None,
+    ) -> None:
+        if prev_action is None:
+            raise ValueError("LSTMDQNAgent: prev_action not provided")
         self._replay_buffer.store_transition(
             prev_action, action, observation, reward, new_observation, done
         )
-
-    def eval(self):
-        self.policy_net.eval()
-        self.target_net.eval()
-
-    def train(self):
-        self.policy_net.train()
-        self.target_net.train()
 
     def _replace_target_network(self):
         if self._learn_step_counter % self._config.replace == 0:
@@ -448,6 +532,7 @@ class LSTMDQNAgent:
                     1 - self._config.tau
                 )
             self.target_net.load_state_dict(target_net_state_dict)
+            self.target_net.eval()
 
     def _get_q_current_and_target(
         self, dqn_batch: DQNTrainBatch

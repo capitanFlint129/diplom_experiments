@@ -1,9 +1,11 @@
 import itertools
+import sys
 from typing import Optional
 
 import numpy as np
 import torch
 from compiler_gym.envs import CompilerEnv
+from compiler_gym.errors import SessionNotFound
 from compiler_gym.util.statistics import arithmetic_mean, geometric_mean
 from compiler_gym.util.timer import Timer
 from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
@@ -48,35 +50,41 @@ def train(
         observation = observation_modifier.modify(
             base_observation, episode_data.remains
         )
-        while (
-            not episode_data.done
-            and episode_data.actions_count < config.episode_length
-            and episode_data.patience_count < config.patience
-        ):
-            step_result = episode_step(
-                env=train_env,
-                config=config,
-                agent=agent,
-                episode_data=episode_data,
-                observation=observation,
-                observation_modifier=observation_modifier,
-                forbidden_actions=episode_data.forbidden_actions,
-            )
+        prev_action = train_env.action_space.flags.index("noop")
+        try:
+            while (
+                not episode_data.done
+                and episode_data.actions_count < config.episode_length
+                and episode_data.patience_count < config.patience
+            ):
+                step_result = episode_step(
+                    env=train_env,
+                    config=config,
+                    agent=agent,
+                    episode_data=episode_data,
+                    observation=observation,
+                    observation_modifier=observation_modifier,
+                    forbidden_actions=episode_data.forbidden_actions,
+                )
 
-            agent.store_transition(
-                action=step_result.action,
-                observation=observation,
-                reward=step_result.reward,
-                new_observation=step_result.new_observation,
-                done=step_result.done,
-            )
-            loss_value = agent.learn()
-            episode_data.update_after_episode_step(
-                step_result=step_result,
-                loss_value=loss_value,
-            )
-            observation = step_result.new_observation
 
+                agent.store_transition(
+                    prev_action=prev_action,
+                    action=step_result.action,
+                    observation=observation,
+                    reward=step_result.reward,
+                    new_observation=step_result.new_observation,
+                    done=step_result.done,
+                )
+                loss_value = agent.learn()
+                episode_data.update_after_episode_step(
+                    step_result=step_result,
+                    loss_value=loss_value,
+                )
+                observation = step_result.new_observation
+                prev_action = step_result.action
+        except SessionNotFound as e:
+            print(f"Warning! SessionNotFound error occured {e}", file=sys.stderr)
         agent.episode_done()
         rewards_history.append(episode_data.total_reward)
         average_rewards_sum = np.mean(rewards_history[-config.logging_history_size :])
@@ -84,7 +92,7 @@ def train(
         _log_episode_results(
             run=run,
             env=train_env,
-            epsilon=agent.epsilon,
+            epsilon=agent.get_epsilon(),
             episode_i=episode_i,
             average_rewards_sum=average_rewards_sum,
             std_rewards_sum=std_rewards_sum,
@@ -114,7 +122,7 @@ def train(
             enable_logs=enable_validation_logs,
         )
     save_model(
-        state_dict=agent.policy_net.state_dict(), model_name=run.name, replace=False
+        state_dict=agent.get_policy_net_state_dict(), model_name=run.name, replace=False
     )
 
 
@@ -149,7 +157,7 @@ def _validation_during_train(
         print(
             f"Save model. New best geomean: {validation_result.mean_geomean_reward}, previous best geomean: {best_val_mean_geomean}"
         )
-        save_model(agent.policy_net.state_dict(), f"{run.name}")
+        save_model(agent.get_policy_net_state_dict(), f"{run.name}")
         return validation_result.mean_geomean_reward
     return best_val_mean_geomean
 
