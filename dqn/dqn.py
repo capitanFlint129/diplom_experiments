@@ -395,7 +395,7 @@ class TwinDQNAgent(DQNAgent):
         )
 
 
-class LSTMDQNAgent(DQNAgent):
+class LstmDQNAgent(DQNAgent):
     def __init__(
         self, observation_size: int, n_actions: int, config: TrainConfig, device
     ):
@@ -512,7 +512,7 @@ class LSTMDQNAgent(DQNAgent):
         prev_action: Optional[int] = None,
     ) -> None:
         if prev_action is None:
-            raise ValueError("LSTMDQNAgent: prev_action not provided")
+            raise ValueError("LstmDQNAgent: prev_action not provided")
         self._replay_buffer.store_transition(
             prev_action, action, observation, reward, new_observation, done
         )
