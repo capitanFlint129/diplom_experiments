@@ -73,13 +73,17 @@ def get_agent(
 
 
 def save_model(state_dict, model_name, replace=True):
-    if not replace and os.path.exists(
-        f"./{MODELS_DIR}/{WANDB_PROJECT_NAME}/{model_name}.pth"
-    ):
+    model_path = get_model_path(model_name)
+    models_dir = os.path.join(MODELS_DIR, WANDB_PROJECT_NAME)
+    if not replace and os.path.exists(model_path):
         return
-    if not os.path.exists(f"./{MODELS_DIR}/{WANDB_PROJECT_NAME}"):
-        os.makedirs(f"./{MODELS_DIR}/{WANDB_PROJECT_NAME}")
-    torch.save(state_dict, f"./{MODELS_DIR}/{WANDB_PROJECT_NAME}/{model_name}.pth")
+    if not os.path.exists(models_dir):
+        os.makedirs(models_dir)
+    torch.save(state_dict, get_model_path(model_name))
+
+
+def get_model_path(model_name: str) -> str:
+    return os.path.join(MODELS_DIR, WANDB_PROJECT_NAME, f"{model_name}.pth")
 
 
 def make_env(config: TrainConfig):

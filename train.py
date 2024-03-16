@@ -13,6 +13,7 @@ from utils import (
     get_agent,
     make_env,
     prepare_datasets,
+    get_model_path,
 )
 
 
@@ -46,9 +47,10 @@ def main():
 
     # final test
     with make_env(config) as test_env:
-        agent = get_agent(config, device)
-        agent.policy_net.load_state_dict(
-            torch.load(os.path.join(MODELS_DIR, WANDB_PROJECT_NAME, f"{run.name}.pth"))
+        agent = get_agent(
+            config,
+            device,
+            policy_net_path=get_model_path(run.name),
         )
         with torch.no_grad():
             test_result = validate(
