@@ -270,13 +270,13 @@ class _TwinDQNSubAgent:
         return action
 
     def store_transition(
-            self,
-            action: int,
-            observation: np.ndarray,
-            reward: float,
-            new_observation: np.ndarray,
-            done: bool,
-            prev_action: Optional[int] = None,
+        self,
+        action: int,
+        observation: np.ndarray,
+        reward: float,
+        new_observation: np.ndarray,
+        done: bool,
+        prev_action: Optional[int] = None,
     ) -> None:
         self._replay_buffer.store_transition(
             action, observation, reward, new_observation, done
@@ -383,13 +383,13 @@ class TwinDQNAgent(DQNAgent):
         return loss_val
 
     def store_transition(
-            self,
-            action: int,
-            observation: np.ndarray,
-            reward: float,
-            new_observation: np.ndarray,
-            done: bool,
-            prev_action: Optional[int] = None,
+        self,
+        action: int,
+        observation: np.ndarray,
+        reward: float,
+        new_observation: np.ndarray,
+        done: bool,
+        prev_action: Optional[int] = None,
     ) -> None:
         self._cur_agent.store_transition(
             action, observation, reward, new_observation, done
