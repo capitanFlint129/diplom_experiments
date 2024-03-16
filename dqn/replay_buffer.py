@@ -21,7 +21,7 @@ class DQNTrainBatch:
 class ReplayBuffer:
     def __init__(self, buffer_size: int, observation_size: int):
         self._max_buffer_size = buffer_size
-        self.size = 0
+        self.mem_counter = 0
 
         self.state_mem = np.zeros(
             (self._max_buffer_size, observation_size), dtype=np.float32
@@ -34,16 +34,16 @@ class ReplayBuffer:
         self.terminal_mem = np.zeros(self._max_buffer_size, dtype=bool)
 
     def store_transition(self, action, state, reward, new_state, done):
-        index = self.size % self._max_buffer_size
+        index = self.mem_counter % self._max_buffer_size
         self.state_mem[index] = state
         self.new_state_mem[index] = new_state
         self.action_mem[index] = action
         self.reward_mem[index] = reward
         self.terminal_mem[index] = done
-        self.size += 1
+        self.mem_counter += 1
 
     def get_batch(self, batch_size: int, device) -> DQNTrainBatch:
-        max_mem = min(self.size, self._max_buffer_size)
+        max_mem = min(self.mem_counter, self._max_buffer_size)
         batch_indexes = np.random.choice(max_mem, batch_size, replace=False)
         state_batch = torch.tensor(self.state_mem[batch_indexes], device=device)
         new_state_batch = torch.tensor(self.new_state_mem[batch_indexes], device=device)
@@ -51,12 +51,12 @@ class ReplayBuffer:
         terminal_batch = torch.tensor(self.terminal_mem[batch_indexes], device=device)
         action_batch = torch.tensor(self.action_mem[batch_indexes], device=device)
         return DQNTrainBatch(
-            batch_size,
-            state_batch,
-            new_state_batch,
-            reward_batch,
-            terminal_batch,
-            action_batch,
+            batch_size=batch_size,
+            state_batch=state_batch,
+            new_state_batch=new_state_batch,
+            reward_batch=reward_batch,
+            terminal_batch=terminal_batch,
+            action_batch=action_batch,
         )
 
 
