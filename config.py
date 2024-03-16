@@ -44,19 +44,7 @@ class TrainConfig:
         # "benchmark://opencv-v0",
     ]
     train_val_test_split = True
-    # некоторые программы очень большие и вычисление observation на них может занимать много
-    # времени и памяти, поэтому для начальных экспериментов удобно пропускать некоторые бенчмарки
-    skipped_benchmarks = [
-        # "benchmark://cbench-v1/bzip2",
-        # "benchmark://cbench-v1/ghostscript",
-        # "benchmark://cbench-v1/tiff2rgba",
-        # "benchmark://cbench-v1/tiff2bw",
-        # "benchmark://cbench-v1/tiffdither",
-        # "benchmark://cbench-v1/tiffmedian",
-        # "benchmark://cbench-v1/lame",
-        # "benchmark://cbench-v1/jpeg-c",
-        # "benchmark://cbench-v1/jpeg-d",
-    ]
+    skipped_benchmarks = []
     compiler_gym_env = "llvm-v0"
     observation_space = [
         # "IR2Vec",

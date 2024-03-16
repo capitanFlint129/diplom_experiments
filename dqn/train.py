@@ -36,7 +36,7 @@ def train(
     for episode_i in range(config.episodes):
         train_env.reset()
         observation_modifier = ObservationModifier(
-            env, config.observation_modifiers, config.episode_length
+            train_env, config.observation_modifiers, config.episode_length
         )
         agent.episode_reset()
         base_observation = get_observation(train_env, config)
@@ -53,7 +53,7 @@ def train(
             and episode_data.patience_count < config.patience
         ):
             action, reward, new_obs, base_observation, flags, info = episode_step(
-                env,
+                train_env,
                 config,
                 agent,
                 episode_data,

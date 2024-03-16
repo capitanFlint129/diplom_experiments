@@ -2,17 +2,15 @@ from dataclasses import asdict
 
 # noinspection PyUnresolvedReferences
 import compiler_gym
-import plotly.graph_objects as go
 import torch
-import wandb
 
+import wandb
 from config import TrainConfig
 from dqn.train import train, validate
 from utils import (
     MODELS_DIR,
     fix_seed,
     get_agent,
-    get_binned_statistics_plot,
     make_env,
     prepare_datasets,
 )
