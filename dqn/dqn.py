@@ -539,10 +539,15 @@ class LstmDQNAgent(DQNAgent):
     def _get_q_current_and_target(
         self, dqn_batch: DQNTrainBatch
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        batch_index = np.arange(dqn_batch.batch_size, dtype=np.int32)
-        q_current = self.policy_net.forward(
-            dqn_batch.state_batch, dqn_batch.prev_action_batch, dqn_batch.lengths - 1
-        )[batch_index, dqn_batch.final_action_batch]
+        q_current = (
+            self.policy_net.forward(
+                dqn_batch.state_batch,
+                dqn_batch.prev_action_batch,
+                dqn_batch.lengths - 1,
+            )
+            .gather(1, dqn_batch.final_action_batch[..., None])
+            .squeeze()
+        )
         with torch.no_grad():
             q_next = self.target_net.forward(
                 torch.cat(

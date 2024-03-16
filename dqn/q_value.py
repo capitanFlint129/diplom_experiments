@@ -60,8 +60,8 @@ class DQNLSTM(nn.Module):
         sequence_lengths: torch.Tensor,
     ) -> torch.LongTensor:
         prev_action_embs = F.one_hot(prev_action, num_classes=self._n_actions)
-        input = torch.cat((observation, prev_action_embs), dim=-1)
-        rnn_input = self.input_net(input)
+        input_vector = torch.cat((observation, prev_action_embs), dim=-1)
+        rnn_input = self.input_net(input_vector)
         output, (_, _) = self.rnn_encoder(rnn_input)
         assert (
             len(output.shape) == 3
@@ -72,8 +72,8 @@ class DQNLSTM(nn.Module):
         output_t = output.transpose(0, 1)
         masks = sequence_lengths.view(1, -1, 1).expand(
             sequence_lengths.max().item() + 1,
-            output_t.mem_counter(1),
-            output_t.mem_counter(2),
+            output_t.size(1),
+            output_t.size(2),
         )
         final_outputs = output_t.gather(0, masks)[0]
         actions_q = self.output_net(final_outputs)
@@ -86,17 +86,12 @@ class DQNLSTM(nn.Module):
         h_prev: Optional[torch.Tensor] = None,
         c_prev: Optional[torch.Tensor] = None,
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-        assert (
-            len(observation.shape) == 2
-            and observation.shape[0] == 1
-            and observation.shape[1] == self._observation_size
-        ), observation.shape
         prev_action_emb = F.one_hot(
             torch.tensor([prev_action], device=observation.device),
             num_classes=self._n_actions,
         )
-        input = torch.cat((observation, prev_action_emb), dim=-1)
-        rnn_input = self.input_net(input)
+        input_vector = torch.cat((observation, prev_action_emb), dim=-1)
+        rnn_input = self.input_net(input_vector)
         if h_prev is None or c_prev is None:
             output, (hn, cn) = self.rnn_encoder(rnn_input)
         else:

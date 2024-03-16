@@ -75,11 +75,11 @@ class ReplayBufferForLSTM:
         self.new_state_mem = np.zeros(
             (self._max_buffer_size, observation_size), dtype=np.float32
         )
-        self.action_mem = np.zeros(self._max_buffer_size, dtype=np.int32)
-        self.prev_action_mem = np.zeros(self._max_buffer_size, dtype=np.int32)
+        self.action_mem = np.zeros(self._max_buffer_size, dtype=np.int64)
+        self.prev_action_mem = np.zeros(self._max_buffer_size, dtype=np.int64)
         self.reward_mem = np.zeros(self._max_buffer_size, dtype=np.float32)
         self.terminal_mem = np.zeros(self._max_buffer_size, dtype=bool)
-        self.episode_start_mem = np.zeros(self._max_buffer_size, dtype=np.int32)
+        self.episode_start_mem = np.zeros(self._max_buffer_size, dtype=np.int64)
         self.end_index = -1
 
     def get_ready_data_size(self) -> int:
