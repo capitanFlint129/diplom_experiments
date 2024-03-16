@@ -184,6 +184,7 @@ class SimpleDQNAgent(DQNAgent):
         q_current = q_values_current.gather(
             1, dqn_batch.action_batch[..., None]
         ).squeeze()
+
         with torch.no_grad():
             q_next = self.target_net.forward(dqn_batch.new_state_batch).max(dim=1)[0]
         q_next[dqn_batch.terminal_batch] = 0.0
@@ -196,10 +197,11 @@ class DoubleDQNAgent(SimpleDQNAgent):
         self, dqn_batch: DQNTrainBatch
     ) -> tuple[torch.Tensor, torch.Tensor]:
         q_values_current = self.policy_net.forward(dqn_batch.state_batch)
-        q_current_argmax = torch.argmax(q_values_current, dim=1)
         q_current = q_values_current.gather(
             1, dqn_batch.action_batch[..., None]
         ).squeeze()
+
+        q_current_argmax = torch.argmax(q_values_current, dim=1)
         with torch.no_grad():
             q_next = (
                 self.target_net.forward(dqn_batch.new_state_batch)
@@ -306,19 +308,21 @@ class _TwinDQNSubAgent:
         self, dqn_batch: DQNTrainBatch, twin_net: nn.Module
     ) -> tuple[torch.Tensor, torch.Tensor]:
         q_values_current = self.policy_net.forward(dqn_batch.state_batch)
-        q_current_argmax = torch.argmax(q_values_current, dim=1)
         q_current = q_values_current.gather(
             1, dqn_batch.action_batch[..., None]
         ).squeeze()
+
+        q_values_twin = twin_net.forward(dqn_batch.new_state_batch)
+        q_twin_argmax = torch.argmax(q_values_twin, dim=1)
         with torch.no_grad():
             q_next = torch.min(
                 torch.stack(
                     [
                         twin_net.forward(dqn_batch.new_state_batch)
-                        .gather(1, q_current_argmax[..., None])
+                        .gather(1, q_twin_argmax[..., None])
                         .squeeze(),
                         self.policy_net.forward(dqn_batch.new_state_batch)
-                        .gather(1, q_current_argmax[..., None])
+                        .gather(1, q_twin_argmax[..., None])
                         .squeeze(),
                     ],
                     dim=-1,
@@ -372,8 +376,9 @@ class TwinDQNAgent(DQNAgent):
         )
 
     def learn(self) -> None:
-        if not (
-            self._agent_1.is_ready_for_train() and self._agent_2.is_ready_for_train()
+        if (
+            not self._agent_1.is_ready_for_train()
+            or not self._agent_2.is_ready_for_train()
         ):
             return
         self.tmp_net.load_state_dict(self._agent_1.policy_net.state_dict())
