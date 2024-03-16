@@ -129,7 +129,7 @@ class SimpleDQNAgent(DQNAgent):
     def learn(self) -> None:
         self.policy_net.train()
         self.target_net.eval()
-        if self._replay_buffer.size < self._config.learn_memory_threshold:
+        if self._replay_buffer.mem_counter < self._config.learn_memory_threshold:
             return
         self._optimizer.zero_grad()
         self._replace_target_network()
@@ -285,7 +285,7 @@ class _TwinDQNSubAgent:
         )
 
     def is_ready_for_train(self) -> bool:
-        return self._replay_buffer.size >= self._config.learn_memory_threshold
+        return self._replay_buffer.mem_counter >= self._config.learn_memory_threshold
 
     def learn(self, twin_net):
         self.policy_net.train()

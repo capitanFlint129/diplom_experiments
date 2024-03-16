@@ -43,7 +43,8 @@ class EpisodeData:
         if step_result.reward < 0:
             self.total_negative_reward += step_result.reward
 
-        if step_result.info.get("action_had_no_effect", True):
+        # if step_result.info.get("action_had_no_effect", True):
+        if step_result.reward == 0:
             self.patience_count += 1
             self.forbidden_actions.add(step_result.action)
         else:
