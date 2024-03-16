@@ -63,7 +63,7 @@ class ReplayBuffer:
 class ReplayBufferForLSTM:
     def __init__(self, buffer_size: int, observation_size: int):
         self._max_buffer_size = buffer_size
-        self.size = 0
+        self.mem_counter = 0
 
         self.state_mem = np.zeros(
             (self._max_buffer_size, observation_size), dtype=np.float32
@@ -79,17 +79,17 @@ class ReplayBufferForLSTM:
         self.end_index = -1
 
     def store_transition(self, prev_action, action, state, reward, new_state, done):
-        index = self.size % self._max_buffer_size
+        index = self.mem_counter % self._max_buffer_size
         self.state_mem[index] = state
         self.new_state_mem[index] = new_state
         self.action_mem[index] = action
         self.prev_action_mem[index] = prev_action
         self.reward_mem[index] = reward
         self.terminal_mem[index] = done
-        self.size += 1
+        self.mem_counter += 1
 
     def get_batch(self, batch_size: int, device) -> DQNTrainBatch:
-        max_mem = min(self.size, self._max_buffer_size)
+        max_mem = min(self.mem_counter, self._max_buffer_size)
         batch_indexes = np.random.choice(max_mem, batch_size, replace=False)
 
         state_batch = []
@@ -103,12 +103,12 @@ class ReplayBufferForLSTM:
         lengths = []
 
         for end_index in batch_indexes:
-            lengths.append(abs(self.episode_start_mem[end_index] - end_index + 1))
+            lengths.append(abs(self.episode_start_mem[end_index] - end_index) + 1)
             max_len = max(lengths[-1], max_len)
 
         for end_index in batch_indexes:
             indexes = _get_range_for_cyclic(
-                self.episode_start_mem[end_index], end_index, self.size
+                self.episode_start_mem[end_index], end_index, self.mem_counter
             )
             rev_indexes = indexes[::-1]
             state_batch.append(_pad_seq_to_len(self.state_mem[rev_indexes], max_len))
@@ -155,11 +155,11 @@ class ReplayBufferForLSTM:
         )
 
     def episode_reset(self):
-        self.end_index = self.size % self._max_buffer_size
+        self.end_index = self.mem_counter % self._max_buffer_size
 
     def episode_done(self):
-        begin_index = (self.size - 1) % self._max_buffer_size
-        indexes = _get_range_for_cyclic(begin_index, self.end_index, self.size)
+        begin_index = (self.mem_counter - 1) % self._max_buffer_size
+        indexes = _get_range_for_cyclic(begin_index, self.end_index, self.mem_counter)
         rev_indexes = indexes[::-1]
         self.state_mem[indexes] = self.state_mem[rev_indexes]
         self.new_state_mem[indexes] = self.new_state_mem[rev_indexes]
