@@ -81,7 +81,7 @@ class SimpleDQNAgent(DQNAgent):
         self._device = device
 
         self._optimizer = optim.Adam(self.policy_net.parameters(), lr=config.lr)
-        self._loss = nn.HuberLoss()
+        self._loss = nn.MSELoss()
         self.policy_net.eval()
         self.target_net.eval()
 
@@ -233,7 +233,7 @@ class _TwinDQNSubAgent:
         self._learn_step_counter = 0
         self._device = device
         self._optimizer = optim.Adam(self.policy_net.parameters(), lr=config.lr)
-        self._loss = nn.HuberLoss()
+        self._loss = nn.MSELoss()
         self.policy_net.eval()
 
     def episode_reset(self) -> None:
@@ -432,7 +432,7 @@ class LSTMDQNAgent(DQNAgent):
         self.prev_action = 0
 
         self._optimizer = optim.Adam(self.policy_net.parameters(), lr=config.lr)
-        self._loss = nn.HuberLoss()
+        self._loss = nn.MSELoss()
 
     def get_epsilon(self) -> float:
         return self.epsilon
