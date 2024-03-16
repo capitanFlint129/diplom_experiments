@@ -72,7 +72,9 @@ def get_agent(config: TrainConfig, device, policy_net_path: Optional[str] = None
 
 
 def save_model(state_dict, model_name, replace=True):
-    if not replace and os.path.exists(f"./{MODELS_DIR}/{WANDB_PROJECT_NAME}/{model_name}.pth"):
+    if not replace and os.path.exists(
+        f"./{MODELS_DIR}/{WANDB_PROJECT_NAME}/{model_name}.pth"
+    ):
         return
     if not os.path.exists(f"./{MODELS_DIR}/{WANDB_PROJECT_NAME}"):
         os.makedirs(f"./{MODELS_DIR}/{WANDB_PROJECT_NAME}")
