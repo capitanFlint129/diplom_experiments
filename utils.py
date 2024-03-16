@@ -11,9 +11,8 @@ import torch
 from compiler_gym.datasets import FilesDataset
 from sklearn.model_selection import train_test_split
 
-from config import TrainConfig, MODELS_DIR
+from config import TrainConfig, MODELS_DIR, WANDB_PROJECT_NAME
 from dqn.dqn import DQNAgent, DoubleDQNAgent, TwinDQNAgent, LSTMDQNAgent
-from train import WANDB_PROJECT_NAME
 
 
 @dataclass

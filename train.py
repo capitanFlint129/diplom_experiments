@@ -1,12 +1,12 @@
-from dataclasses import asdict
 import os
+from dataclasses import asdict
 
 # noinspection PyUnresolvedReferences
 import compiler_gym
 import torch
 
 import wandb
-from config import TrainConfig
+from config import TrainConfig, WANDB_PROJECT_NAME
 from dqn.train import train, validate
 from utils import (
     MODELS_DIR,
@@ -15,8 +15,6 @@ from utils import (
     make_env,
     prepare_datasets,
 )
-
-WANDB_PROJECT_NAME = "rl-compilers-experiments-DQN-fix-results"
 
 
 def main():

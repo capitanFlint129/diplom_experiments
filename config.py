@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 from action_config import *
 
+WANDB_PROJECT_NAME = "rl-compilers-experiments-DQN-fix-results"
 COMPILER_GYM_PATH = "~/.local/share/compiler_gym"
 LLVM_BINS_PATH = os.path.join(COMPILER_GYM_PATH, "llvm-v0/bin")
 MODELS_DIR = "_models"
@@ -22,7 +23,7 @@ class TrainConfig:
     # Learning
     lr = 1e-4  # The learning rate
     tau = 0.99  # soft update coefficient
-    batch_size = 512  # The batch size
+    batch_size = 32  # The batch size
     max_mem_size = 100000  # The maximum memory size
     replace = 500  # The number of iterations to run before replacing target network
     episodes = 4000  # The number of episodes used to learn
@@ -52,12 +53,12 @@ class TrainConfig:
         # "Autophase",
     ]
     observation_modifiers = [
-        "start-IR2Vec",
+        # "start-IR2Vec",
         # "remains-counter",
         "remains-counter-normalized",
         # "prev-2",
     ]
-    observation_size = 370
+    observation_size = 70
     reward_space = "IrInstructionCountOz"
     actions = COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
     # Experiment section (logging and reproduce)
