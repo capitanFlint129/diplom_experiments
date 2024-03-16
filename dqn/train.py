@@ -34,6 +34,7 @@ def train(
         rng=np.random.default_rng(config.random_state),
     )
     rewards_history = []
+    negative_rewards_history = []
     # используем среднее из средних геометрических по всем датасетам,
     # потому что есть неудобные датасеты, на которых среднее геометрическое почти всегда 0
     best_val_mean_geomean = 0
@@ -86,7 +87,11 @@ def train(
             print(f"Warning! SessionNotFound error occured {e}", file=sys.stderr)
         agent.episode_done()
         rewards_history.append(episode_data.total_reward)
+        negative_rewards_history.append(episode_data.total_negative_reward)
         average_rewards_sum = np.mean(rewards_history[-config.logging_history_size :])
+        average_negative_rewards_sum = np.mean(
+            negative_rewards_history[-config.logging_history_size :]
+        )
         std_rewards_sum = np.std(rewards_history[-config.logging_history_size :])
         _log_episode_results(
             run=run,
@@ -94,6 +99,7 @@ def train(
             epsilon=agent.get_epsilon(),
             episode_i=episode_i,
             average_rewards_sum=average_rewards_sum,
+            average_negative_rewards_sum=average_negative_rewards_sum,
             std_rewards_sum=std_rewards_sum,
             episode_data=episode_data,
         )
@@ -167,6 +173,7 @@ def _log_episode_results(
     epsilon: float,
     episode_i: int,
     average_rewards_sum: float,
+    average_negative_rewards_sum: float,
     std_rewards_sum: float,
     episode_data: EpisodeData,
 ) -> None:
@@ -181,6 +188,7 @@ def _log_episode_results(
     run.log(
         {
             "average_rewards_sum_for_last_episodes": average_rewards_sum,
+            "average_negative_rewards_sum_for_last_episodes": average_negative_rewards_sum,
             "std_rewards_sum_for_last_episodes": std_rewards_sum,
             "average_episode_loss": np.mean(episode_data.losses or [0]),
             "total_episode_reward": episode_data.total_reward,
