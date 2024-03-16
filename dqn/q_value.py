@@ -71,7 +71,9 @@ class DQNLSTM(nn.Module):
         ), f"{output.shape}"
         output_t = output.transpose(0, 1)
         masks = sequence_lengths.view(1, -1, 1).expand(
-            sequence_lengths.max().item() + 1, output_t.size(1), output_t.size(2)
+            sequence_lengths.max().item() + 1,
+            output_t.mem_counter(1),
+            output_t.mem_counter(2),
         )
         final_outputs = output_t.gather(0, masks)[0]
         actions_q = self.output_net(final_outputs)
