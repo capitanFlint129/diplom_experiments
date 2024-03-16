@@ -21,7 +21,7 @@ class DQNTrainBatch:
 class ReplayBuffer:
     def __init__(self, buffer_size: int, observation_size: int):
         self._max_buffer_size = buffer_size
-        self.mem_counter = 0
+        self._mem_counter = 0
 
         self.state_mem = np.zeros(
             (self._max_buffer_size, observation_size), dtype=np.float32
@@ -33,17 +33,20 @@ class ReplayBuffer:
         self.reward_mem = np.zeros(self._max_buffer_size, dtype=np.float32)
         self.terminal_mem = np.zeros(self._max_buffer_size, dtype=bool)
 
+    def get_ready_data_size(self) -> int:
+        return self._mem_counter
+
     def store_transition(self, action, state, reward, new_state, done):
-        index = self.mem_counter % self._max_buffer_size
+        index = self._mem_counter % self._max_buffer_size
         self.state_mem[index] = state
         self.new_state_mem[index] = new_state
         self.action_mem[index] = action
         self.reward_mem[index] = reward
         self.terminal_mem[index] = done
-        self.mem_counter += 1
+        self._mem_counter += 1
 
     def get_batch(self, batch_size: int, device) -> DQNTrainBatch:
-        max_mem = min(self.mem_counter, self._max_buffer_size)
+        max_mem = min(self._mem_counter, self._max_buffer_size)
         batch_indexes = np.random.choice(max_mem, batch_size, replace=False)
         state_batch = torch.tensor(self.state_mem[batch_indexes], device=device)
         new_state_batch = torch.tensor(self.new_state_mem[batch_indexes], device=device)
@@ -63,7 +66,8 @@ class ReplayBuffer:
 class ReplayBufferForLSTM:
     def __init__(self, buffer_size: int, observation_size: int):
         self._max_buffer_size = buffer_size
-        self.mem_counter = 0
+        self._mem_counter = 0
+        self._ready_data_size = 0
 
         self.state_mem = np.zeros(
             (self._max_buffer_size, observation_size), dtype=np.float32
@@ -71,25 +75,28 @@ class ReplayBufferForLSTM:
         self.new_state_mem = np.zeros(
             (self._max_buffer_size, observation_size), dtype=np.float32
         )
-        self.action_mem = np.zeros(self._max_buffer_size, dtype=np.int32)
-        self.prev_action_mem = np.zeros(self._max_buffer_size, dtype=np.int32)
+        self.action_mem = np.zeros(self._max_buffer_size, dtype=np.int64)
+        self.prev_action_mem = np.zeros(self._max_buffer_size, dtype=np.int64)
         self.reward_mem = np.zeros(self._max_buffer_size, dtype=np.float32)
         self.terminal_mem = np.zeros(self._max_buffer_size, dtype=bool)
-        self.episode_start_mem = np.zeros(self._max_buffer_size, dtype=np.int32)
+        self.episode_start_mem = np.zeros(self._max_buffer_size, dtype=np.int64)
         self.end_index = -1
 
+    def get_ready_data_size(self) -> int:
+        return self._ready_data_size
+
     def store_transition(self, prev_action, action, state, reward, new_state, done):
-        index = self.mem_counter % self._max_buffer_size
+        index = self._mem_counter % self._max_buffer_size
         self.state_mem[index] = state
         self.new_state_mem[index] = new_state
         self.action_mem[index] = action
         self.prev_action_mem[index] = prev_action
         self.reward_mem[index] = reward
         self.terminal_mem[index] = done
-        self.mem_counter += 1
+        self._mem_counter += 1
 
     def get_batch(self, batch_size: int, device) -> DQNTrainBatch:
-        max_mem = min(self.mem_counter, self._max_buffer_size)
+        max_mem = min(self._mem_counter, self._max_buffer_size)
         batch_indexes = np.random.choice(max_mem, batch_size, replace=False)
 
         state_batch = []
@@ -108,26 +115,20 @@ class ReplayBufferForLSTM:
 
         for end_index in batch_indexes:
             indexes = _get_range_for_cyclic(
-                self.episode_start_mem[end_index], end_index, self.mem_counter
+                self.episode_start_mem[end_index], end_index, self._mem_counter
             )
             rev_indexes = indexes[::-1]
             state_batch.append(_pad_seq_to_len(self.state_mem[rev_indexes], max_len))
             new_state_batch.append(
                 _pad_seq_to_len(self.new_state_mem[rev_indexes], max_len)
             )
-            reward_batch.append(self.reward_mem[rev_indexes[-1]])
-            terminal_batch.append(self.terminal_mem[rev_indexes[-1]])
+            reward_batch.append(self.reward_mem[end_index])
+            terminal_batch.append(self.terminal_mem[end_index])
             action_batch.append(_pad_seq_to_len(self.action_mem[rev_indexes], max_len))
             prev_action_batch.append(
                 _pad_seq_to_len(self.prev_action_mem[rev_indexes], max_len)
             )
             final_action_batch.append(self.action_mem[end_index])
-
-        state_batch = torch.tensor(self.state_mem[batch_indexes], device=device)
-        new_state_batch = torch.tensor(self.new_state_mem[batch_indexes], device=device)
-        reward_batch = torch.tensor(self.reward_mem[batch_indexes], device=device)
-        terminal_batch = torch.tensor(self.terminal_mem[batch_indexes], device=device)
-        action_batch = self.action_mem[batch_indexes]
 
         state_batch = torch.tensor(np.stack(state_batch), device=device)
         new_state_batch = torch.tensor(np.stack(new_state_batch), device=device)
@@ -155,11 +156,11 @@ class ReplayBufferForLSTM:
         )
 
     def episode_reset(self):
-        self.end_index = self.mem_counter % self._max_buffer_size
+        self.end_index = self._mem_counter % self._max_buffer_size
 
     def episode_done(self):
-        begin_index = (self.mem_counter - 1) % self._max_buffer_size
-        indexes = _get_range_for_cyclic(begin_index, self.end_index, self.mem_counter)
+        begin_index = (self._mem_counter - 1) % self._max_buffer_size
+        indexes = _get_range_for_cyclic(begin_index, self.end_index, self._mem_counter)
         rev_indexes = indexes[::-1]
         self.state_mem[indexes] = self.state_mem[rev_indexes]
         self.new_state_mem[indexes] = self.new_state_mem[rev_indexes]
@@ -168,6 +169,7 @@ class ReplayBufferForLSTM:
         self.reward_mem[indexes] = self.reward_mem[rev_indexes]
         self.terminal_mem[indexes] = self.terminal_mem[rev_indexes]
         self.episode_start_mem[indexes] = begin_index
+        self._ready_data_size = self._mem_counter
 
 
 def _get_range_for_cyclic(

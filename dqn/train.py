@@ -67,7 +67,6 @@ def train(
                     observation_modifier=observation_modifier,
                     forbidden_actions=episode_data.forbidden_actions,
                 )
-
                 agent.store_transition(
                     prev_action=prev_action,
                     action=step_result.action,

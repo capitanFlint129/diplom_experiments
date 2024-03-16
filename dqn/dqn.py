@@ -129,7 +129,10 @@ class SimpleDQNAgent(DQNAgent):
     def learn(self) -> None:
         self.policy_net.train()
         self.target_net.eval()
-        if self._replay_buffer.mem_counter < self._config.learn_memory_threshold:
+        if (
+            self._replay_buffer.get_ready_data_size()
+            < self._config.learn_memory_threshold
+        ):
             return
         self._optimizer.zero_grad()
         self._replace_target_network()
@@ -279,7 +282,10 @@ class _TwinDQNSubAgent:
         )
 
     def is_ready_for_train(self) -> bool:
-        return self._replay_buffer.mem_counter >= self._config.learn_memory_threshold
+        return (
+            self._replay_buffer.get_ready_data_size()
+            >= self._config.learn_memory_threshold
+        )
 
     def learn(self, twin_net):
         self.policy_net.train()
@@ -395,7 +401,7 @@ class TwinDQNAgent(DQNAgent):
         )
 
 
-class LSTMDQNAgent(DQNAgent):
+class LstmDQNAgent(DQNAgent):
     def __init__(
         self, observation_size: int, n_actions: int, config: TrainConfig, device
     ):
@@ -483,7 +489,10 @@ class LSTMDQNAgent(DQNAgent):
     def learn(self) -> None:
         self.policy_net.train()
         self.target_net.eval()
-        if self._replay_buffer.mem_counter < self._config.learn_memory_threshold:
+        if (
+            self._replay_buffer.get_ready_data_size()
+            < self._config.learn_memory_threshold
+        ):
             return
         self._optimizer.zero_grad()
         self._replace_target_network()
@@ -512,7 +521,7 @@ class LSTMDQNAgent(DQNAgent):
         prev_action: Optional[int] = None,
     ) -> None:
         if prev_action is None:
-            raise ValueError("LSTMDQNAgent: prev_action not provided")
+            raise ValueError("LstmDQNAgent: prev_action not provided")
         self._replay_buffer.store_transition(
             prev_action, action, observation, reward, new_observation, done
         )
@@ -530,10 +539,15 @@ class LSTMDQNAgent(DQNAgent):
     def _get_q_current_and_target(
         self, dqn_batch: DQNTrainBatch
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        batch_index = np.arange(dqn_batch.batch_size, dtype=np.int32)
-        q_current = self.policy_net.forward(
-            dqn_batch.state_batch, dqn_batch.prev_action_batch, dqn_batch.lengths - 1
-        )[batch_index, dqn_batch.final_action_batch]
+        q_current = (
+            self.policy_net.forward(
+                dqn_batch.state_batch,
+                dqn_batch.prev_action_batch,
+                dqn_batch.lengths - 1,
+            )
+            .gather(1, dqn_batch.final_action_batch[..., None])
+            .squeeze()
+        )
         with torch.no_grad():
             q_next = self.target_net.forward(
                 torch.cat(

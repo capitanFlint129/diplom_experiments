@@ -12,7 +12,7 @@ from compiler_gym.datasets import FilesDataset
 from sklearn.model_selection import train_test_split
 
 from config import TrainConfig, MODELS_DIR, WANDB_PROJECT_NAME
-from dqn.dqn import SimpleDQNAgent, DoubleDQNAgent, TwinDQNAgent, LSTMDQNAgent, DQNAgent
+from dqn.dqn import SimpleDQNAgent, DoubleDQNAgent, TwinDQNAgent, LstmDQNAgent, DQNAgent
 
 
 @dataclass
@@ -57,8 +57,8 @@ def get_agent(
             config=config,
             device=device,
         )
-    elif config.algorithm == "LSTMDQN":
-        agent = LSTMDQNAgent(
+    elif config.algorithm == "LstmDQN":
+        agent = LstmDQNAgent(
             observation_size=config.observation_size,
             n_actions=len(config.actions),
             config=config,
