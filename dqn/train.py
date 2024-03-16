@@ -50,7 +50,7 @@ def train(
         observation = observation_modifier.modify(
             base_observation, episode_data.remains
         )
-        prev_action = train_env.action_space.flags.index("noop")
+        prev_action = config.actions.index("noop")
         try:
             while (
                 not episode_data.done
@@ -184,6 +184,7 @@ def _log_episode_results(
             "std_rewards_sum_for_last_episodes": std_rewards_sum,
             "average_episode_loss": np.mean(episode_data.losses or [0]),
             "total_episode_reward": episode_data.total_reward,
+            "episode_length": episode_data.actions_count,
         },
         step=episode_i,
     )
@@ -302,7 +303,10 @@ def episode_step(
     flags = config.actions[action]
     if flags == "noop":
         flags = [flags]
-        reward, done, info = 0, False, {}
+        reward, done, info = 0, False, {"action_had_no_effect": True}
+    elif flags == "terminate":
+        flags = [flags]
+        reward, done, info = 0, True, {"action_had_no_effect": True}
     else:
         if " " in flags:
             flags = flags.split()
