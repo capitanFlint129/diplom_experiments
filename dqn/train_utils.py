@@ -34,7 +34,7 @@ class EpisodeData:
     def update_after_episode_step(
         self,
         step_result: StepResult,
-        loss_val: Optional[float],
+        loss_value: Optional[float],
     ) -> None:
         self.chosen_flags.extend(step_result.flags)
         self.actions_count += 1
@@ -50,8 +50,8 @@ class EpisodeData:
             self.patience_count = 0
             self.forbidden_actions = set()
 
-        if loss_val is not None:
-            self.losses.append(loss_val)
+        if loss_value is not None:
+            self.losses.append(loss_value)
 
 
 def get_binned_statistics(

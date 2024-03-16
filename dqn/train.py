@@ -18,15 +18,16 @@ from utils import save_model, ValidationResult
 def train(
     run,
     agent: DQNAgent,
-    env: CompilerEnv,
+    train_env: CompilerEnv,
     config: TrainConfig,
     train_benchmarks: list,
     val_benchmarks: dict,
     enable_validation: bool = True,
     enable_validation_logs: bool = False,
 ) -> None:
-    env = RandomOrderBenchmarks(
-        env,
+    validation_env = train_env.fork()
+    train_env = RandomOrderBenchmarks(
+        train_env,
         benchmarks=train_benchmarks,
         rng=np.random.default_rng(config.random_state),
     )
@@ -36,14 +37,14 @@ def train(
     best_val_mean_geomean = 0
 
     for episode_i in range(config.episodes):
-        env.reset()
+        train_env.reset()
         agent.episode_reset()
         episode_data = EpisodeData(remains=config.episode_length)
 
         observation_modifier = ObservationModifier(
-            env, config.observation_modifiers, config.episode_length
+            train_env, config.observation_modifiers, config.episode_length
         )
-        base_observation = get_observation(env, config)
+        base_observation = get_observation(train_env, config)
         observation = observation_modifier.modify(
             base_observation, episode_data.remains
         )
@@ -53,7 +54,7 @@ def train(
             and episode_data.patience_count < config.patience
         ):
             step_result = episode_step(
-                env=env,
+                env=train_env,
                 config=config,
                 agent=agent,
                 episode_data=episode_data,
@@ -69,10 +70,10 @@ def train(
                 new_observation=step_result.new_observation,
                 done=step_result.done,
             )
-            loss_val = agent.learn()
+            loss_value = agent.learn()
             episode_data.update_after_episode_step(
                 step_result=step_result,
-                loss_val=loss_val,
+                loss_value=loss_value,
             )
             observation = step_result.new_observation
 
@@ -82,7 +83,7 @@ def train(
         std_rewards_sum = np.std(rewards_history[-config.logging_history_size :])
         _log_episode_results(
             run=run,
-            env=env,
+            env=train_env,
             epsilon=agent.epsilon,
             episode_i=episode_i,
             average_rewards_sum=average_rewards_sum,
@@ -95,7 +96,7 @@ def train(
                 episode_i=episode_i,
                 best_val_mean_geomean=best_val_mean_geomean,
                 agent=agent,
-                env=env,
+                env=validation_env,
                 config=config,
                 val_benchmarks=val_benchmarks,
                 enable_logs=enable_validation_logs,
@@ -107,7 +108,7 @@ def train(
             episode_i=config.episodes - 1,
             best_val_mean_geomean=best_val_mean_geomean,
             agent=agent,
-            env=env,
+            env=validation_env,
             config=config,
             val_benchmarks=val_benchmarks,
             enable_logs=enable_validation_logs,
@@ -265,7 +266,7 @@ def rollout(
             )
         episode_data.update_after_episode_step(
             step_result=step_result,
-            loss_val=None,
+            loss_value=None,
         )
 
     return episode_data
