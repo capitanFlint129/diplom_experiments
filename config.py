@@ -3,6 +3,7 @@ from dataclasses import dataclass
 
 from action_config import *
 
+WANDB_PROJECT_NAME = "rl-compilers-experiments-DQN-fix-results"
 COMPILER_GYM_PATH = "~/.local/share/compiler_gym"
 LLVM_BINS_PATH = os.path.join(COMPILER_GYM_PATH, "llvm-v0/bin")
 MODELS_DIR = "_models"
@@ -22,7 +23,7 @@ class TrainConfig:
     # Learning
     lr = 1e-4  # The learning rate
     tau = 0.99  # soft update coefficient
-    batch_size = 512  # The batch size
+    batch_size = 32  # The batch size
     max_mem_size = 100000  # The maximum memory size
     replace = 500  # The number of iterations to run before replacing target network
     episodes = 4000  # The number of episodes used to learn
@@ -44,19 +45,7 @@ class TrainConfig:
         # "benchmark://opencv-v0",
     ]
     train_val_test_split = True
-    # некоторые программы очень большие и вычисление observation на них может занимать много
-    # времени и памяти, поэтому для начальных экспериментов удобно пропускать некоторые бенчмарки
-    skipped_benchmarks = [
-        # "benchmark://cbench-v1/bzip2",
-        # "benchmark://cbench-v1/ghostscript",
-        # "benchmark://cbench-v1/tiff2rgba",
-        # "benchmark://cbench-v1/tiff2bw",
-        # "benchmark://cbench-v1/tiffdither",
-        # "benchmark://cbench-v1/tiffmedian",
-        # "benchmark://cbench-v1/lame",
-        # "benchmark://cbench-v1/jpeg-c",
-        # "benchmark://cbench-v1/jpeg-d",
-    ]
+    skipped_benchmarks = []
     compiler_gym_env = "llvm-v0"
     observation_space = [
         # "IR2Vec",

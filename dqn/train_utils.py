@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Any
 
 import numpy as np
 import scipy
@@ -9,8 +9,18 @@ from utils import BinnedStatistic
 
 
 @dataclass
+class StepResult:
+    action: int
+    reward: float
+    new_observation: np.ndarray
+    new_base_observation: np.ndarray
+    flags: list[str]
+    info: dict[str, Any]
+    done: bool
+
+
+@dataclass
 class EpisodeData:
-    base_observations_history: list[np.ndarray]
     done: bool = False
     total_reward: float = 0
     total_negative_reward: float = 0
@@ -23,30 +33,25 @@ class EpisodeData:
 
     def update_after_episode_step(
         self,
-        action: int,
-        reward: float,
-        base_observation: np.ndarray,
-        flags: list[str],
-        loss_val: Optional[float],
-        info: dict,
+        step_result: StepResult,
+        loss_value: Optional[float],
     ) -> None:
-        self.chosen_flags.extend(flags)
+        self.chosen_flags.extend(step_result.flags)
         self.actions_count += 1
         self.remains -= 1
-        self.total_reward += reward
-        if reward < 0:
-            self.total_negative_reward += reward
+        self.total_reward += step_result.reward
+        if step_result.reward < 0:
+            self.total_negative_reward += step_result.reward
 
-        if info.get("action_had_no_effect", False):
+        if step_result.info.get("action_had_no_effect", False):
             self.patience_count += 1
-            self.forbidden_actions.add(action)
+            self.forbidden_actions.add(step_result.action)
         else:
             self.patience_count = 0
             self.forbidden_actions = set()
 
-        self.base_observations_history.append(base_observation)
-        if loss_val is not None:
-            self.losses.append(loss_val)
+        if loss_value is not None:
+            self.losses.append(loss_value)
 
 
 def get_binned_statistics(

@@ -11,7 +11,7 @@ import torch
 from compiler_gym.datasets import FilesDataset
 from sklearn.model_selection import train_test_split
 
-from config import TrainConfig, MODELS_DIR
+from config import TrainConfig, MODELS_DIR, WANDB_PROJECT_NAME
 from dqn.dqn import DQNAgent, DoubleDQNAgent, TwinDQNAgent, LSTMDQNAgent
 
 
@@ -71,11 +71,13 @@ def get_agent(config: TrainConfig, device, policy_net_path: Optional[str] = None
 
 
 def save_model(state_dict, model_name, replace=True):
-    if not replace and os.path.exists(f"./{MODELS_DIR}/{model_name}.pth"):
+    if not replace and os.path.exists(
+        f"./{MODELS_DIR}/{WANDB_PROJECT_NAME}/{model_name}.pth"
+    ):
         return
-    if not os.path.exists(f"./{MODELS_DIR}"):
-        os.makedirs(f"./{MODELS_DIR}")
-    torch.save(state_dict, f"./{MODELS_DIR}/{model_name}.pth")
+    if not os.path.exists(f"./{MODELS_DIR}/{WANDB_PROJECT_NAME}"):
+        os.makedirs(f"./{MODELS_DIR}/{WANDB_PROJECT_NAME}")
+    torch.save(state_dict, f"./{MODELS_DIR}/{WANDB_PROJECT_NAME}/{model_name}.pth")
 
 
 def make_env(config: TrainConfig):
