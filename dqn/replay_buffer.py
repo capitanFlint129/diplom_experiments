@@ -4,6 +4,8 @@ from typing import Optional
 import numpy as np
 import torch
 
+import config
+
 
 @dataclass
 class DQNTrainBatch:
@@ -96,7 +98,7 @@ class ReplayBufferForLSTM:
         self._mem_counter += 1
 
     def get_batch(self, batch_size: int, device) -> DQNTrainBatch:
-        max_mem = min(self._mem_counter, self._max_buffer_size)
+        max_mem = min(self._ready_data_size, self._max_buffer_size)
         batch_indexes = np.random.choice(max_mem, batch_size, replace=False)
 
         state_batch = []
@@ -110,12 +112,13 @@ class ReplayBufferForLSTM:
         lengths = []
 
         for end_index in batch_indexes:
-            lengths.append(abs(self.episode_start_mem[end_index] - end_index) + 1)
-            max_len = max(lengths[-1], max_len)
-
+            length = abs(self.episode_start_mem[end_index] - end_index) + 1
+            assert 0 < length < config.TrainConfig.episode_length
+            lengths.append(length)
+            max_len = max(length, max_len)
         for end_index in batch_indexes:
             indexes = _get_range_for_cyclic(
-                self.episode_start_mem[end_index], end_index, self._mem_counter
+                self.episode_start_mem[end_index], end_index, self._ready_data_size
             )
             rev_indexes = indexes[::-1]
             state_batch.append(_pad_seq_to_len(self.state_mem[rev_indexes], max_len))
