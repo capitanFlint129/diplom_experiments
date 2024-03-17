@@ -82,7 +82,7 @@ class DQNLSTM(nn.Module):
             (sequence_lengths - 1)
             .view(1, -1, 1)
             .expand(
-                sequence_lengths.max().item() + 1,
+                sequence_lengths.max().item(),
                 output_t.size(1),
                 output_t.size(2),
             )
