@@ -46,7 +46,9 @@ class DQNLSTM(nn.Module):
             nn.ReLU(),
             nn.Linear(fc_dims, self._hidden_size),
         )
-        self.rnn_encoder = nn.LSTM(fc_dims, hidden_size, batch_first=True)
+        self.rnn_encoder = nn.LSTM(
+            self._hidden_size, self._hidden_size, batch_first=True
+        )
         self.output_net = nn.Sequential(
             nn.Linear(self._hidden_size, fc_dims),
             nn.ReLU(),

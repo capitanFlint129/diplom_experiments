@@ -186,6 +186,11 @@ class SimpleDQNAgent(DQNAgent):
             q_next = self.target_net.forward(dqn_batch.new_state_batch).max(dim=1)[0]
         q_next[dqn_batch.terminal_batch] = 0.0
         q_target = dqn_batch.reward_batch + self._config.gamma * q_next
+        assert (
+            q_target.shape == q_current.shape
+            and len(q_target.shape) == 1
+            and q_target.shape[0] == self._config.batch_size
+        )
         return q_current, q_target
 
 
@@ -207,6 +212,11 @@ class DoubleDQNAgent(SimpleDQNAgent):
             )
         q_next[dqn_batch.terminal_batch] = 0.0
         q_target = dqn_batch.reward_batch + self._config.gamma * q_next
+        assert (
+            q_target.shape == q_current.shape
+            and len(q_target.shape) == 1
+            and q_target.shape[0] == self._config.batch_size
+        )
         return q_current, q_target
 
 
@@ -331,6 +341,11 @@ class _TwinDQNSubAgent:
             )[0]
         q_next[dqn_batch.terminal_batch] = 0.0
         q_target = dqn_batch.reward_batch + self._config.gamma * q_next
+        assert (
+            q_target.shape == q_current.shape
+            and len(q_target.shape) == 1
+            and q_target.shape[0] == self._config.batch_size
+        )
         return q_current, q_target
 
 
@@ -562,4 +577,11 @@ class LstmDQNAgent(DQNAgent):
             ).max(dim=1)[0]
         q_next[dqn_batch.terminal_batch] = 0.0
         q_target = dqn_batch.reward_batch + self._config.gamma * q_next
-        return q_current.view(-1), q_target.view(-1)
+        q_current = q_current.view(-1)
+        q_target = q_target.view(-1)
+        assert (
+            q_target.shape == q_current.shape
+            and len(q_target.shape) == 1
+            and q_target.shape[0] == self._config.batch_size
+        )
+        return q_current, q_target
