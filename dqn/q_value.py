@@ -85,8 +85,8 @@ class DQNLSTM(nn.Module):
         self,
         observation: torch.Tensor,
         prev_action: int,
-        h_prev: Optional[torch.Tensor] = None,
-        c_prev: Optional[torch.Tensor] = None,
+        h_prev: Optional[torch.Tensor],
+        c_prev: Optional[torch.Tensor],
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         prev_action_emb = F.one_hot(
             torch.tensor([prev_action], device=observation.device),

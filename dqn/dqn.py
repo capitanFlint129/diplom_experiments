@@ -486,11 +486,15 @@ class LstmDQNAgent(DQNAgent):
             actions_q, self.h_prev, self.c_prev = self.policy_net.forward_step(
                 torch.tensor(observation, device=self._device)[None, ...],
                 self.prev_action,
+                h_prev=self.h_prev,
+                c_prev=self.c_prev,
             )
         else:
             actions_q, self.h_prev, self.c_prev = self.policy_net.forward_step(
                 torch.tensor(observation, device=self._device)[None, ...],
                 self.prev_action,
+                h_prev=self.h_prev,
+                c_prev=self.c_prev,
             )
             actions_q = actions_q.squeeze()
             action = torch.argmax(actions_q).item()
