@@ -562,7 +562,7 @@ class LstmDQNAgent(DQNAgent):
             self.policy_net.forward(
                 dqn_batch.state_batch,
                 dqn_batch.prev_action_batch,
-                dqn_batch.lengths - 1,
+                dqn_batch.lengths,
             )
             .gather(1, dqn_batch.final_action_batch[..., None])
             .squeeze()
@@ -577,7 +577,7 @@ class LstmDQNAgent(DQNAgent):
                     [dqn_batch.prev_action_batch[..., [0]], dqn_batch.action_batch],
                     dim=-1,
                 ),
-                dqn_batch.lengths,
+                dqn_batch.lengths + 1,
             ).max(dim=1)[0]
         q_next[dqn_batch.terminal_batch] = 0.0
         q_target = dqn_batch.reward_batch + self._config.gamma * q_next
