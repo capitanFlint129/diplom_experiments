@@ -113,9 +113,10 @@ class ReplayBufferForLSTM:
 
         for end_index in batch_indexes:
             length = abs(self.episode_start_mem[end_index] - end_index) + 1
-            assert 0 < length <= config.TrainConfig.episode_length
+            assert 0 < length <= config.TrainConfig.episode_length, f"{length}"
             lengths.append(length)
             max_len = max(length, max_len)
+
         for end_index in batch_indexes:
             indexes = _get_range_for_cyclic(
                 self.episode_start_mem[end_index], end_index, self._ready_data_size
