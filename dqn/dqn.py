@@ -484,14 +484,14 @@ class LstmDQNAgent(DQNAgent):
                 action = np.random.choice(self._n_actions)
             # Нужно обновить h_prev и c_prev с учетом prev_action
             actions_q, self.h_prev, self.c_prev = self.policy_net.forward_step(
-                torch.tensor(observation, device=self._device)[None, ...],
+                torch.tensor(observation, device=self._device),
                 self.prev_action,
                 h_prev=self.h_prev,
                 c_prev=self.c_prev,
             )
         else:
             actions_q, self.h_prev, self.c_prev = self.policy_net.forward_step(
-                torch.tensor(observation, device=self._device)[None, ...],
+                torch.tensor(observation, device=self._device),
                 self.prev_action,
                 h_prev=self.h_prev,
                 c_prev=self.c_prev,

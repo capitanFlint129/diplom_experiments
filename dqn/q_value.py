@@ -60,10 +60,16 @@ class DQNLSTM(nn.Module):
         observation: torch.Tensor,
         prev_action: torch.Tensor,
         sequence_lengths: torch.Tensor,
-    ) -> torch.LongTensor:
+    ) -> torch.Tensor:
         prev_action_embs = F.one_hot(prev_action, num_classes=self._n_actions)
-        input_vector = torch.cat((observation, prev_action_embs), dim=-1)
-        rnn_input = self.input_net(input_vector)
+        input_batch = torch.cat((observation, prev_action_embs), dim=-1)
+        assert (
+            len(input_batch.shape) == 3
+            and input_batch.shape[0] == observation.shape[0]
+            and input_batch.shape[1] == observation.shape[1]
+            and input_batch.shape[2] == self._n_actions + self._observation_size
+        ), f"{input_batch.shape}"
+        rnn_input = self.input_net(input_batch)
         output, (_, _) = self.rnn_encoder(rnn_input)
         assert (
             len(output.shape) == 3
@@ -72,10 +78,14 @@ class DQNLSTM(nn.Module):
             and output.shape[2] == self._hidden_size
         ), f"{output.shape}"
         output_t = output.transpose(0, 1)
-        masks = sequence_lengths.view(1, -1, 1).expand(
-            sequence_lengths.max().item() + 1,
-            output_t.size(1),
-            output_t.size(2),
+        masks = (
+            (sequence_lengths - 1)
+            .view(1, -1, 1)
+            .expand(
+                sequence_lengths.max().item() + 1,
+                output_t.size(1),
+                output_t.size(2),
+            )
         )
         final_outputs = output_t.gather(0, masks)[0]
         actions_q = self.output_net(final_outputs)
@@ -89,11 +99,15 @@ class DQNLSTM(nn.Module):
         c_prev: Optional[torch.Tensor],
     ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         prev_action_emb = F.one_hot(
-            torch.tensor([prev_action], device=observation.device),
+            torch.tensor(prev_action, device=observation.device),
             num_classes=self._n_actions,
         )
         input_vector = torch.cat((observation, prev_action_emb), dim=-1)
-        rnn_input = self.input_net(input_vector)
+        assert (
+            len(input_vector.shape) == 1
+            and input_vector.shape[0] == self._n_actions + self._observation_size
+        ), f"{input_vector.shape}"
+        rnn_input = self.input_net(input_vector[None, None, ...])
         if h_prev is None or c_prev is None:
             output, (hn, cn) = self.rnn_encoder(rnn_input)
         else:
