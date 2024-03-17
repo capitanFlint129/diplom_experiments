@@ -17,7 +17,7 @@ class TrainConfig:
     epsilon: float = 1.0  # The starting value for epsilon
     epsilon_end: float = 0.05  # The ending value for epsilon
     epsilon_dec: float = 5e-5  # The decrement value for epsilon
-    fc_dim: int = 256  # The dimension of a fully connected layer
+    fc_dim: int = 512  # The dimension of a fully connected layer
     lstm_hidden_size: int = 128  # The dimension of a fully connected layer
     # Learning
     lr: float = 1e-4  # The learning rate
@@ -54,13 +54,13 @@ class TrainConfig:
     )
     observation_modifiers: list = field(
         default_factory=lambda: [
-            "start-IR2Vec",
+            # "start-IR2Vec",
             # "remains-counter",
             "remains-counter-normalized",
             # "prev-2",
         ]
     )
-    observation_size: int = 370
+    observation_size: int = 70
     reward_space: str = "IrInstructionCountOz"
     actions: list = field(
         default_factory=lambda: COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
