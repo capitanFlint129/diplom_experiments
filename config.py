@@ -42,7 +42,7 @@ class TrainConfig:
             # "benchmark://opencv-v0",
         ]
     )
-    train_val_test_split: bool = True
+    train_val_test_split: bool = False
     skipped_benchmarks: list = field(default_factory=lambda: [])
     compiler_gym_env: str = "llvm-v0"
     observation_space: list = field(
