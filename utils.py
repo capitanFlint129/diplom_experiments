@@ -102,6 +102,7 @@ def fix_seed(seed: int) -> None:
 def prepare_datasets(
     env,
     datasets: list[Union[str, tuple[str, int]]],
+    random_state: int,
     train_val_test_split: bool = True,
     skipped: set[str] = None,
 ) -> tuple[list, dict, dict]:
@@ -121,12 +122,14 @@ def prepare_datasets(
     test_benchmarks = {}
     for dataset_config in datasets:
         benchmarks = _get_benchmarks(env, dataset_config, skipped)
-        train, test = train_test_split(benchmarks, test_size=0.2, shuffle=False)
-        train, val = train_test_split(benchmarks, test_size=0.125, shuffle=False)
+        train, test = train_test_split(
+            benchmarks, test_size=0.2, random_state=random_state
+        )
+        train, val = train_test_split(train, test_size=0.125, random_state=random_state)
         train_benchmarks.extend(train)
         val_benchmarks[dataset_config] = val
         test_benchmarks[dataset_config] = test
-    random.shuffle(train_benchmarks)
+    # random.shuffle(train_benchmarks)
     return train_benchmarks, val_benchmarks, test_benchmarks
 
 

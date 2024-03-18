@@ -23,13 +23,14 @@ def main():
     run = wandb.init(
         project=WANDB_PROJECT_NAME,
         config=asdict(config),
-        # mode="disabled",
+        mode="disabled",
     )
     with make_env(config) as train_env:
         fix_seed(config.random_state)
         train_benchmarks, val_benchmarks, test_benchmarks = prepare_datasets(
             train_env,
             config.datasets,
+            random_state=config.random_state,
             train_val_test_split=config.train_val_test_split,
             skipped=set(config.skipped_benchmarks),
         )

@@ -13,6 +13,7 @@ if __name__ == "__main__":
     _, _, test_benchmarks = prepare_datasets(
         env,
         config.datasets,
+        random_state=config.random_state,
         train_val_test_split=config.train_val_test_split,
         skipped=set(config.skipped_benchmarks),
     )
