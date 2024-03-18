@@ -37,7 +37,7 @@ def train(
     negative_rewards_history = []
     # используем среднее из средних геометрических по всем датасетам,
     # потому что есть неудобные датасеты, на которых среднее геометрическое почти всегда 0
-    best_val_mean_geomean = 0
+    best_val_geomean = 0
 
     for episode_i in range(config.episodes):
         train_env.reset()
@@ -103,10 +103,10 @@ def train(
             episode_data=episode_data,
         )
         if episode_i % config.validation_interval == 0 and enable_validation:
-            best_val_mean_geomean = _validation_during_train(
+            best_val_geomean = _validation_during_train(
                 run=run,
                 episode_i=episode_i,
-                best_val_mean_geomean=best_val_mean_geomean,
+                best_val_geomean=best_val_geomean,
                 agent=agent,
                 env=validation_env,
                 config=config,
@@ -118,7 +118,7 @@ def train(
         _validation_during_train(
             run=run,
             episode_i=config.episodes - 1,
-            best_val_mean_geomean=best_val_mean_geomean,
+            best_val_geomean=best_val_geomean,
             agent=agent,
             env=validation_env,
             config=config,
@@ -133,7 +133,7 @@ def train(
 def _validation_during_train(
     run,
     episode_i,
-    best_val_mean_geomean,
+    best_val_geomean,
     agent: DQNAgent,
     env,
     config: TrainConfig,
@@ -157,13 +157,13 @@ def _validation_during_train(
         log_data,
         step=episode_i,
     )
-    if validation_result.mean_geomean_reward > best_val_mean_geomean:
+    if validation_result.geomean_reward > best_val_geomean:
         print(
-            f"Save model. New best geomean: {validation_result.mean_geomean_reward}, previous best geomean: {best_val_mean_geomean}"
+            f"Save model. New best geomean: {validation_result.geomean_reward}, previous best geomean: {best_val_geomean}"
         )
-        save_model(agent.get_policy_net_state_dict(), f"{run.name}")
-        return validation_result.mean_geomean_reward
-    return best_val_mean_geomean
+        save_model(agent.get_policy_net_state_dict(), f"{run.name}", replace=True)
+        return validation_result.geomean_reward
+    return best_val_geomean
 
 
 def _log_episode_results(
