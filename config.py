@@ -12,7 +12,7 @@ MODELS_DIR = "_models"
 @dataclass
 class TrainConfig:
     # Algorithm section
-    algorithm: str = "DQN"
+    algorithm: str = "DoubleDQN"
     gamma: float = 0.99
     epsilon: float = 1.0  # The starting value for epsilon
     epsilon_end: float = 0.05  # The ending value for epsilon
