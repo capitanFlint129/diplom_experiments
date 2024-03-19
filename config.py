@@ -13,21 +13,21 @@ MODELS_DIR = "_models"
 class TrainConfig:
     # Algorithm section
     algorithm: str = "DQN"
-    gamma: float = 0.9
+    gamma: float = 0.99
     epsilon: float = 1.0  # The starting value for epsilon
     epsilon_end: float = 0.05  # The ending value for epsilon
     epsilon_dec: float = 5e-5  # The decrement value for epsilon
-    fc_dim: int = 256  # The dimension of a fully connected layer
+    fc_dim: int = 512  # The dimension of a fully connected layer
     lstm_hidden_size: int = 256  # The dimension of a fully connected layer
     # Learning
-    lr: float = 5e-5  # The learning rate
+    lr: float = 1e-4  # The learning rate
     tau: float = 0.99  # soft update coefficient
-    batch_size: int = 32  # The batch size
+    batch_size: int = 128  # The batch size
     max_mem_size: int = 100000  # The maximum memory size
     episodes: int = 4000  # The number of episodes used to learn
     validation_interval: int = 500  # The number of episodes used to learn
-    episode_length: int = 25  # The (MAX) number of transformation passes per episode
-    patience: int = 5  # The (MAX) number of times to apply a series of transformations without observable change
+    episode_length: int = 50  # The (MAX) number of transformation passes per episode
+    patience: int = 10  # The (MAX) number of times to apply a series of transformations without observable change
     val_patience: int = 5
     eval_with_forbidden_actions: bool = True
     learn_memory_threshold: int = max(batch_size, 32)
