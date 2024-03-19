@@ -12,7 +12,7 @@ MODELS_DIR = "_models"
 @dataclass
 class TrainConfig:
     # Algorithm section
-    algorithm: str = "DoubleDQN"
+    algorithm: str = "DQN"
     gamma: float = 0.9
     epsilon: float = 1.0  # The starting value for epsilon
     epsilon_end: float = 0.05  # The ending value for epsilon
@@ -31,7 +31,7 @@ class TrainConfig:
     val_patience: int = 5
     eval_with_forbidden_actions: bool = True
     learn_memory_threshold: int = max(batch_size, 32)
-    enable_soft_update: bool = False
+    enable_soft_update: bool = True
     replace_period: int = 500
 
     # General section
