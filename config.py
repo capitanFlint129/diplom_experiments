@@ -31,7 +31,7 @@ class TrainConfig:
     val_patience: int = 5
     eval_with_forbidden_actions: bool = True
     learn_memory_threshold: int = max(batch_size, 32)
-    enable_soft_update: bool = True
+    enable_soft_update: bool = False
     replace_period: int = 500
 
     # General section
@@ -50,9 +50,9 @@ class TrainConfig:
     observation_space: list = field(
         default_factory=lambda: [
             # "IR2Vec",
-            # "InstCountNorm",
+            "InstCountNorm",
             # "Autophase",
-            "AutophaseNorm",
+            # "AutophaseNorm",
         ]
     )
     observation_modifiers: list = field(
@@ -63,7 +63,7 @@ class TrainConfig:
             # "prev-3",
         ]
     )
-    observation_size: int = 57
+    observation_size: int = 70
     reward_space: str = "IrInstructionCountOz"
     actions: list = field(
         default_factory=lambda: COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
