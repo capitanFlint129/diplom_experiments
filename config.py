@@ -50,8 +50,9 @@ class TrainConfig:
     observation_space: list = field(
         default_factory=lambda: [
             # "IR2Vec",
-            "InstCountNorm",
+            # "InstCountNorm",
             # "Autophase",
+            "AutophaseNorm",
         ]
     )
     observation_modifiers: list = field(
@@ -59,10 +60,10 @@ class TrainConfig:
             # "start-IR2Vec",
             # "remains-counter",
             "remains-counter-normalized",
-            "prev-3",
+            # "prev-3",
         ]
     )
-    observation_size: int = 208
+    observation_size: int = 57
     reward_space: str = "IrInstructionCountOz"
     actions: list = field(
         default_factory=lambda: COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
