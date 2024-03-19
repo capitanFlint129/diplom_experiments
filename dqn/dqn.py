@@ -165,13 +165,19 @@ class SimpleDQNAgent(DQNAgent):
         )
 
     def _replace_target_network(self) -> None:
-        target_net_state_dict = self.target_net.state_dict()
-        policy_net_state_dict = self.policy_net.state_dict()
-        for key in policy_net_state_dict:
-            target_net_state_dict[key] = target_net_state_dict[
-                key
-            ] * self._config.tau + policy_net_state_dict[key] * (1 - self._config.tau)
-        self.target_net.load_state_dict(target_net_state_dict)
+        if self._config.enable_soft_update:
+            target_net_state_dict = self.target_net.state_dict()
+            policy_net_state_dict = self.policy_net.state_dict()
+            for key in policy_net_state_dict:
+                target_net_state_dict[key] = target_net_state_dict[
+                    key
+                ] * self._config.tau + policy_net_state_dict[key] * (
+                    1 - self._config.tau
+                )
+            self.target_net.load_state_dict(target_net_state_dict)
+        else:
+            if self._learn_step_counter % self._config.replace_period == 0:
+                self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
     def _get_q_current_and_target(
@@ -545,14 +551,20 @@ class LstmDQNAgent(DQNAgent):
             prev_action, action, observation, reward, new_observation, done
         )
 
-    def _replace_target_network(self):
-        target_net_state_dict = self.target_net.state_dict()
-        policy_net_state_dict = self.policy_net.state_dict()
-        for key in policy_net_state_dict:
-            target_net_state_dict[key] = target_net_state_dict[
-                key
-            ] * self._config.tau + policy_net_state_dict[key] * (1 - self._config.tau)
-        self.target_net.load_state_dict(target_net_state_dict)
+    def _replace_target_network(self) -> None:
+        if self._config.enable_soft_update:
+            target_net_state_dict = self.target_net.state_dict()
+            policy_net_state_dict = self.policy_net.state_dict()
+            for key in policy_net_state_dict:
+                target_net_state_dict[key] = target_net_state_dict[
+                    key
+                ] * self._config.tau + policy_net_state_dict[key] * (
+                    1 - self._config.tau
+                )
+            self.target_net.load_state_dict(target_net_state_dict)
+        else:
+            if self._learn_step_counter % self._config.replace_period == 0:
+                self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
     def _get_q_current_and_target(
