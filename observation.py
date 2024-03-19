@@ -42,6 +42,7 @@ class ObservationModifier:
 
     def modify(self, base_observation: np.ndarray, remains: int) -> np.ndarray:
         observation = base_observation.copy()
+        self._base_observations_history.append(base_observation.copy())
         if self._start_observation is not None:
             observation = np.concatenate((observation, self._start_observation))
         for modifier in self._modifications:
@@ -53,11 +54,10 @@ class ObservationModifier:
             elif modifier.startswith("prev"):
                 prev_n = int(modifier.split("-")[1])
                 prev = []
-                for i in range(prev_n - 1):
-                    index = max(-i, 0)
+                for i in range(1, prev_n):
+                    index = max(len(self._base_observations_history) - i - 1, 0)
                     prev.append(self._base_observations_history[index])
                 observation = np.concatenate(prev + [observation])
-        self._base_observations_history.append(base_observation)
         return observation
 
 
