@@ -31,6 +31,8 @@ class TrainConfig:
     val_patience: int = 5
     eval_with_forbidden_actions: bool = True
     learn_memory_threshold: int = max(batch_size, 32)
+    enable_soft_update: bool = True
+    replace_period: int = 500
 
     # General section
     datasets: list = field(
