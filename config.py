@@ -47,8 +47,8 @@ class TrainConfig:
     compiler_gym_env: str = "llvm-v0"
     observation_space: list = field(
         default_factory=lambda: [
-            "IR2Vec",
-            # "InstCountNorm",
+            # "IR2Vec",
+            "InstCountNorm",
             # "Autophase",
         ]
     )
@@ -57,10 +57,10 @@ class TrainConfig:
             # "start-IR2Vec",
             # "remains-counter",
             "remains-counter-normalized",
-            # "prev-2",
+            "prev-3",
         ]
     )
-    observation_size: int = 301
+    observation_size: int = 208
     reward_space: str = "IrInstructionCountOz"
     actions: list = field(
         default_factory=lambda: COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
