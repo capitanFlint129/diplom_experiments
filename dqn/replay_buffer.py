@@ -38,17 +38,25 @@ class ReplayBuffer:
     def get_ready_data_size(self) -> int:
         return self._mem_counter
 
-    def store_transition(self, action, state, reward, new_state, done):
+    def store_transition(
+        self,
+        action: int,
+        state: np.ndarray,
+        reward: float,
+        new_state: np.ndarray,
+        terminal: bool,
+    ) -> None:
         index = self._mem_counter % self._max_buffer_size
         self.state_mem[index] = state
         self.new_state_mem[index] = new_state
         self.action_mem[index] = action
         self.reward_mem[index] = reward
-        self.terminal_mem[index] = done
+        self.terminal_mem[index] = terminal
         self._mem_counter += 1
 
     def get_batch(self, batch_size: int, device) -> DQNTrainBatch:
         max_mem = min(self._mem_counter, self._max_buffer_size)
+        batch_size = min(batch_size, max_mem)
         batch_indexes = np.random.choice(max_mem, batch_size, replace=False)
         state_batch = torch.tensor(self.state_mem[batch_indexes], device=device)
         new_state_batch = torch.tensor(self.new_state_mem[batch_indexes], device=device)
