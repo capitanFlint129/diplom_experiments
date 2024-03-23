@@ -13,7 +13,7 @@ from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 from config import TrainConfig
 from dqn.dqn import DQNAgent
 from dqn.train_utils import EpisodeData, get_binned_statistics, StepResult, TrainHistory
-from observation import get_observation, ObservationModifier
+from observation.utils import get_observation, ObservationModifier
 from utils import save_model, ValidationResult
 
 
