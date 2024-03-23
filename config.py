@@ -69,7 +69,7 @@ class TrainConfig:
     )
     special_actions: list = field(
         default_factory=lambda: [
-            "noop",
+            # "noop",
         ]
     )
     # Experiment section (logging and reproduce)
