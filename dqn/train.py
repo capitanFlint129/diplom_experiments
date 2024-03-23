@@ -12,7 +12,7 @@ from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 
 from config import TrainConfig
 from dqn.dqn import DQNAgent
-from dqn.train_utils import EpisodeData, get_binned_statistics, StepResult
+from dqn.train_utils import EpisodeData, get_binned_statistics, StepResult, TrainHistory
 from observation import get_observation, ObservationModifier
 from utils import save_model, ValidationResult
 
@@ -33,11 +33,7 @@ def train(
         benchmarks=train_benchmarks,
         rng=np.random.default_rng(config.random_state),
     )
-    rewards_history = []
-    negative_rewards_history = []
-    # используем среднее из средних геометрических по всем датасетам,
-    # потому что есть неудобные датасеты, на которых среднее геометрическое почти всегда 0
-    best_val_geomean = 0
+    train_history = TrainHistory(logging_history_size=config.logging_history_size)
 
     for episode_i in range(config.episodes):
         train_env.reset()
@@ -62,7 +58,7 @@ def train(
                     env=train_env,
                     config=config,
                     agent=agent,
-                    episode_data=episode_data,
+                    remains_steps=episode_data.remains,
                     observation=observation,
                     observation_modifier=observation_modifier,
                     forbidden_actions=episode_data.forbidden_actions,
@@ -85,57 +81,41 @@ def train(
         except SessionNotFound as e:
             print(f"Warning! SessionNotFound error occured {e}", file=sys.stderr)
         agent.episode_done()
-        rewards_history.append(episode_data.total_reward)
-        negative_rewards_history.append(episode_data.total_negative_reward)
-        average_rewards_sum = np.mean(rewards_history[-config.logging_history_size :])
-        average_negative_rewards_sum = np.mean(
-            negative_rewards_history[-config.logging_history_size :]
-        )
-        std_rewards_sum = np.std(rewards_history[-config.logging_history_size :])
+
         _log_episode_results(
             run=run,
             env=train_env,
             epsilon=agent.get_epsilon(),
             episode_i=episode_i,
-            average_rewards_sum=average_rewards_sum,
-            average_negative_rewards_sum=average_negative_rewards_sum,
-            std_rewards_sum=std_rewards_sum,
+            train_history=train_history,
             episode_data=episode_data,
         )
-        if episode_i % config.validation_interval == 0 and enable_validation:
-            best_val_geomean = _validation_during_train(
+        if (
+            episode_i % config.validation_interval == 0
+            or episode_i == config.episodes - 1
+        ) and enable_validation:
+            train_history.best_val_geomean = _validation_during_train(
                 run=run,
                 episode_i=episode_i,
-                best_val_geomean=best_val_geomean,
+                best_val_geomean=train_history.best_val_geomean,
                 agent=agent,
                 env=validation_env,
                 config=config,
                 val_benchmarks=val_benchmarks,
                 enable_logs=enable_validation_logs,
             )
-
-    if (config.episodes - 1) % config.validation_interval != 0 and enable_validation:
-        _validation_during_train(
-            run=run,
-            episode_i=config.episodes - 1,
-            best_val_geomean=best_val_geomean,
-            agent=agent,
-            env=validation_env,
-            config=config,
-            val_benchmarks=val_benchmarks,
-            enable_logs=enable_validation_logs,
-        )
     save_model(
         state_dict=agent.get_policy_net_state_dict(), model_name=run.name, replace=False
     )
+    validation_env.close()
 
 
 def _validation_during_train(
     run,
-    episode_i,
-    best_val_geomean,
+    episode_i: int,
+    best_val_geomean: float,
     agent: DQNAgent,
-    env,
+    env: CompilerEnv,
     config: TrainConfig,
     val_benchmarks: dict,
     enable_logs: bool = False,
@@ -159,7 +139,8 @@ def _validation_during_train(
     )
     if validation_result.geomean_reward > best_val_geomean:
         print(
-            f"Save model. New best geomean: {validation_result.geomean_reward}, previous best geomean: {best_val_geomean}"
+            f"Save model. New best geomean: {validation_result.geomean_reward},"
+            f" previous best geomean: {best_val_geomean}"
         )
         save_model(agent.get_policy_net_state_dict(), f"{run.name}", replace=True)
         return validation_result.geomean_reward
@@ -171,11 +152,12 @@ def _log_episode_results(
     env,
     epsilon: float,
     episode_i: int,
-    average_rewards_sum: float,
-    average_negative_rewards_sum: float,
-    std_rewards_sum: float,
+    train_history: TrainHistory,
     episode_data: EpisodeData,
 ) -> None:
+    average_rewards_sum = train_history.get_average_rewards_sum()
+    average_negative_rewards_sum = train_history.get_average_negative_rewards_sum()
+    std_rewards_sum = train_history.get_rewards_std()
     print(
         f"{episode_i} - {env.benchmark}\n"
         + "Total: {:.4f}".format(episode_data.total_reward)
@@ -254,8 +236,8 @@ def rollout(
     agent: DQNAgent, env, config: TrainConfig, use_actions_masking
 ) -> EpisodeData:
     agent.episode_reset()
-    base_observation = get_observation(env, config)
     episode_data = EpisodeData(remains=config.episode_length)
+    base_observation = get_observation(env, config)
     observation_modifier = ObservationModifier(
         env, config.observation_modifiers, config.episode_length
     )
@@ -267,17 +249,22 @@ def rollout(
     ):
         if use_actions_masking:
             step_result = episode_step(
-                env,
-                config,
-                agent,
-                episode_data,
-                observation,
-                observation_modifier,
-                episode_data.forbidden_actions,
+                env=env,
+                config=config,
+                agent=agent,
+                remains_steps=episode_data.remains,
+                observation=observation,
+                observation_modifier=observation_modifier,
+                forbidden_actions=episode_data.forbidden_actions,
             )
         else:
             step_result = episode_step(
-                env, config, agent, episode_data, observation, observation_modifier
+                env=env,
+                config=config,
+                agent=agent,
+                remains_steps=episode_data.remains,
+                observation=observation,
+                observation_modifier=observation_modifier,
             )
         episode_data.update_after_episode_step(
             step_result=step_result,
@@ -291,22 +278,17 @@ def episode_step(
     env: CompilerEnv,
     config: TrainConfig,
     agent: DQNAgent,
-    episode_data: EpisodeData,
+    remains_steps: int,
     observation: np.ndarray,
     observation_modifier: ObservationModifier,
     forbidden_actions: Optional[set[int]] = None,
     enable_epsilon_greedy: bool = True,
 ) -> StepResult:
-    if forbidden_actions is not None:
-        action = agent.choose_action(
-            observation,
-            enable_epsilon_greedy=enable_epsilon_greedy,
-            forbidden_actions=episode_data.forbidden_actions,
-        )
-    else:
-        action = agent.choose_action(
-            observation, enable_epsilon_greedy=enable_epsilon_greedy
-        )
+    action = agent.choose_action(
+        observation,
+        enable_epsilon_greedy=enable_epsilon_greedy,
+        forbidden_actions=forbidden_actions,
+    )
     flags = config.actions[action]
     if flags == "noop":
         flags = [flags]
@@ -317,13 +299,14 @@ def episode_step(
     else:
         if " " in flags:
             flags = flags.split()
+            _, reward, done, info = env.multistep(
+                [env.action_space.flags.index(f) for f in flags]
+            )
         else:
-            flags = [flags]
-        _, reward, done, info = env.multistep(
-            [env.action_space.flags.index(f) for f in flags]
-        )
+            _, reward, done, info = env.step(env.action_space.flags.index(flags))
+
     base_observation = get_observation(env, config)
-    observation = observation_modifier.modify(base_observation, episode_data.remains)
+    observation = observation_modifier.modify(base_observation, remains_steps)
     return StepResult(
         action=action,
         reward=reward,

@@ -55,6 +55,33 @@ class EpisodeData:
             self.losses.append(loss_value)
 
 
+@dataclass
+class TrainHistory:
+    logging_history_size: int
+    rewards_history: list[float] = field(default_factory=lambda: [])
+    negative_rewards_history: list[float] = field(default_factory=lambda: [])
+    best_val_geomean: float = 0
+
+    def get_average_rewards_sum(self, log_size: Optional[int] = None) -> float:
+        if log_size is None:
+            log_size = self.logging_history_size
+        return np.mean(self.rewards_history[-log_size:])
+
+    def get_average_negative_rewards_sum(self, log_size: Optional[int] = None) -> float:
+        if log_size is None:
+            log_size = self.logging_history_size
+        return np.mean(self.negative_rewards_history[-log_size:])
+
+    def get_rewards_std(self, log_size: Optional[int] = None) -> float:
+        if log_size is None:
+            log_size = self.logging_history_size
+        return np.std(self.rewards_history[log_size:])
+
+    def update(self, episode_data: EpisodeData) -> None:
+        self.rewards_history.append(episode_data.total_reward)
+        self.negative_rewards_history.append(episode_data.total_negative_reward)
+
+
 def get_binned_statistics(
     binned_statistic_data: dict[str, tuple[list[int], list[float]]]
 ) -> tuple[BinnedStatistic, dict[str, BinnedStatistic]]:
