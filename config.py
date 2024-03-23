@@ -67,6 +67,11 @@ class TrainConfig:
     actions: list = field(
         default_factory=lambda: COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
     )
+    special_actions: list = field(
+        default_factory=lambda: [
+            "noop",
+        ]
+    )
     # Experiment section (logging and reproduce)
     logging_history_size: int = 100
     random_state: int = 99

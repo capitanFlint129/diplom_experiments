@@ -47,7 +47,9 @@ def train(
         observation = observation_modifier.modify(
             base_observation, episode_data.remains
         )
-        prev_action = config.actions.index("noop")
+        prev_action = 0
+        if "noop" in config.special_actions:
+            prev_action = config.actions.index("noop")
         try:
             while (
                 not episode_data.done

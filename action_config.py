@@ -1,5 +1,4 @@
 POSET_RL_ODG = [
-    "noop",
     "-instcombine -barrier -elim-avail-extern -rpo-functionattrs -globalopt -globaldce -constmerge",
     "-instcombine -barrier -elim-avail-extern -rpo-functionattrs -globalopt -globaldce -float2int -lower-constant-intrinsics",
     "-instcombine -barrier -elim-avail-extern -rpo-functionattrs -globalopt -mem2reg -deadargelim",
@@ -38,7 +37,6 @@ POSET_RL_ODG = [
 
 
 POSET_RL_MANUAL = [
-    "noop",
     "-ee-instrument -simplifycfg -sroa -early-cse -lower-expect -forceattrs -inferattrs -mem2reg",
     "-ipsccp -called-value-propagation -attributor -globalopt",
     "-deadargelim -instcombine -simplifycfg",
@@ -59,7 +57,6 @@ POSET_RL_MANUAL = [
 
 # https://github.com/facebookresearch/CompilerGym/blob/development/leaderboard/llvm_instcount/dqn/README.md
 COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET = [
-    "noop",
     "-break-crit-edges",
     "-early-cse-memssa",
     "-gvn-hoist",
@@ -78,7 +75,6 @@ COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET = [
 ]
 
 COMPLETE_ACTION_SET = [
-    "noop",
     "-add-discriminators",
     "-adce",
     "-aggressive-instcombine",

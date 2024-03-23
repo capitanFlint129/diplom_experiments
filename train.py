@@ -19,6 +19,7 @@ from utils import (
 
 def main():
     config = TrainConfig()
+    config.actions = config.special_actions + config.actions
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     run = wandb.init(
         project=WANDB_PROJECT_NAME,
