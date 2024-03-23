@@ -106,23 +106,28 @@ class SimpleDQNAgent(DQNAgent):
     ) -> int:
         if forbidden_actions is None:
             forbidden_actions = set()
-        if forbidden_actions is not None and len(forbidden_actions) >= self._n_actions:
-            print("Warning: all actions are forbidden, choose 0", file=sys.stderr)
-            return 0
+        if len(forbidden_actions) >= self._n_actions:
+            print(
+                "Warning: all actions are forbidden, choosing a random action",
+                file=sys.stderr,
+            )
+            return np.random.choice(
+                list(set(range(self._n_actions)) - forbidden_actions)
+            )
         if np.random.random() <= self.epsilon and enable_epsilon_greedy:
-            action = np.random.choice(self._n_actions)
-            while action in forbidden_actions:
-                action = np.random.choice(self._n_actions)
+            action = np.random.choice(
+                list(set(range(self._n_actions)) - forbidden_actions)
+            )
         else:
             observation = observation.astype(np.float32)
             actions_q = self.policy_net(
                 torch.tensor(observation, device=self._device)[None, ...]
             )
             actions_q = actions_q.squeeze()
-            action = torch.argmax(actions_q).item()
-            while action in forbidden_actions:
-                action = torch.argmax(actions_q).item()
-                actions_q[action] = float("-inf")
+
+            allowed_actions = list(set(range(self._n_actions)) - forbidden_actions)
+            action = allowed_actions[torch.argmax(actions_q[allowed_actions]).item()]
+
         self._actions_taken.append(action)
         return action
 
@@ -183,10 +188,9 @@ class SimpleDQNAgent(DQNAgent):
     def _get_q_current_and_target(
         self, dqn_batch: DQNTrainBatch
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        batch_index = np.arange(dqn_batch.batch_size, dtype=np.int32)
         q_values_current = self.policy_net.forward(dqn_batch.state_batch)
-        q_current = q_values_current.gather(
-            1, dqn_batch.action_batch[..., None]
-        ).squeeze()
+        q_current = q_values_current[batch_index, dqn_batch.action_batch]
 
         with torch.no_grad():
             q_next = self.target_net.forward(dqn_batch.new_state_batch).max(dim=1)[0]
