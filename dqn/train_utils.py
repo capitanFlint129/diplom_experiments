@@ -75,7 +75,7 @@ class TrainHistory:
     def get_rewards_std(self, log_size: Optional[int] = None) -> float:
         if log_size is None:
             log_size = self.logging_history_size
-        return np.std(self.rewards_history[log_size:])
+        return np.std(self.rewards_history[-log_size:])
 
     def update(self, episode_data: EpisodeData) -> None:
         self.rewards_history.append(episode_data.total_reward)

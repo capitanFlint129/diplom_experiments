@@ -78,6 +78,7 @@ def train(
                     step_result=step_result,
                     loss_value=loss_value,
                 )
+                train_history.update(episode_data)
                 observation = step_result.new_observation
                 prev_action = step_result.action
         except SessionNotFound as e:
