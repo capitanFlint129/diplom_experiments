@@ -8,7 +8,6 @@ import wandb
 from config import TrainConfig, WANDB_PROJECT_NAME
 from dqn.train import train, validate
 from utils import (
-    MODELS_DIR,
     fix_seed,
     get_agent,
     make_env,
