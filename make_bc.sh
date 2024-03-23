@@ -1,3 +1,5 @@
+# скрипт для генерации bc файлов для датасета
+
 DATASET_DIR="$HOME/diplom/datasets/raw/angha_kernels_largest_10k"
 OUTPUT_DIR="$HOME/diplom/datasets/bc/angha_kernels_largest_10k"
 
