@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 from action_config import *
 
-WANDB_PROJECT_NAME = "trash"
+WANDB_PROJECT_NAME = "rl-compilers-DQN-fix-results-23-03"
 COMPILER_GYM_PATH = "~/.local/share/compiler_gym"
 LLVM_BINS_PATH = os.path.join(COMPILER_GYM_PATH, "llvm-v0/bin")
 MODELS_DIR = "_models"
@@ -26,8 +26,8 @@ class TrainConfig:
     max_mem_size: int = 100000  # The maximum memory size
     episodes: int = 4000  # The number of episodes used to learn
     validation_interval: int = 500  # The number of episodes used to learn
-    episode_length: int = 25  # The (MAX) number of transformation passes per episode
-    patience: int = 5  # The (MAX) number of times to apply a series of transformations without observable change
+    episode_length: int = 40  # The (MAX) number of transformation passes per episode
+    patience: int = 10  # The (MAX) number of times to apply a series of transformations without observable change
     val_patience: int = 5
     eval_with_forbidden_actions: bool = True
     learn_memory_threshold: int = max(batch_size, 32)
@@ -58,11 +58,11 @@ class TrainConfig:
         default_factory=lambda: [
             # "start-IR2Vec",
             # "remains-counter",
-            # "remains-counter-normalized",
+            "remains-counter-normalized",
             # "prev-2",
         ]
     )
-    observation_size: int = 69
+    observation_size: int = 70
     reward_space: str = "IrInstructionCountOz"
     actions: list = field(
         default_factory=lambda: COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
