@@ -306,6 +306,7 @@ def episode_step(
             )
         else:
             _, reward, done, info = env.step(env.action_space.flags.index(flags))
+            flags = [flags]
 
     base_observation = get_observation(env, config)
     observation = observation_modifier.modify(base_observation, remains_steps)
