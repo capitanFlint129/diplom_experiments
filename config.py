@@ -31,7 +31,7 @@ class TrainConfig:
     val_patience: int = 5
     eval_with_forbidden_actions: bool = True
     learn_memory_threshold: int = max(batch_size, 32)
-    enable_soft_update: bool = True
+    enable_soft_update: bool = False
     replace_period: int = 500
 
     # General section
@@ -44,7 +44,7 @@ class TrainConfig:
             # "benchmark://opencv-v0",
         ]
     )
-    train_val_test_split: bool = True
+    train_val_test_split: bool = False
     skipped_benchmarks: list = field(default_factory=lambda: [])
     compiler_gym_env: str = "llvm-v0"
     observation_space: list = field(
