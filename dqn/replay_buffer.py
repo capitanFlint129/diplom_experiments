@@ -127,7 +127,9 @@ class ReplayBufferForLSTM:
 
         for end_index in batch_indexes:
             indexes = _get_range_for_cyclic(
-                self.episode_start_mem[end_index], end_index, self._ready_data_size
+                self.episode_start_mem[end_index],
+                end_index,
+                min(self._ready_data_size, self._max_buffer_size),
             )
             rev_indexes = indexes[::-1]
             state_batch.append(_pad_seq_to_len(self.state_mem[rev_indexes], max_len))
@@ -172,7 +174,8 @@ class ReplayBufferForLSTM:
 
     def episode_done(self):
         begin_index = (self._mem_counter - 1) % self._max_buffer_size
-        indexes = _get_range_for_cyclic(begin_index, self.end_index, self._mem_counter)
+        memory_filled = min(self._mem_counter, self._max_buffer_size)
+        indexes = _get_range_for_cyclic(begin_index, self.end_index, memory_filled)
         rev_indexes = indexes[::-1]
         self.state_mem[indexes] = self.state_mem[rev_indexes]
         self.new_state_mem[indexes] = self.new_state_mem[rev_indexes]
