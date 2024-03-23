@@ -34,7 +34,7 @@ def main():
             train_val_test_split=config.train_val_test_split,
             skipped=set(config.skipped_benchmarks),
         )
-        agent = get_agent(config, device)
+        agent = get_agent(config, device, policy_net_path=None)
         train(
             run,
             agent,
@@ -42,7 +42,7 @@ def main():
             config,
             train_benchmarks,
             val_benchmarks,
-            # enable_validation=False,
+            enable_validation=True,
             enable_validation_logs=True,
         )
 
@@ -55,11 +55,21 @@ def main():
         )
         with torch.no_grad():
             test_result = validate(
-                agent, test_env, config, test_benchmarks, use_actions_masking=True
+                agent,
+                test_env,
+                config,
+                test_benchmarks,
+                use_actions_masking=True,
+                enable_logs=True,
             )
         with torch.no_grad():
             test_result_no_actions_masking = validate(
-                agent, test_env, config, test_benchmarks, use_actions_masking=False
+                agent,
+                test_env,
+                config,
+                test_benchmarks,
+                use_actions_masking=False,
+                enable_logs=True,
             )
     print(f"Test geomean: {test_result.geomean_reward}")
     print(

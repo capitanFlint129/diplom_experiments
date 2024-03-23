@@ -10,8 +10,7 @@ from utils import fix_seed, get_agent
 
 def run(env: LlvmEnv) -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    agent = get_agent(config, device)
-    agent.policy_net.load_state_dict(torch.load("_models/wandering-bee-129.pth"))
+    agent = get_agent(config, device, policy_net_path="_models/wandering-bee-129.pth")
     rollout(agent, env, config)
 
 

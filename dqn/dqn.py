@@ -33,8 +33,8 @@ class DQNAgent(ABC):
     def choose_action(
         self,
         observation: np.ndarray,
-        enable_epsilon_greedy: bool = True,
-        forbidden_actions: set = None,
+        enable_epsilon_greedy: bool,
+        forbidden_actions: set[int],
     ) -> int:
         pass
 
@@ -101,8 +101,8 @@ class SimpleDQNAgent(DQNAgent):
     def choose_action(
         self,
         observation: np.ndarray,
-        enable_epsilon_greedy: bool = True,
-        forbidden_actions: set = None,
+        enable_epsilon_greedy: bool,
+        forbidden_actions: set[int],
     ) -> int:
         if forbidden_actions is None:
             forbidden_actions = set()
@@ -263,8 +263,8 @@ class _TwinDQNSubAgent:
     def choose_action(
         self,
         observation: np.ndarray,
-        enable_epsilon_greedy: bool = True,
-        forbidden_actions: set = None,
+        enable_epsilon_greedy: bool,
+        forbidden_actions: set[int],
     ) -> int:
         if forbidden_actions is None:
             forbidden_actions = set()
@@ -393,8 +393,8 @@ class TwinDQNAgent(DQNAgent):
     def choose_action(
         self,
         observation: np.ndarray,
-        enable_epsilon_greedy: bool = True,
-        forbidden_actions: set = None,
+        enable_epsilon_greedy: bool,
+        forbidden_actions: set[int],
     ) -> int:
         return self._cur_agent.choose_action(
             observation, enable_epsilon_greedy, forbidden_actions
@@ -479,8 +479,8 @@ class LstmDQNAgent(DQNAgent):
     def choose_action(
         self,
         observation: np.ndarray,
-        enable_epsilon_greedy: bool = True,
-        forbidden_actions: set = None,
+        enable_epsilon_greedy: bool,
+        forbidden_actions: set[int],
     ) -> int:
         if forbidden_actions is None:
             forbidden_actions = set()

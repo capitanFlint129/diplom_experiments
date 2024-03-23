@@ -24,7 +24,7 @@ def train(
     config: TrainConfig,
     train_benchmarks: list,
     val_benchmarks: dict,
-    enable_validation: bool = True,
+    enable_validation: bool,
     enable_validation_logs: bool = False,
 ) -> None:
     validation_env = train_env.fork()
@@ -64,6 +64,7 @@ def train(
                     observation=observation,
                     observation_modifier=observation_modifier,
                     forbidden_actions=episode_data.forbidden_actions,
+                    enable_epsilon_greedy=True,
                 )
                 agent.store_transition(
                     prev_action=prev_action,
@@ -187,8 +188,8 @@ def validate(
     env,
     config: TrainConfig,
     val_benchmarks: dict[str, list],
+    use_actions_masking: bool,
     enable_logs: bool = False,
-    use_actions_masking: bool = False,
 ) -> ValidationResult:
     rewards = {}
     times = []
@@ -259,6 +260,7 @@ def rollout(
                 observation=observation,
                 observation_modifier=observation_modifier,
                 forbidden_actions=episode_data.forbidden_actions,
+                enable_epsilon_greedy=False,
             )
         else:
             step_result = episode_step(
@@ -268,6 +270,8 @@ def rollout(
                 remains_steps=episode_data.remains,
                 observation=observation,
                 observation_modifier=observation_modifier,
+                enable_epsilon_greedy=False,
+                forbidden_actions=None,
             )
         episode_data.update_after_episode_step(
             step_result=step_result,
@@ -284,8 +288,8 @@ def episode_step(
     remains_steps: int,
     observation: np.ndarray,
     observation_modifier: ObservationModifier,
-    forbidden_actions: Optional[set[int]] = None,
-    enable_epsilon_greedy: bool = True,
+    forbidden_actions: Optional[set[int]],
+    enable_epsilon_greedy: bool,
 ) -> StepResult:
     action = agent.choose_action(
         observation,

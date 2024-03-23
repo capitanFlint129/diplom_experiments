@@ -33,9 +33,7 @@ class ValidationResult:
     rewards_sum_by_codesize_bins_per_dataset: dict[str, BinnedStatistic]
 
 
-def get_agent(
-    config: TrainConfig, device, policy_net_path: Optional[str] = None
-) -> DQNAgent:
+def get_agent(config: TrainConfig, device, policy_net_path: Optional[str]) -> DQNAgent:
     if config.algorithm == "DQN":
         agent = SimpleDQNAgent(
             observation_size=config.observation_size,
@@ -72,7 +70,7 @@ def get_agent(
     return agent
 
 
-def save_model(state_dict, model_name, replace=True):
+def save_model(state_dict, model_name: str, replace: bool = True):
     model_path = get_model_path(model_name)
     models_dir = os.path.join(MODELS_DIR, WANDB_PROJECT_NAME)
     if not replace and os.path.exists(model_path):
@@ -103,8 +101,8 @@ def prepare_datasets(
     env,
     datasets: list[Union[str, tuple[str, int]]],
     random_state: int,
-    train_val_test_split: bool = True,
-    skipped: set[str] = None,
+    train_val_test_split: bool,
+    skipped: set[str],
 ) -> tuple[list, dict, dict]:
     if skipped is None:
         skipped = set()
