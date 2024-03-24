@@ -208,18 +208,16 @@ class DoubleDQNAgent(SimpleDQNAgent):
     def _get_q_current_and_target(
         self, dqn_batch: DQNTrainBatch
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        batch_index = np.arange(dqn_batch.batch_size, dtype=np.int32)
         q_values_current = self.policy_net.forward(dqn_batch.state_batch)
-        q_current = q_values_current.gather(
-            1, dqn_batch.action_batch[..., None]
-        ).squeeze()
+        q_current = q_values_current[batch_index, dqn_batch.action_batch]
 
-        q_current_argmax = torch.argmax(q_values_current, dim=1)
         with torch.no_grad():
-            q_next = (
-                self.target_net.forward(dqn_batch.new_state_batch)
-                .gather(1, q_current_argmax[..., None])
-                .squeeze()
-            )
+            q_new_state = self.policy_net.forward(dqn_batch.new_state_batch)
+            q_current_new_state_argmax = torch.argmax(q_new_state, dim=-1)
+            q_next = self.target_net.forward(dqn_batch.new_state_batch)[
+                batch_index, q_current_new_state_argmax
+            ]
         q_next[dqn_batch.terminal_batch] = 0.0
         q_target = dqn_batch.reward_batch + self._config.gamma * q_next
         assert (
