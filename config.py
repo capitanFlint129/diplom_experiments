@@ -12,7 +12,7 @@ MODELS_DIR = "_models"
 @dataclass
 class TrainConfig:
     # Algorithm section
-    algorithm: str = "LstmDQN"
+    algorithm: str = "DQN"
     gamma: float = 0.9
     epsilon: float = 1.0  # The starting value for epsilon
     epsilon_end: float = 0.05  # The ending value for epsilon
@@ -51,7 +51,7 @@ class TrainConfig:
         default_factory=lambda: [
             # "IR2Vec",
             "InstCountNorm",
-            # "Autophase",
+            "AutophaseNorm",
         ]
     )
     observation_modifiers: list = field(
@@ -62,10 +62,10 @@ class TrainConfig:
             # "prev-2",
         ]
     )
-    observation_size: int = 70
+    observation_size: int = 126
     reward_space: str = "IrInstructionCountOz"
     actions: list = field(
-        default_factory=lambda: POSET_RL_ODG
+        default_factory=lambda: COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
     )
     special_actions: list = field(
         default_factory=lambda: [
