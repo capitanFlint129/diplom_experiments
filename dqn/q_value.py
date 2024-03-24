@@ -28,6 +28,43 @@ class DQN(nn.Module):
         return self.q_net(observation)
 
 
+class DuelingDQN(nn.Module):
+    def __init__(
+        self,
+        observation_size: int,
+        fc_dims: int,
+        n_actions: int,
+    ):
+        super(DuelingDQN, self).__init__()
+        self.q_net = nn.Sequential(
+            # nn.BatchNorm1d(observation_size),
+            nn.Linear(observation_size, fc_dims),
+            nn.ReLU(),
+            nn.Linear(fc_dims, fc_dims),
+            nn.ReLU(),
+            nn.Linear(fc_dims, fc_dims),
+        )
+
+        self.adv_stream = nn.Sequential(
+            nn.Linear(fc_dims, fc_dims),
+            nn.ReLU(),
+            nn.Linear(fc_dims, n_actions),
+        )
+        self.value_stream = nn.Sequential(
+            nn.Linear(fc_dims, fc_dims),
+            nn.ReLU(),
+            nn.Linear(fc_dims, 1),
+        )
+
+    def forward(self, observation: torch.Tensor) -> torch.Tensor:
+        x = self.q_net(observation)
+        adv = self.adv_stream(x)
+        adv_mean = torch.mean(adv, dim=1)[..., None]
+        value = self.value_stream(x)
+        q_value = adv + value - adv_mean
+        return q_value
+
+
 class DQNWithObservationSequenceEncoder(nn.Module):
     def __init__(
         self,
