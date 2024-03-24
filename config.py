@@ -22,7 +22,7 @@ class TrainConfig:
     # Learning
     lr: float = 1e-4  # The learning rate
     tau: float = 0.99  # soft update coefficient
-    batch_size: int = 256  # The batch size
+    batch_size: int = 32  # The batch size
     max_mem_size: int = 100000  # The maximum memory size
     episodes: int = 4000  # The number of episodes used to learn
     validation_interval: int = 500  # The number of episodes used to learn
@@ -65,7 +65,7 @@ class TrainConfig:
     observation_size: int = 70
     reward_space: str = "IrInstructionCountOz"
     actions: list = field(
-        default_factory=lambda: COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
+        default_factory=lambda: POSET_RL_ODG
     )
     special_actions: list = field(
         default_factory=lambda: [
