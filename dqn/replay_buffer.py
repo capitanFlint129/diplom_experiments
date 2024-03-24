@@ -92,6 +92,9 @@ class ReplayBufferForLSTM:
         self.episode_start_mem = np.zeros(self._max_buffer_size, dtype=np.int64)
         self.end_index = -1
 
+    def get_cur_size(self) -> int:
+        return min(self._ready_data_size, self._max_buffer_size)
+
     def get_ready_data_size(self) -> int:
         return self._ready_data_size
 
@@ -106,8 +109,7 @@ class ReplayBufferForLSTM:
         self._mem_counter += 1
 
     def get_batch(self, batch_size: int, device) -> DQNTrainBatch:
-        max_mem = min(self._ready_data_size, self._max_buffer_size)
-        batch_indexes = np.random.choice(max_mem, batch_size, replace=False)
+        batch_indexes = np.random.choice(self.get_cur_size(), batch_size, replace=False)
 
         state_batch = []
         new_state_batch = []
@@ -120,15 +122,21 @@ class ReplayBufferForLSTM:
         lengths = []
 
         for end_index in batch_indexes:
-            length = abs(self.episode_start_mem[end_index] - end_index) + 1
+            start_index = self.episode_start_mem[end_index]
+            if end_index > self.episode_start_mem[end_index]:
+                start_index += self.get_cur_size()
+            length = start_index - end_index + 1
             assert 0 < length <= config.TrainConfig.episode_length, f"{length}"
             lengths.append(length)
             max_len = max(length, max_len)
 
         for end_index in batch_indexes:
             indexes = _get_range_for_cyclic(
-                self.episode_start_mem[end_index], end_index, self._ready_data_size
+                self.episode_start_mem[end_index],
+                end_index,
+                self.get_cur_size(),
             )
+            assert np.all(indexes < self.get_cur_size())
             rev_indexes = indexes[::-1]
             state_batch.append(_pad_seq_to_len(self.state_mem[rev_indexes], max_len))
             new_state_batch.append(
@@ -172,7 +180,8 @@ class ReplayBufferForLSTM:
 
     def episode_done(self):
         begin_index = (self._mem_counter - 1) % self._max_buffer_size
-        indexes = _get_range_for_cyclic(begin_index, self.end_index, self._mem_counter)
+        memory_filled = min(self._mem_counter, self._max_buffer_size)
+        indexes = _get_range_for_cyclic(begin_index, self.end_index, memory_filled)
         rev_indexes = indexes[::-1]
         self.state_mem[indexes] = self.state_mem[rev_indexes]
         self.new_state_mem[indexes] = self.new_state_mem[rev_indexes]
