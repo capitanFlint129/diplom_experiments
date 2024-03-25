@@ -12,8 +12,8 @@ MODELS_DIR = "_models"
 @dataclass
 class TrainConfig:
     # Algorithm section
-    algorithm: str = "DQN"
-    enable_dueling_dqn: bool = True
+    algorithm: str = "DoubleDQN"
+    enable_dueling_dqn: bool = False
     gamma: float = 0.9
     epsilon: float = 1.0  # The starting value for epsilon
     epsilon_end: float = 0.05  # The ending value for epsilon
