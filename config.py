@@ -25,7 +25,7 @@ class TrainConfig:
     tau: float = 0.99  # soft update coefficient
     batch_size: int = 32  # The batch size
     max_mem_size: int = 100000  # The maximum memory size
-    episodes: int = 8000  # The number of episodes used to learn
+    episodes: int = 4000  # The number of episodes used to learn
     validation_interval: int = 500  # The number of episodes used to learn
     episode_length: int = 40  # The (MAX) number of transformation passes per episode
     patience: int = 10  # The (MAX) number of times to apply a series of transformations without observable change
@@ -33,7 +33,7 @@ class TrainConfig:
     eval_with_forbidden_actions: bool = True
     learn_memory_threshold: int = max(batch_size, 32)
     enable_soft_update: bool = False
-    replace_period: int = 2000
+    replace_period: int = 500
 
     # General section
     datasets: list = field(
@@ -51,8 +51,8 @@ class TrainConfig:
     observation_space: list = field(
         default_factory=lambda: [
             # "IR2Vec",
-            "InstCountNorm",
-            # "AutophaseNorm",
+            # "InstCountNorm",
+            "AutophaseNorm",
         ]
     )
     observation_modifiers: list = field(
@@ -63,7 +63,7 @@ class TrainConfig:
             # "prev-2",
         ]
     )
-    observation_size: int = 70
+    observation_size: int = 57
     reward_space: str = "IrInstructionCountOz"
     actions: list = field(
         default_factory=lambda: COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
