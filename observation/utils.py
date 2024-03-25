@@ -1,4 +1,5 @@
 import multiprocessing
+import queue
 import tempfile
 
 import ir2vec
@@ -67,17 +68,25 @@ def _get_one_observation(env, observation_name: str) -> tuple[np.ndarray, bool]:
         observation = observation / observation[51]
         is_count_observation_correct = _is_count_observation_correct(observation)
     elif observation_name == "IR2Vec" or observation_name == "IR2VecNormalized":
-        result_queue = multiprocessing.Queue()
-        ir_text = str(env.observation[RAW_IR_OBSERVATION_NAME])
-        proc = multiprocessing.Process(
-            target=_get_ir2vec_observation, args=(ir_text, result_queue)
-        )
-        proc.start()
-        proc.join()
-        observation = result_queue.get()
-        if observation_name == "IR2VecNormalized":
-            observation = observation / np.linalg.norm(observation)
-        is_count_observation_correct = proc.exitcode == 0
+        observation = np.array([])
+        is_count_observation_correct = False
+        for i in range(5):
+            result_queue = multiprocessing.Queue()
+            ir_text = str(env.observation[RAW_IR_OBSERVATION_NAME])
+            proc = multiprocessing.Process(
+                target=_get_ir2vec_observation, args=(ir_text, result_queue)
+            )
+            proc.start()
+            proc.join()
+            try:
+                observation = result_queue.get(timeout=300)
+            except queue.Empty:
+                print("IR2Vec timeout")
+                continue
+            if observation_name == "IR2VecNormalized":
+                observation = observation / np.linalg.norm(observation)
+            is_count_observation_correct = proc.exitcode == 0
+            break
     elif observation_name == "InstCount" or observation_name == "InstCountNorm":
         observation = env.observation[observation_name]
         is_count_observation_correct = _is_count_observation_correct(observation)
