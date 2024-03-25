@@ -2,7 +2,7 @@ import itertools
 import os
 import random
 from dataclasses import dataclass
-from typing import Union, Optional
+from typing import Optional, Union
 
 import compiler_gym
 import numpy as np
@@ -11,8 +11,9 @@ import torch
 from compiler_gym.datasets import FilesDataset
 from sklearn.model_selection import train_test_split
 
-from config import TrainConfig, MODELS_DIR, WANDB_PROJECT_NAME
-from dqn.dqn import SimpleDQNAgent, DoubleDQNAgent, TwinDQNAgent, LstmDQNAgent, DQNAgent
+from config import MODELS_DIR, WANDB_PROJECT_NAME, TrainConfig
+from dqn.dqn import (DoubleDQNAgent, DQNAgent, LstmDQNAgent, SimpleDQNAgent,
+                     TwinDQNAgent)
 
 
 @dataclass
@@ -40,6 +41,7 @@ def get_agent(config: TrainConfig, device, policy_net_path: Optional[str]) -> DQ
             n_actions=len(config.actions),
             config=config,
             device=device,
+            enable_dueling_dqn=config.enable_dueling_dqn,
         )
     elif config.algorithm == "DoubleDQN":
         agent = DoubleDQNAgent(
@@ -47,6 +49,7 @@ def get_agent(config: TrainConfig, device, policy_net_path: Optional[str]) -> DQ
             n_actions=len(config.actions),
             config=config,
             device=device,
+            enable_dueling_dqn=config.enable_dueling_dqn,
         )
     elif config.algorithm == "TwinDQN":
         agent = TwinDQNAgent(
@@ -54,8 +57,12 @@ def get_agent(config: TrainConfig, device, policy_net_path: Optional[str]) -> DQ
             n_actions=len(config.actions),
             config=config,
             device=device,
+            enable_dueling_dqn=config.enable_dueling_dqn,
         )
     elif config.algorithm == "LstmDQN":
+        if config.enable_dueling_dqn:
+            raise NotImplemented("LSTM + Dueling")
+
         agent = LstmDQNAgent(
             observation_size=config.observation_size,
             n_actions=len(config.actions),
