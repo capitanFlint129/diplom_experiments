@@ -12,7 +12,7 @@ MODELS_DIR = "_models"
 @dataclass
 class TrainConfig:
     # Algorithm section
-    algorithm: str = "DoubleDQN"
+    algorithm: str = "DQN"
     enable_dueling_dqn: bool = False
     gamma: float = 0.9
     epsilon: float = 1.0  # The starting value for epsilon
@@ -25,8 +25,8 @@ class TrainConfig:
     tau: float = 0.99  # soft update coefficient
     batch_size: int = 32  # The batch size
     max_mem_size: int = 100000  # The maximum memory size
-    episodes: int = 4000  # The number of episodes used to learn
-    validation_interval: int = 500  # The number of episodes used to learn
+    episodes: int = 8000  # The number of episodes used to learn
+    validation_interval: int = 2000  # The number of episodes used to learn
     episode_length: int = 40  # The (MAX) number of transformation passes per episode
     patience: int = 10  # The (MAX) number of times to apply a series of transformations without observable change
     val_patience: int = 5
