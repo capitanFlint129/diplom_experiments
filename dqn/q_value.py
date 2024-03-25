@@ -28,6 +28,35 @@ class DQN(nn.Module):
         return self.q_net(observation)
 
 
+class GradScalerFunctional(torch.autograd.Function):
+    """
+    A torch.autograd.Function works as Identity on forward pass
+    and scales the gradient by scale_factor on backward pass.
+    """
+    @staticmethod
+    def forward(ctx, input, scale_factor):
+        ctx.scale_factor = scale_factor
+        return input
+
+    @staticmethod
+    def backward(ctx, grad_output):
+        scale_factor = ctx.scale_factor
+        grad_input = grad_output * scale_factor
+        return grad_input, None
+
+
+class GradScaler(nn.Module):
+    """
+    An nn.Module incapsulating GradScalerFunctional
+    """
+    def __init__(self, scale_factor: float):
+        super().__init__()
+        self.scale_factor = scale_factor
+
+    def forward(self, x):
+        return GradScalerFunctional.apply(x, self.scale_factor)
+
+
 class DuelingDQN(nn.Module):
     def __init__(
         self,
@@ -45,6 +74,8 @@ class DuelingDQN(nn.Module):
             nn.Linear(fc_dims, fc_dims),
         )
 
+        self.grad_scaler = GradScaler(1 / 2 ** 0.5)
+
         self.adv_stream = nn.Sequential(
             nn.Linear(fc_dims, fc_dims),
             nn.ReLU(),
@@ -58,6 +89,7 @@ class DuelingDQN(nn.Module):
 
     def forward(self, observation: torch.Tensor) -> torch.Tensor:
         x = self.q_net(observation)
+        x = self.grad_scaler(x)
         adv = self.adv_stream(x)
         adv_mean = torch.mean(adv, dim=1)[..., None]
         value = self.value_stream(x)

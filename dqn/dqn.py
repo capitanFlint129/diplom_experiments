@@ -1,5 +1,5 @@
 import sys
-from abc import abstractmethod, ABC
+from abc import ABC, abstractmethod
 from typing import Optional
 
 import numpy as np
@@ -8,8 +8,8 @@ import torch.nn as nn
 import torch.optim as optim
 
 from config import TrainConfig
-from dqn.q_value import DQN, DQNLSTM
-from dqn.replay_buffer import ReplayBuffer, DQNTrainBatch, ReplayBufferForLSTM
+from dqn.q_value import DQN, DQNLSTM, DuelingDQN
+from dqn.replay_buffer import DQNTrainBatch, ReplayBuffer, ReplayBufferForLSTM
 
 
 class DQNAgent(ABC):
@@ -57,7 +57,7 @@ class DQNAgent(ABC):
 
 class SimpleDQNAgent(DQNAgent):
     def __init__(
-        self, observation_size: int, n_actions: int, config: TrainConfig, device
+        self, observation_size: int, n_actions: int, config: TrainConfig, device, enable_dueling_dqn: bool
     ):
         self._config = config
         self._replay_buffer = ReplayBuffer(
@@ -66,16 +66,28 @@ class SimpleDQNAgent(DQNAgent):
         )
         self.epsilon = config.epsilon
         self._n_actions = n_actions
-        self.policy_net = DQN(
-            observation_size=observation_size,
-            fc_dims=config.fc_dim,
-            n_actions=self._n_actions,
-        ).to(device)
-        self.target_net = DQN(
-            observation_size=observation_size,
-            fc_dims=config.fc_dim,
-            n_actions=self._n_actions,
-        ).to(device)
+        if enable_dueling_dqn:
+            self.policy_net = DuelingDQN(
+                observation_size=observation_size,
+                fc_dims=config.fc_dim,
+                n_actions=self._n_actions,
+            ).to(device)
+            self.target_net = DuelingDQN(
+                observation_size=observation_size,
+                fc_dims=config.fc_dim,
+                n_actions=self._n_actions,
+            ).to(device)
+        else:
+            self.policy_net = DQN(
+                observation_size=observation_size,
+                fc_dims=config.fc_dim,
+                n_actions=self._n_actions,
+            ).to(device)
+            self.target_net = DQN(
+                observation_size=observation_size,
+                fc_dims=config.fc_dim,
+                n_actions=self._n_actions,
+            ).to(device)
         self._actions_taken = []
         self._learn_step_counter = 0
         self._device = device
@@ -230,7 +242,7 @@ class DoubleDQNAgent(SimpleDQNAgent):
 
 class _TwinDQNSubAgent:
     def __init__(
-        self, observation_size: int, n_actions: int, config: TrainConfig, device
+        self, observation_size: int, n_actions: int, config: TrainConfig, device, enable_dueling_dqn: bool
     ):
         self._config = config
         self._replay_buffer = ReplayBuffer(
@@ -239,11 +251,18 @@ class _TwinDQNSubAgent:
         )
         self.epsilon = config.epsilon
         self._n_actions = n_actions
-        self.policy_net = DQN(
+        if enable_dueling_dqn:
+            self.policy_net = DuelingDQN(
             observation_size=observation_size,
             fc_dims=config.fc_dim,
             n_actions=self._n_actions,
         ).to(device)
+        else:
+            self.policy_net = DQN(
+                observation_size=observation_size,
+                fc_dims=config.fc_dim,
+                n_actions=self._n_actions,
+            ).to(device)
         self._actions_taken = []
         self._learn_step_counter = 0
         self._device = device
@@ -359,7 +378,7 @@ class _TwinDQNSubAgent:
 
 class TwinDQNAgent(DQNAgent):
     def __init__(
-        self, observation_size: int, n_actions: int, config: TrainConfig, device
+        self, observation_size: int, n_actions: int, config: TrainConfig, device, enable_dueling_dqn: bool
     ):
         self._config = config
         self.tmp_net = DQN(
@@ -367,8 +386,8 @@ class TwinDQNAgent(DQNAgent):
             fc_dims=config.fc_dim,
             n_actions=n_actions,
         ).to(device)
-        self._agent_1 = _TwinDQNSubAgent(observation_size, n_actions, config, device)
-        self._agent_2 = _TwinDQNSubAgent(observation_size, n_actions, config, device)
+        self._agent_1 = _TwinDQNSubAgent(observation_size, n_actions, config, device, enable_dueling_dqn)
+        self._agent_2 = _TwinDQNSubAgent(observation_size, n_actions, config, device, enable_dueling_dqn)
         self._cur_agent = self._agent_1
 
     def get_epsilon(self) -> float:
