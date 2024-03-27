@@ -63,7 +63,7 @@ class TrainConfig:
             # "prev-3",
         ]
     )
-    observation_size: int = 208
+    observation_size: int = 370
     reward_space: str = "IrInstructionCountOz"
     actions: list = field(
         default_factory=lambda: COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
