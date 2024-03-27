@@ -57,10 +57,10 @@ class TrainConfig:
     )
     observation_modifiers: list = field(
         default_factory=lambda: [
-            # "start-IR2Vec",
+            "start-IR2Vec",
             # "remains-counter",
             "remains-counter-normalized",
-            "prev-3",
+            # "prev-3",
         ]
     )
     observation_size: int = 208
