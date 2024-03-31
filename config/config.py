@@ -6,7 +6,7 @@ from action_config import *
 WANDB_PROJECT_NAME = "trash"
 COMPILER_GYM_PATH = "~/.local/share/compiler_gym"
 LLVM_BINS_PATH = os.path.join(COMPILER_GYM_PATH, "llvm-v0/bin")
-MODELS_DIR = "_models"
+MODELS_DIR = "../_models"
 
 
 @dataclass

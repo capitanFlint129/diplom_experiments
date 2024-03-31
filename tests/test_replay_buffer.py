@@ -3,7 +3,7 @@ import pytest
 import torch
 
 from dqn.replay_buffer import ReplayBuffer, ReplayBufferForLSTM, DQNTrainBatch
-from config import TrainConfig
+from config.config import TrainConfig
 
 
 @pytest.fixture

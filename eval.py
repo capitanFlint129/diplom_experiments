@@ -2,9 +2,10 @@ import os.path
 
 import torch
 
-from config import TrainConfig
+from config.config import MODELS_DIR, WANDB_PROJECT_NAME
+from config.config import TrainConfig
 from dqn.train import validate
-from train import make_env, fix_seed, MODELS_DIR, WANDB_PROJECT_NAME
+from train import make_env, fix_seed
 from utils import get_agent, prepare_datasets, get_last_model_wandb_naming
 
 if __name__ == "__main__":

@@ -5,7 +5,7 @@ import tempfile
 import ir2vec
 import numpy as np
 
-from config import TrainConfig
+from config.config import TrainConfig
 
 RAW_IR_OBSERVATION_NAME = "Ir"
 

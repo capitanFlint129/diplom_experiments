@@ -4,7 +4,7 @@ from typing import Optional, Any
 import numpy as np
 import scipy
 
-from config import TrainConfig
+from config.config import TrainConfig
 from utils import BinnedStatistic
 
 

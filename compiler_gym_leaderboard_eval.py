@@ -5,7 +5,7 @@ from absl import app
 from compiler_gym.envs import LlvmEnv
 from compiler_gym.leaderboard.llvm_instcount import eval_llvm_instcount_policy
 
-from config import MODELS_DIR, WANDB_PROJECT_NAME, TrainConfig
+from config.config import MODELS_DIR, WANDB_PROJECT_NAME, TrainConfig
 from dqn.train import rollout
 from utils import fix_seed, get_agent, get_last_model_wandb_naming
 

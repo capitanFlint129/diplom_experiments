@@ -3,7 +3,7 @@ import subprocess
 import tempfile
 from typing import Any, Union
 
-from config import LLVM_BINS_PATH
+from config.config import LLVM_BINS_PATH
 
 OPT_UTIL_NAME = "opt"
 OZ_FLAG = "-Oz"
@@ -64,7 +64,7 @@ def get_full_util_path(util_name: str) -> str:
 
 
 # if __name__ == "__main__":
-#     from config import TrainConfig
+#     from config.config import TrainConfig
 #     from utils import make_env, prepare_datasets
 #
 #     config = TrainConfig()

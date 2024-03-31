@@ -10,7 +10,7 @@ from compiler_gym.util.statistics import arithmetic_mean, geometric_mean
 from compiler_gym.util.timer import Timer
 from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 
-from config import TrainConfig
+from config.config import TrainConfig
 from dqn.dqn import DQNAgent
 from dqn.train_utils import EpisodeData, get_binned_statistics, StepResult, TrainHistory
 from observation.utils import get_observation, ObservationModifier
