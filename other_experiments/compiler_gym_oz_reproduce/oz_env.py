@@ -2,11 +2,7 @@ import os
 import subprocess
 import tempfile
 from typing import Any, Union
-from compiler_gym.util.timer import Timer
 
-import pandas as pd
-
-from check_experiments.actions import OZ_FLAGS_SEQUENCE
 from config import LLVM_BINS_PATH
 
 OPT_UTIL_NAME = "opt"

@@ -1,6 +1,8 @@
 import compiler_gym
 
-from check_experiments.actions import OZ_FLAGS_SEQUENCE_NO_ANALYTICAL
+from check_experiments.compiler_gym_oz_reproduce.actions import (
+    OZ_FLAGS_SEQUENCE_NO_ANALYTICAL,
+)
 from utils import prepare_datasets
 
 # OZ_FLAGS_SEQUENCE = [

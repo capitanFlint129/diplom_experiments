@@ -19,7 +19,7 @@ llvm-as < /dev/null | opt -Oz -disable-output -debug-pass=Arguments
 # Команда из Anghabench
 
 ```bash
-opt -mem2reg -O0 -instcount -load VarCounter.so -VarCounter -load EdgeCounter.so -EdgeCounter -stats -S /home/flint/diplom/experiments/check_experiments/file.ll -disable-output 2>> stats.txt
+opt -mem2reg -O0 -instcount -load VarCounter.so -VarCounter -load EdgeCounter.so -EdgeCounter -stats -S /home/flint/diplom/experiments/other_experiments/file.ll -disable-output 2>> stats.txt
 ```
 
 # OZ список пасов (с аналитическими)
