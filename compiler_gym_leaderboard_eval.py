@@ -21,7 +21,7 @@ if __name__ == "__main__":
     last_model_filename = get_last_model_wandb_naming(models_dir)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(f"Load model from {last_model_filename}\n")
-    
+
     agent = get_agent(config, device, os.path.join(models_dir, last_model_filename))
     config = TrainConfig()
     fix_seed(config.random_state)

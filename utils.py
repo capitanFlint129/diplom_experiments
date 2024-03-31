@@ -12,8 +12,7 @@ from compiler_gym.datasets import FilesDataset
 from sklearn.model_selection import train_test_split
 
 from config.config import MODELS_DIR, WANDB_PROJECT_NAME, TrainConfig
-from dqn.dqn import (DoubleDQNAgent, DQNAgent, LstmDQNAgent, SimpleDQNAgent,
-                     TwinDQNAgent)
+from dqn.dqn import DoubleDQNAgent, DQNAgent, LstmDQNAgent, SimpleDQNAgent, TwinDQNAgent
 
 
 @dataclass
