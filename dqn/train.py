@@ -246,6 +246,8 @@ def rollout(
         env, config.observation_modifiers, config.episode_length
     )
     observation = observation_modifier.modify(base_observation, episode_data.remains)
+    best_reward = float("-inf")
+    best_sequence = []
     while (
         not episode_data.done
         and episode_data.actions_count < config.episode_length
@@ -277,7 +279,12 @@ def rollout(
             step_result=step_result,
             loss_value=None,
         )
-
+        if episode_data.total_reward > best_reward:
+            best_reward = episode_data.total_reward
+            best_sequence.extend(step_result.flags)
+    if config.eval_with_bestsequence:
+        episode_data.total_reward = best_reward
+        episode_data.chosen_flags = best_sequence
     return episode_data
 
 

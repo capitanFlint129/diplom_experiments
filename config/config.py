@@ -31,6 +31,7 @@ class TrainConfig:
     patience: int = 5  # The (MAX) number of times to apply a series of transformations without observable change
     val_patience: int = 5
     eval_with_forbidden_actions: bool = True
+    eval_with_bestsequence: bool = True
     learn_memory_threshold: int = max(batch_size, 32)
     enable_soft_update: bool = False
     replace_period: int = 500
