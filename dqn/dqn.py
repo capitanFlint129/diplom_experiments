@@ -209,8 +209,7 @@ class SimpleDQNAgent(DQNAgent):
         q_values_current = self.policy_net.forward(dqn_batch.state_batch)
         q_current = q_values_current[batch_index, dqn_batch.action_batch]
 
-        with torch.no_grad():
-            q_next = self.target_net.forward(dqn_batch.new_state_batch).max(dim=1)[0]
+        q_next = self.target_net.forward(dqn_batch.new_state_batch).max(dim=1)[0]
         q_next[dqn_batch.terminal_batch] = 0.0
         q_target = dqn_batch.reward_batch + self._config.gamma * q_next
         assert (
