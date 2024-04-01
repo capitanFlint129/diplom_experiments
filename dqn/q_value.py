@@ -5,6 +5,36 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
+# class DQN(nn.Module):
+#     def __init__(
+#         self,
+#         observation_size: int,
+#         fc_dims: int,
+#         n_actions: int,
+#     ):
+#         super(DQN, self).__init__()
+#         self.input_dims = observation_size
+#         self.fc1_dims = fc_dims
+#         self.fc2_dims = fc_dims
+#         self.fc3_dims = fc_dims
+#         self.n_actions = n_actions
+#         self.fc1 = nn.Linear(self.input_dims, self.fc1_dims)
+#         self.fc2 = nn.Linear(self.fc1_dims, self.fc2_dims)
+#         self.fc3 = nn.Linear(self.fc2_dims, self.fc3_dims)
+#         self.fc4 = nn.Linear(self.fc3_dims, self.n_actions)
+#         self.optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+#         self.loss = nn.SmoothL1Loss()  # try huber loss
+#         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+#         self.to(self.device)
+#
+#     def forward(self, state):
+#         x = F.relu(self.fc1(state))
+#         x = F.relu(self.fc2(x))
+#         x = F.relu(self.fc3(x))
+#         actions = self.fc4(x)
+#         return actions
+
+
 class DQN(nn.Module):
     def __init__(
         self,
@@ -33,6 +63,7 @@ class GradScalerFunctional(torch.autograd.Function):
     A torch.autograd.Function works as Identity on forward pass
     and scales the gradient by scale_factor on backward pass.
     """
+
     @staticmethod
     def forward(ctx, input, scale_factor):
         ctx.scale_factor = scale_factor
@@ -49,6 +80,7 @@ class GradScaler(nn.Module):
     """
     An nn.Module incapsulating GradScalerFunctional
     """
+
     def __init__(self, scale_factor: float):
         super().__init__()
         self.scale_factor = scale_factor
@@ -74,7 +106,7 @@ class DuelingDQN(nn.Module):
             nn.Linear(fc_dims, fc_dims),
         )
 
-        self.grad_scaler = GradScaler(1 / 2 ** 0.5)
+        self.grad_scaler = GradScaler(1 / 2**0.5)
 
         self.adv_stream = nn.Sequential(
             nn.Linear(fc_dims, fc_dims),

@@ -6,14 +6,14 @@ from config.action_config import *
 WANDB_PROJECT_NAME = "trash"
 COMPILER_GYM_PATH = "~/.local/share/compiler_gym"
 LLVM_BINS_PATH = os.path.join(COMPILER_GYM_PATH, "llvm-v0/bin")
-MODELS_DIR = "../_models"
+MODELS_DIR = "_models"
 
 
 @dataclass
 class TrainConfig:
     # Algorithm section
     algorithm: str = "DQN"
-    enable_dueling_dqn: bool = True
+    enable_dueling_dqn: bool = False
     gamma: float = 0.9
     epsilon: float = 1.0  # The starting value for epsilon
     epsilon_end: float = 0.05  # The ending value for epsilon
@@ -59,12 +59,12 @@ class TrainConfig:
     observation_modifiers: list = field(
         default_factory=lambda: [
             # "start-IR2Vec",
-            # "remains-counter",
+            "remains-counter",
             # "remains-counter-normalized",
             # "prev-2",
         ]
     )
-    observation_size: int = 69
+    observation_size: int = 70
     reward_space: str = "IrInstructionCountOz"
     actions: list = field(
         default_factory=lambda: COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET

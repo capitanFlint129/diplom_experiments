@@ -65,6 +65,7 @@ def train(
                     observation_modifier=observation_modifier,
                     forbidden_actions=episode_data.forbidden_actions,
                     enable_epsilon_greedy=True,
+                    eval_mode=False,
                 )
                 agent.store_transition(
                     prev_action=prev_action,
@@ -265,6 +266,7 @@ def rollout(
                 observation_modifier=observation_modifier,
                 forbidden_actions=episode_data.forbidden_actions,
                 enable_epsilon_greedy=False,
+                eval_mode=True,
             )
         else:
             step_result = episode_step(
@@ -276,6 +278,7 @@ def rollout(
                 observation_modifier=observation_modifier,
                 enable_epsilon_greedy=False,
                 forbidden_actions=None,
+                eval_mode=True,
             )
         episode_data.update_after_episode_step(
             step_result=step_result,
@@ -299,11 +302,13 @@ def episode_step(
     observation_modifier: ObservationModifier,
     forbidden_actions: Optional[set[int]],
     enable_epsilon_greedy: bool,
+    eval_mode: bool,
 ) -> StepResult:
     action = agent.choose_action(
         observation,
         enable_epsilon_greedy=enable_epsilon_greedy,
         forbidden_actions=forbidden_actions,
+        eval_mode=eval_mode,
     )
     flags = config.actions[action]
     if flags == "noop":

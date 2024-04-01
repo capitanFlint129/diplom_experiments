@@ -35,6 +35,7 @@ class DQNAgent(ABC):
         observation: np.ndarray,
         enable_epsilon_greedy: bool,
         forbidden_actions: set[int],
+        eval_mode: bool,
     ) -> int:
         pass
 
@@ -99,8 +100,8 @@ class SimpleDQNAgent(DQNAgent):
 
         self._optimizer = optim.Adam(self.policy_net.parameters(), lr=config.lr)
         self._loss = nn.MSELoss()
-        self.policy_net.eval()
-        self.target_net.eval()
+        # self.policy_net.eval()
+        # self.target_net.eval()
 
     def get_epsilon(self) -> float:
         return self.epsilon
@@ -120,33 +121,49 @@ class SimpleDQNAgent(DQNAgent):
         observation: np.ndarray,
         enable_epsilon_greedy: bool,
         forbidden_actions: set[int],
+        eval_mode: bool,
     ) -> int:
-        if forbidden_actions is None:
-            forbidden_actions = set()
-        if len(forbidden_actions) >= self._n_actions:
-            print(
-                "Warning: all actions are forbidden, choosing a random action",
-                file=sys.stderr,
-            )
-            return np.random.choice(
-                list(set(range(self._n_actions)) - forbidden_actions)
-            )
-        if np.random.random() <= self.epsilon and enable_epsilon_greedy:
-            action = np.random.choice(
-                list(set(range(self._n_actions)) - forbidden_actions)
-            )
-        else:
+        if eval_mode:
             observation = observation.astype(np.float32)
-            actions_q = self.policy_net(
-                torch.tensor(observation, device=self._device)[None, ...]
-            )
-            actions_q = actions_q.squeeze()
+            state = torch.tensor(observation[None, ...]).to(self._device)
+            actions = self.policy_net.forward(state)
+            while (
+                torch.argmax(actions).item() in self._actions_taken
+                and actions.max() > 0
+            ):
+                actions[0][torch.argmax(actions).item()] = 0.0
+            action = torch.argmax(actions).item()
+            self._actions_taken.append(action)
+            return action
+        else:
+            if forbidden_actions is None:
+                forbidden_actions = set()
+            if len(forbidden_actions) >= self._n_actions:
+                print(
+                    "Warning: all actions are forbidden, choosing a random action",
+                    file=sys.stderr,
+                )
+                return np.random.choice(
+                    list(set(range(self._n_actions)) - forbidden_actions)
+                )
+            if np.random.random() <= self.epsilon and enable_epsilon_greedy:
+                action = np.random.choice(
+                    list(set(range(self._n_actions)) - forbidden_actions)
+                )
+            else:
+                observation = observation.astype(np.float32)
+                actions_q = self.policy_net(
+                    torch.tensor(observation, device=self._device)[None, ...]
+                )
+                actions_q = actions_q.squeeze()
 
-            allowed_actions = list(set(range(self._n_actions)) - forbidden_actions)
-            action = allowed_actions[torch.argmax(actions_q[allowed_actions]).item()]
+                allowed_actions = list(set(range(self._n_actions)) - forbidden_actions)
+                action = allowed_actions[
+                    torch.argmax(actions_q[allowed_actions]).item()
+                ]
 
-        self._actions_taken.append(action)
-        return action
+            self._actions_taken.append(action)
+            return action
 
     def learn(self) -> None:
         # self.policy_net.train()
