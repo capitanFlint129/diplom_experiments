@@ -215,9 +215,7 @@ def validate(
     geomean_reward = geometric_mean(
         list(itertools.chain.from_iterable(rewards.values()))
     )
-    mean_reward = arithmetic_mean(
-        list(itertools.chain.from_iterable(rewards.values()))
-    )
+    mean_reward = arithmetic_mean(list(itertools.chain.from_iterable(rewards.values())))
     geomean_reward_per_dataset = {
         dataset_name: geometric_mean(dataset_rewards)
         for dataset_name, dataset_rewards in rewards.items()
