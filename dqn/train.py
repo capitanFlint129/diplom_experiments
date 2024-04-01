@@ -215,6 +215,9 @@ def validate(
     geomean_reward = geometric_mean(
         list(itertools.chain.from_iterable(rewards.values()))
     )
+    mean_reward = arithmetic_mean(
+        list(itertools.chain.from_iterable(rewards.values()))
+    )
     geomean_reward_per_dataset = {
         dataset_name: geometric_mean(dataset_rewards)
         for dataset_name, dataset_rewards in rewards.items()
@@ -226,12 +229,13 @@ def validate(
         rewards_sum_by_codesize_bins_per_dataset,
     ) = get_binned_statistics(binned_statistic_data)
     return ValidationResult(
-        geomean_reward,
-        mean_geomean_reward,
-        geomean_reward_per_dataset,
-        mean_walltime,
-        rewards_sum_by_codesize_bins,
-        rewards_sum_by_codesize_bins_per_dataset,
+        geomean_reward=geomean_reward,
+        mean_reward=mean_reward,
+        mean_geomean_reward=mean_geomean_reward,
+        geomean_reward_per_dataset=geomean_reward_per_dataset,
+        mean_walltime=mean_walltime,
+        rewards_sum_by_codesize_bins=rewards_sum_by_codesize_bins,
+        rewards_sum_by_codesize_bins_per_dataset=rewards_sum_by_codesize_bins_per_dataset,
     )
 
 
