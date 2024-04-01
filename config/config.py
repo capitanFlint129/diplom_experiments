@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 from config.action_config import *
 
-WANDB_PROJECT_NAME = "trash"
+WANDB_PROJECT_NAME = "DQN_fix_results_baseline_reproduced"
 COMPILER_GYM_PATH = "~/.local/share/compiler_gym"
 LLVM_BINS_PATH = os.path.join(COMPILER_GYM_PATH, "llvm-v0/bin")
 MODELS_DIR = "_models"
