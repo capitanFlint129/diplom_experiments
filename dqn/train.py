@@ -67,18 +67,23 @@ def train(
                     enable_epsilon_greedy=True,
                     eval_mode=False,
                 )
+                loss_value = agent.learn()
+                episode_data.update_after_episode_step(
+                    step_result=step_result,
+                    loss_value=loss_value,
+                )
+                done = (
+                    step_result.done
+                    or episode_data.actions_count >= config.episode_length - 1
+                    or episode_data.patience_count > config.patience
+                )
                 agent.store_transition(
                     prev_action=prev_action,
                     action=step_result.action,
                     observation=observation,
                     reward=step_result.reward,
                     new_observation=step_result.new_observation,
-                    done=step_result.done,
-                )
-                loss_value = agent.learn()
-                episode_data.update_after_episode_step(
-                    step_result=step_result,
-                    loss_value=loss_value,
+                    done=done,
                 )
                 observation = step_result.new_observation
                 prev_action = step_result.action

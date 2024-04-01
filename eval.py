@@ -37,3 +37,7 @@ if __name__ == "__main__":
     env.close()
     print(f"Geomean reward: {test_result.geomean_reward}")
     print(f"Mean walltime: {test_result.mean_walltime}")
+
+
+# Geomean reward: 1.0302763592179391
+# Mean walltime: 0.8716952489769977
