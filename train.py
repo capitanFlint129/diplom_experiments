@@ -84,6 +84,10 @@ def main():
     run.summary[
         "test_geomean_no_actions_masking"
     ] = test_result_no_actions_masking.geomean_reward
+    run.summary["test_mean_reward"] = test_result.mean_reward
+    run.summary[
+        "test_geomean_no_actions_masking"
+    ] = test_result_no_actions_masking.mean_reward
     run.summary["test_mean_walltime"] = test_result.mean_walltime
     for (
         dataset_name,

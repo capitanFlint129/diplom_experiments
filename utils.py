@@ -26,6 +26,7 @@ class BinnedStatistic:
 @dataclass
 class ValidationResult:
     geomean_reward: float
+    mean_reward: float
     mean_geomean_reward: float
     geomean_reward_per_dataset: dict[str, float]
     mean_walltime: float
