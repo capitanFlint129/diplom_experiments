@@ -149,8 +149,8 @@ class SimpleDQNAgent(DQNAgent):
         return action
 
     def learn(self) -> None:
-        self.policy_net.train()
-        self.target_net.eval()
+        # self.policy_net.train()
+        # self.target_net.eval()
         if (
             self._replay_buffer.get_ready_data_size()
             < self._config.learn_memory_threshold
@@ -169,8 +169,8 @@ class SimpleDQNAgent(DQNAgent):
             self.epsilon -= self._config.epsilon_dec
         else:
             self.epsilon = self._config.epsilon_end
-        self.policy_net.eval()
-        self.target_net.eval()
+        # self.policy_net.eval()
+        # self.target_net.eval()
         return loss_val
 
     def store_transition(
@@ -209,9 +209,10 @@ class SimpleDQNAgent(DQNAgent):
         q_values_current = self.policy_net.forward(dqn_batch.state_batch)
         q_current = q_values_current[batch_index, dqn_batch.action_batch]
 
-        q_next = self.target_net.forward(dqn_batch.new_state_batch).max(dim=1)[0]
-        q_next[dqn_batch.terminal_batch] = 0.0
-        q_target = dqn_batch.reward_batch + self._config.gamma * q_next
+        with torch.no_grad():
+            q_next = self.target_net.forward(dqn_batch.new_state_batch).max(dim=1)[0]
+            q_next[dqn_batch.terminal_batch] = 0.0
+            q_target = dqn_batch.reward_batch + self._config.gamma * q_next
         assert (
             q_target.shape == q_current.shape
             and len(q_target.shape) == 1
