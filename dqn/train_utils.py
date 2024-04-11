@@ -12,6 +12,7 @@ from utils import BinnedStatistic
 class StepResult:
     action: int
     reward: float
+    value: float
     new_observation: np.ndarray
     new_base_observation: np.ndarray
     flags: list[str]
@@ -27,6 +28,7 @@ class EpisodeData:
     actions_count: int = 0
     patience_count: int = 0
     losses: list[float] = field(default_factory=lambda: [])
+    values: list[float] = field(default_factory=lambda: [])
     chosen_flags: list[str] = field(default_factory=lambda: [])
     forbidden_actions: set[int] = field(default_factory=lambda: set())
     remains: int = TrainConfig.episode_length
@@ -53,6 +55,7 @@ class EpisodeData:
 
         if loss_value is not None:
             self.losses.append(loss_value)
+        self.values.append(step_result.value)
 
 
 @dataclass
@@ -60,7 +63,7 @@ class TrainHistory:
     logging_history_size: int
     rewards_history: list[float] = field(default_factory=lambda: [])
     negative_rewards_history: list[float] = field(default_factory=lambda: [])
-    best_val_geomean: float = 0
+    best_val_mean: float = 0
 
     def get_average_rewards_sum(self, log_size: Optional[int] = None) -> float:
         if log_size is None:

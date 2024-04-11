@@ -12,7 +12,7 @@ from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 
 from config.config import TrainConfig
 from dqn.dqn import DQNAgent
-from dqn.train_utils import EpisodeData, get_binned_statistics, StepResult, TrainHistory
+from dqn.train_utils import EpisodeData, StepResult, TrainHistory
 from observation.utils import get_observation, ObservationModifier
 from utils import save_model, ValidationResult
 
@@ -23,7 +23,7 @@ def train(
     train_env: CompilerEnv,
     config: TrainConfig,
     train_benchmarks: list,
-    val_benchmarks: dict,
+    val_benchmarks: list,
     enable_validation: bool,
     enable_validation_logs: bool = False,
 ) -> None:
@@ -104,10 +104,10 @@ def train(
             episode_i % config.validation_interval == 0
             or episode_i == config.episodes - 1
         ) and enable_validation:
-            train_history.best_val_geomean = _validation_during_train(
+            train_history.best_val_mean = _validation_during_train(
                 run=run,
                 episode_i=episode_i,
-                best_val_geomean=train_history.best_val_geomean,
+                best_val_mean=train_history.best_val_mean,
                 agent=agent,
                 env=validation_env,
                 config=config,
@@ -123,11 +123,11 @@ def train(
 def _validation_during_train(
     run,
     episode_i: int,
-    best_val_geomean: float,
+    best_val_mean: float,
     agent: DQNAgent,
     env: CompilerEnv,
     config: TrainConfig,
-    val_benchmarks: dict,
+    val_benchmarks: list,
     enable_logs: bool = False,
 ) -> float:
     validation_result = validate(
@@ -138,23 +138,21 @@ def _validation_during_train(
         enable_logs=enable_logs,
         use_actions_masking=config.eval_with_forbidden_actions,
     )
-    log_data = {
-        f"val_geomean_reward_{dataset_name}": geomean_reward
-        for dataset_name, geomean_reward in validation_result.geomean_reward_per_dataset.items()
-    }
+    log_data = {}
     log_data["val_geomean_reward"] = validation_result.geomean_reward
+    log_data["val_mean_reward"] = validation_result.mean_reward
     run.log(
         log_data,
         step=episode_i,
     )
-    if validation_result.geomean_reward > best_val_geomean:
+    if validation_result.mean_reward > best_val_mean:
         print(
-            f"Save model. New best geomean: {validation_result.geomean_reward},"
-            f" previous best geomean: {best_val_geomean}"
+            f"Save model. New best mean: {validation_result.mean_reward},"
+            f" previous best mean: {best_val_mean}"
         )
         save_model(agent.get_policy_net_state_dict(), f"{run.name}", replace=True)
-        return validation_result.geomean_reward
-    return best_val_geomean
+        return validation_result.mean_reward
+    return best_val_mean
 
 
 def _log_episode_results(
@@ -184,6 +182,7 @@ def _log_episode_results(
             "average_episode_loss": np.mean(episode_data.losses or [0]),
             "total_episode_reward": episode_data.total_reward,
             "episode_length": episode_data.actions_count,
+            "mean_values": np.mean(episode_data.values),
         },
         step=episode_i,
     )
@@ -193,53 +192,34 @@ def validate(
     agent,
     env,
     config: TrainConfig,
-    val_benchmarks: dict[str, list],
+    val_benchmarks: list,
     use_actions_masking: bool,
     enable_logs: bool = False,
 ) -> ValidationResult:
-    rewards = {}
     times = []
-    binned_statistic_data = {}
-    for dataset_name, benchmarks in val_benchmarks.items():
-        codesize = []
-        rewards[dataset_name] = []
-        for i, benchmark in enumerate(benchmarks):
-            env.reset(benchmark=benchmark)
-            codesize.append(env.observation["IrInstructionCount"])
-            with Timer() as timer:
-                episode_data = rollout(
-                    agent, env, config, use_actions_masking=use_actions_masking
-                )
-            rewards[dataset_name].append(episode_data.total_reward)
-            times.append(timer.time)
-            if enable_logs:
-                print(
-                    f"{i} - {benchmark} - reward: {episode_data.total_reward} - time: {timer.time} - actions: {' '.join(episode_data.chosen_flags)}"
-                )
+    codesize = []
+    rewards = []
+    for i, benchmark in enumerate(val_benchmarks):
+        env.reset(benchmark=benchmark)
+        codesize.append(env.observation["IrInstructionCount"])
+        with Timer() as timer:
+            episode_data = rollout(
+                agent, env, config, use_actions_masking=use_actions_masking
+            )
+        rewards.append(episode_data.total_reward)
+        times.append(timer.time)
+        if enable_logs:
+            print(
+                f"{i} - {benchmark} - reward: {episode_data.total_reward} - time: {timer.time} - actions: {' '.join(episode_data.chosen_flags)}"
+            )
 
-        binned_statistic_data[dataset_name] = (codesize, rewards[dataset_name])
-    geomean_reward = geometric_mean(
-        list(itertools.chain.from_iterable(rewards.values()))
-    )
-    mean_reward = arithmetic_mean(list(itertools.chain.from_iterable(rewards.values())))
-    geomean_reward_per_dataset = {
-        dataset_name: geometric_mean(dataset_rewards)
-        for dataset_name, dataset_rewards in rewards.items()
-    }
+    geomean_reward = geometric_mean(rewards)
+    mean_reward = arithmetic_mean(rewards)
     mean_walltime = arithmetic_mean(times)
-    mean_geomean_reward = arithmetic_mean(list(geomean_reward_per_dataset.values()))
-    (
-        rewards_sum_by_codesize_bins,
-        rewards_sum_by_codesize_bins_per_dataset,
-    ) = get_binned_statistics(binned_statistic_data)
     return ValidationResult(
         geomean_reward=geomean_reward,
         mean_reward=mean_reward,
-        mean_geomean_reward=mean_geomean_reward,
-        geomean_reward_per_dataset=geomean_reward_per_dataset,
         mean_walltime=mean_walltime,
-        rewards_sum_by_codesize_bins=rewards_sum_by_codesize_bins,
-        rewards_sum_by_codesize_bins_per_dataset=rewards_sum_by_codesize_bins_per_dataset,
     )
 
 
@@ -309,7 +289,7 @@ def episode_step(
     enable_epsilon_greedy: bool,
     eval_mode: bool,
 ) -> StepResult:
-    action = agent.choose_action(
+    action, value = agent.choose_action(
         observation,
         enable_epsilon_greedy=enable_epsilon_greedy,
         forbidden_actions=forbidden_actions,
@@ -337,6 +317,7 @@ def episode_step(
     return StepResult(
         action=action,
         reward=reward,
+        value=value,
         new_observation=observation,
         new_base_observation=base_observation,
         flags=flags,

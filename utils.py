@@ -9,10 +9,12 @@ import numpy as np
 import plotly.graph_objects as go
 import torch
 from compiler_gym.datasets import FilesDataset
+from compiler_gym.envs import CompilerEnv
 from sklearn.model_selection import train_test_split
 
 from config.config import MODELS_DIR, WANDB_PROJECT_NAME, TrainConfig
 from dqn.dqn import DoubleDQNAgent, DQNAgent, LstmDQNAgent, SimpleDQNAgent, TwinDQNAgent
+from env.performance_optimization import RuntimePointEstimateReward, LlvmMcaEnv
 
 
 @dataclass
@@ -27,11 +29,7 @@ class BinnedStatistic:
 class ValidationResult:
     geomean_reward: float
     mean_reward: float
-    mean_geomean_reward: float
-    geomean_reward_per_dataset: dict[str, float]
     mean_walltime: float
-    rewards_sum_by_codesize_bins: BinnedStatistic
-    rewards_sum_by_codesize_bins_per_dataset: dict[str, BinnedStatistic]
 
 
 def get_agent(config: TrainConfig, device, policy_net_path: Optional[str]) -> DQNAgent:
@@ -106,36 +104,19 @@ def fix_seed(seed: int) -> None:
 
 def prepare_datasets(
     env,
-    datasets: list[Union[str, tuple[str, int]]],
     random_state: int,
-    train_val_test_split: bool,
-    skipped: set[str],
-) -> tuple[list, dict, dict]:
-    if skipped is None:
-        skipped = set()
-    if not train_val_test_split:
-        train_benchmarks = []
-        test_and_val_benchmarks = {}
-        for dataset_config in datasets:
-            benchmarks = _get_benchmarks(env, dataset_config, skipped)
-            test_and_val_benchmarks[dataset_config] = benchmarks
-            train_benchmarks.extend(test_and_val_benchmarks[dataset_config])
-        random.shuffle(train_benchmarks)
-        return train_benchmarks, test_and_val_benchmarks, test_and_val_benchmarks
-    train_benchmarks = []
-    val_benchmarks = {}
-    test_benchmarks = {}
-    for dataset_config in datasets:
-        benchmarks = _get_benchmarks(env, dataset_config, skipped)
-        train, test = train_test_split(
-            benchmarks, test_size=0.2, random_state=random_state
+) -> tuple[list, list, list]:
+    train_dataset_name = "benchmark://anghabench-v1"
+    train_dataset_size = 5000
+    test_dataset_name = "benchmark://cbench-v1"
+    benchmarks = list(
+        itertools.islice(
+            env.datasets[train_dataset_name].benchmarks(), train_dataset_size
         )
-        train, val = train_test_split(train, test_size=0.125, random_state=random_state)
-        train_benchmarks.extend(train)
-        val_benchmarks[dataset_config] = val
-        test_benchmarks[dataset_config] = test
-    # random.shuffle(train_benchmarks)
-    return train_benchmarks, val_benchmarks, test_benchmarks
+    )
+    train, val = train_test_split(benchmarks, test_size=0.05, random_state=random_state)
+    test = env.datasets[test_dataset_name]
+    return list(train), list(val), list(test)
 
 
 def get_last_model_wandb_naming(models_dir: str) -> str:

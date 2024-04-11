@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 
 from config.action_config import *
 
-WANDB_PROJECT_NAME = "trash"
+WANDB_PROJECT_NAME = "trash2"
 COMPILER_GYM_PATH = "~/.local/share/compiler_gym"
 LLVM_BINS_PATH = os.path.join(COMPILER_GYM_PATH, "llvm-v0/bin")
 MODELS_DIR = "_models"
@@ -37,15 +37,24 @@ class TrainConfig:
     replace_period: int = 500
 
     # General section
-    datasets: list = field(
-        default_factory=lambda: [
-            "benchmark://cbench-v1",
-            # ("benchmark://anghabench-v1", 2000),
-            # ("/home/flint/diplom/datasets/bc/angha_kernels_largest_10k/", 2000),
-            # "benchmark://mibench-v1",
-            # "benchmark://opencv-v0",
-        ]
-    )
+    # datasets: list = field(
+    #     default_factory=lambda: [
+    #         # "benchmark://cbench-v1",
+    #         ("benchmark://anghabench-v1", 5000),
+    #         "benchmark://mibench-v1",
+    #         # ("/home/flint/diplom/datasets/bc/angha_kernels_largest_10k/", 2000),
+    #         # "benchmark://opencv-v0",
+    #     ]
+    # )
+    # test_datasets: list = field(
+    #     default_factory=lambda: [
+    #         "benchmark://cbench-v1",
+    #         # ("benchmark://anghabench-v1", 2000),
+    #         # ("/home/flint/diplom/datasets/bc/angha_kernels_largest_10k/", 2000),
+    #         # "benchmark://mibench-v1",
+    #         # "benchmark://opencv-v0",
+    #     ]
+    # )
     train_val_test_split: bool = False
     skipped_benchmarks: list = field(default_factory=lambda: [])
     compiler_gym_env: str = "llvm-v0"

@@ -15,10 +15,7 @@ if __name__ == "__main__":
     fix_seed(config.random_state)
     _, _, test_benchmarks = prepare_datasets(
         env,
-        config.datasets,
         random_state=config.random_state,
-        train_val_test_split=config.train_val_test_split,
-        skipped=set(config.skipped_benchmarks),
     )
 
     models_dir = os.path.join(MODELS_DIR, WANDB_PROJECT_NAME)
