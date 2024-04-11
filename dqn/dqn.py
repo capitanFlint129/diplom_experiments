@@ -128,12 +128,13 @@ class SimpleDQNAgent(DQNAgent):
             torch.tensor(observation, device=self._device)[None, ...]
         )
         value = actions_q.max().item()
+        actions_q = actions_q.squeeze()
         if eval_mode:
             while (
                 torch.argmax(actions_q).item() in self._actions_taken
                 and actions_q.max() > 0
             ):
-                actions_q[0][torch.argmax(actions_q).item()] = 0.0
+                actions_q[torch.argmax(actions_q).item()] = 0.0
             action = torch.argmax(actions_q).item()
             self._actions_taken.append(action)
             return action, value
@@ -156,8 +157,6 @@ class SimpleDQNAgent(DQNAgent):
                     list(set(range(self._n_actions)) - forbidden_actions)
                 )
             else:
-                actions_q = actions_q.squeeze()
-
                 allowed_actions = list(set(range(self._n_actions)) - forbidden_actions)
                 action = allowed_actions[
                     torch.argmax(actions_q[allowed_actions]).item()
@@ -317,12 +316,13 @@ class _TwinDQNSubAgent:
             torch.tensor(observation, device=self._device)[None, ...]
         )
         value = actions_q.max().item()
+        actions_q = actions_q.squeeze()
         if eval_mode:
             while (
                 torch.argmax(actions_q).item() in self._actions_taken
                 and actions_q.max() > 0
             ):
-                actions_q[0][torch.argmax(actions_q).item()] = 0.0
+                actions_q[torch.argmax(actions_q).item()] = 0.0
             action = torch.argmax(actions_q).item()
             self._actions_taken.append(action)
             return action, value
@@ -345,8 +345,6 @@ class _TwinDQNSubAgent:
                     list(set(range(self._n_actions)) - forbidden_actions)
                 )
             else:
-                actions_q = actions_q.squeeze()
-
                 allowed_actions = list(set(range(self._n_actions)) - forbidden_actions)
                 action = allowed_actions[
                     torch.argmax(actions_q[allowed_actions]).item()
@@ -573,6 +571,7 @@ class LstmDQNAgent(DQNAgent):
             h_prev=self.h_prev,
             c_prev=self.c_prev,
         )
+        actions_q = actions_q.squeeze()
         value = actions_q.max().item()
         if eval_mode:
             while (
@@ -602,7 +601,6 @@ class LstmDQNAgent(DQNAgent):
                     list(set(range(self._n_actions)) - forbidden_actions)
                 )
             else:
-                actions_q = actions_q.squeeze()
                 allowed_actions = list(set(range(self._n_actions)) - forbidden_actions)
                 action = allowed_actions[
                     torch.argmax(actions_q[allowed_actions]).item()
