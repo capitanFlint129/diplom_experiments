@@ -40,7 +40,7 @@ class DQNAgent(ABC):
         pass
 
     @abstractmethod
-    def learn(self) -> None:
+    def learn(self) -> Optional[float]:
         pass
 
     @abstractmethod
@@ -165,7 +165,7 @@ class SimpleDQNAgent(DQNAgent):
             self._actions_taken.append(action)
             return action
 
-    def learn(self) -> None:
+    def learn(self) -> Optional[float]:
         # self.policy_net.train()
         # self.target_net.eval()
         if (
@@ -310,27 +310,47 @@ class _TwinDQNSubAgent:
         enable_epsilon_greedy: bool,
         forbidden_actions: set[int],
     ) -> int:
-        if forbidden_actions is None:
-            forbidden_actions = set()
-        if forbidden_actions is not None and len(forbidden_actions) >= self._n_actions:
-            print("Warning: all actions are forbidden, choose 0", file=sys.stderr)
-            return 0
-        action = 0
-        if np.random.random() <= self.epsilon and enable_epsilon_greedy:
-            while action in forbidden_actions:
-                action = np.random.choice(self._n_actions)
-        else:
+        if eval_mode:
             observation = observation.astype(np.float32)
-            actions_q = self.policy_net(
-                torch.tensor(observation, device=self._device)[None, ...]
-            )
-            actions_q = actions_q.squeeze()
-            action = torch.argmax(actions_q).item()
-            while action in forbidden_actions:
-                action = torch.argmax(actions_q).item()
-                actions_q[action] = float("-inf")
-        self._actions_taken.append(action)
-        return action
+            state = torch.tensor(observation[None, ...]).to(self._device)
+            actions = self.policy_net.forward(state)
+            while (
+                torch.argmax(actions).item() in self._actions_taken
+                and actions.max() > 0
+            ):
+                actions[0][torch.argmax(actions).item()] = 0.0
+            action = torch.argmax(actions).item()
+            self._actions_taken.append(action)
+            return action
+        else:
+            if forbidden_actions is None:
+                forbidden_actions = set()
+            if len(forbidden_actions) >= self._n_actions:
+                print(
+                    "Warning: all actions are forbidden, choosing a random action",
+                    file=sys.stderr,
+                )
+                return np.random.choice(
+                    list(set(range(self._n_actions)) - forbidden_actions)
+                )
+            if np.random.random() <= self.epsilon and enable_epsilon_greedy:
+                action = np.random.choice(
+                    list(set(range(self._n_actions)) - forbidden_actions)
+                )
+            else:
+                observation = observation.astype(np.float32)
+                actions_q = self.policy_net(
+                    torch.tensor(observation, device=self._device)[None, ...]
+                )
+                actions_q = actions_q.squeeze()
+
+                allowed_actions = list(set(range(self._n_actions)) - forbidden_actions)
+                action = allowed_actions[
+                    torch.argmax(actions_q[allowed_actions]).item()
+                ]
+
+            self._actions_taken.append(action)
+            return action
 
     def store_transition(
         self,
@@ -351,8 +371,14 @@ class _TwinDQNSubAgent:
             >= self._config.learn_memory_threshold
         )
 
-    def learn(self, twin_net):
-        self.policy_net.train()
+    def learn(self, twin_net) -> Optional[float]:
+        # self.policy_net.train()
+        # self.target_net.eval()
+        if (
+            self._replay_buffer.get_ready_data_size()
+            < self._config.learn_memory_threshold
+        ):
+            return
         self._optimizer.zero_grad()
         dqn_batch = self._replay_buffer.get_batch(self._config.batch_size, self._device)
         q_current, q_target = self._get_q_current_and_target(dqn_batch, twin_net)
@@ -365,16 +391,16 @@ class _TwinDQNSubAgent:
             self.epsilon -= self._config.epsilon_dec
         else:
             self.epsilon = self._config.epsilon_end
-        self.policy_net.eval()
+        # self.policy_net.eval()
+        # self.target_net.eval()
         return loss_val
 
     def _get_q_current_and_target(
         self, dqn_batch: DQNTrainBatch, twin_net: nn.Module
     ) -> tuple[torch.Tensor, torch.Tensor]:
+        batch_index = np.arange(dqn_batch.batch_size, dtype=np.int32)
         q_values_current = self.policy_net.forward(dqn_batch.state_batch)
-        q_current = q_values_current.gather(
-            1, dqn_batch.action_batch[..., None]
-        ).squeeze()
+        q_current = q_values_current[batch_index, dqn_batch.action_batch]
 
         q_values_twin = twin_net.forward(dqn_batch.new_state_batch)
         q_twin_argmax = torch.argmax(q_values_twin, dim=1)
@@ -382,12 +408,12 @@ class _TwinDQNSubAgent:
             q_next = torch.min(
                 torch.stack(
                     [
-                        twin_net.forward(dqn_batch.new_state_batch)
-                        .gather(1, q_twin_argmax[..., None])
-                        .squeeze(),
-                        self.policy_net.forward(dqn_batch.new_state_batch)
-                        .gather(1, q_twin_argmax[..., None])
-                        .squeeze(),
+                        twin_net.forward(dqn_batch.new_state_batch)[
+                            batch_index, q_twin_argmax
+                        ],
+                        self.policy_net.forward(dqn_batch.new_state_batch)[
+                            batch_index, q_twin_argmax
+                        ],
                     ],
                     dim=-1,
                 ),
@@ -453,7 +479,7 @@ class TwinDQNAgent(DQNAgent):
             observation, enable_epsilon_greedy, forbidden_actions
         )
 
-    def learn(self) -> None:
+    def learn(self) -> Optional[float]:
         if (
             not self._agent_1.is_ready_for_train()
             or not self._agent_2.is_ready_for_train()
@@ -534,43 +560,66 @@ class LstmDQNAgent(DQNAgent):
         observation: np.ndarray,
         enable_epsilon_greedy: bool,
         forbidden_actions: set[int],
+        eval_mode: bool,
     ) -> int:
-        if forbidden_actions is None:
-            forbidden_actions = set()
-        if forbidden_actions is not None and len(forbidden_actions) >= self._n_actions:
-            print("Warning: all actions are forbidden, choose 0", file=sys.stderr)
-            return 0
-        action = 0
-        observation = observation.astype(np.float32)
-        if np.random.random() <= self.epsilon and enable_epsilon_greedy:
-            while action in forbidden_actions:
-                action = np.random.choice(self._n_actions)
-            # Нужно обновить h_prev и c_prev с учетом prev_action
-            actions_q, self.h_prev, self.c_prev = self.policy_net.forward_step(
+        if eval_mode:
+            observation = observation.astype(np.float32)
+            actions, self.h_prev, self.c_prev = self.policy_net.forward_step(
                 torch.tensor(observation, device=self._device),
                 self.prev_action,
                 h_prev=self.h_prev,
                 c_prev=self.c_prev,
             )
+            while (
+                torch.argmax(actions).item() in self._actions_taken
+                and actions.max() > 0
+            ):
+                actions[0][torch.argmax(actions).item()] = 0.0
+            action = torch.argmax(actions).item()
+            self._actions_taken.append(action)
+            return action
         else:
-            actions_q, self.h_prev, self.c_prev = self.policy_net.forward_step(
-                torch.tensor(observation, device=self._device),
-                self.prev_action,
-                h_prev=self.h_prev,
-                c_prev=self.c_prev,
-            )
-            actions_q = actions_q.squeeze()
-            action = torch.argmax(actions_q).item()
-            while action in forbidden_actions:
-                action = torch.argmax(actions_q).item()
-                actions_q[action] = float("-inf")
-        self._actions_taken.append(action)
-        self.prev_action = action
-        return action
+            if forbidden_actions is None:
+                forbidden_actions = set()
+            if len(forbidden_actions) >= self._n_actions:
+                print(
+                    "Warning: all actions are forbidden, choosing a random action",
+                    file=sys.stderr,
+                )
+                return np.random.choice(
+                    list(set(range(self._n_actions)) - forbidden_actions)
+                )
+            observation = observation.astype(np.float32)
+            if np.random.random() <= self.epsilon and enable_epsilon_greedy:
+                action = np.random.choice(
+                    list(set(range(self._n_actions)) - forbidden_actions)
+                )
+                # Нужно обновить h_prev и c_prev с учетом prev_action
+                actions_q, self.h_prev, self.c_prev = self.policy_net.forward_step(
+                    torch.tensor(observation, device=self._device),
+                    self.prev_action,
+                    h_prev=self.h_prev,
+                    c_prev=self.c_prev,
+                )
+            else:
+                actions_q, self.h_prev, self.c_prev = self.policy_net.forward_step(
+                    torch.tensor(observation, device=self._device),
+                    self.prev_action,
+                    h_prev=self.h_prev,
+                    c_prev=self.c_prev,
+                )
+                actions_q = actions_q.squeeze()
+                allowed_actions = list(set(range(self._n_actions)) - forbidden_actions)
+                action = allowed_actions[
+                    torch.argmax(actions_q[allowed_actions]).item()
+                ]
+            self._actions_taken.append(action)
+            self.prev_action = action
+            return action
 
-    def learn(self) -> None:
-        self.policy_net.train()
-        self.target_net.eval()
+    def learn(self) -> Optional[float]:
+        # self.policy_net.train()
+        # self.target_net.eval()
         if (
             self._replay_buffer.get_ready_data_size()
             < self._config.learn_memory_threshold
@@ -589,8 +638,8 @@ class LstmDQNAgent(DQNAgent):
             self.epsilon -= self._config.epsilon_dec
         else:
             self.epsilon = self._config.epsilon_end
-        self.policy_net.eval()
-        self.target_net.eval()
+        # self.policy_net.eval()
+        # self.target_net.eval()
         return loss_val
 
     def store_transition(
@@ -627,15 +676,12 @@ class LstmDQNAgent(DQNAgent):
     def _get_q_current_and_target(
         self, dqn_batch: DQNTrainBatch
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        q_current = (
-            self.policy_net.forward(
-                dqn_batch.state_batch,
-                dqn_batch.prev_action_batch,
-                dqn_batch.lengths,
-            )
-            .gather(1, dqn_batch.final_action_batch[..., None])
-            .squeeze()
-        )
+        batch_index = np.arange(dqn_batch.batch_size, dtype=np.int32)
+        q_current = self.policy_net.forward(
+            dqn_batch.state_batch,
+            dqn_batch.prev_action_batch,
+            dqn_batch.lengths,
+        )[batch_index, dqn_batch.final_action_batch]
         with torch.no_grad():
             q_next = self.target_net.forward(
                 torch.cat(

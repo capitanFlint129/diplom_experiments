@@ -66,6 +66,8 @@ class TrainConfig:
     )
     observation_size: int = 70
     reward_space: str = "IrInstructionCountOz"
+    # reward_space: str = "RuntimePointEstimateReward"
+    # reward_space: str = "LlvmMca"
     actions: list = field(
         default_factory=lambda: COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
     )

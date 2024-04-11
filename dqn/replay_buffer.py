@@ -4,7 +4,7 @@ from typing import Optional
 import numpy as np
 import torch
 
-import config
+from config import config
 
 
 @dataclass

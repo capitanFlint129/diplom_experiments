@@ -6,7 +6,13 @@ https://github.com/llvm/llvm-project/tree/d32170dbd5b0d54436537b6b75beaf44324e0c
 Команда генерации ll файла:
 ```bash
 opt -Oz -o qsort_opt.bc cbench-v1/contents/cBench-v1/qsort.bc
-llvm-dis qsort_opt.ll -o qsort_opt.ll
+llvm-dis qsort_opt.bc -o qsort_opt.ll
+```
+
+Команда llvm-mca:
+```bash
+llc qsort.ll -o qsort.s
+llvm-mca  qsort.s -o qsort_mca.txt
 ```
 
 Флаг для замера времени -time-passes
