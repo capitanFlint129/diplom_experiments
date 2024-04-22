@@ -135,6 +135,8 @@ class SimpleDQNAgent(DQNAgent):
                 and actions_q.max() > 0
             ):
                 actions_q[torch.argmax(actions_q).item()] = 0.0
+            if actions_q.max() <= 0:
+                return None, actions_q.max()
             action = torch.argmax(actions_q).item()
             self._actions_taken.append(action)
             return action, value

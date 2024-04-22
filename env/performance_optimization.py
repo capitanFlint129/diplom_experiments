@@ -95,7 +95,6 @@ class LlvmMcaEnv(MyEnv):
                         "-o",
                         self._filepath,
                     ],
-                    input=self._cg_env.benchmark.source.encode(),
                     capture_output=True,
                 )
                 if proc.returncode != 0:
