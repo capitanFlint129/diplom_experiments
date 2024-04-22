@@ -15,7 +15,7 @@ from dqn.dqn import DQNAgent
 from dqn.train_utils import EpisodeData, StepResult, TrainHistory
 from observation.utils import get_observation, ObservationModifier
 from utils import save_model, ValidationResult
-from env.performance_optimization import MyEnv, LlvmMcaEnv
+from env.performance_optimization import MyEnv, LlvmMcaEnv, CgLlvmMcaEnv
 
 
 def train(
@@ -34,8 +34,8 @@ def train(
         benchmarks=train_benchmarks,
         rng=np.random.default_rng(config.random_state),
     )
-    mca_train_env = LlvmMcaEnv(config, train_env)
-    mca_validation_env = LlvmMcaEnv(config, validation_env)
+    mca_train_env = CgLlvmMcaEnv(config, train_env)
+    mca_validation_env = CgLlvmMcaEnv(config, validation_env)
     train_history = TrainHistory(logging_history_size=config.logging_history_size)
 
     for episode_i in range(config.episodes):

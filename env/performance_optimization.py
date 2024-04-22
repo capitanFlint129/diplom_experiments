@@ -45,6 +45,47 @@ class MyEnv:
         pass
 
 
+class CgLlvmMcaEnv(MyEnv):
+    def __init__(self, config: TrainConfig, env: CompilerEnv):
+        self._cg_env = env
+        self._config = config
+
+    @staticmethod
+    def _get_mca_rblock_throughput(ir):
+        return parse_rblock_throughput(get_mca_result_from_ir_str(ir))
+
+    def reset(self, benchmark=None):
+        attempts = 100
+        self._opts = []
+        for i in range(attempts):
+            try:
+                self._cg_env.reset(benchmark=benchmark)
+                self._rblock_throughput_initial = self._get_mca_rblock_throughput(
+                    self._cg_env.observation["Ir"]
+                )
+                return
+            except ValueError as e:
+                print(e, file=sys.stderr)
+            except Exception as e:
+                print(e, file=sys.stderr)
+        raise Exception(f"Failed to reset after {attempts} attempts")
+
+    def step(self, action):
+        rblock_throughput_before = self._get_mca_rblock_throughput(
+            self._cg_env.observation["Ir"]
+        )
+        self._cg_env.step(action)
+        rblock_throughput_after = self._get_mca_rblock_throughput(
+            self._cg_env.observation["Ir"]
+        )
+        return (
+            rblock_throughput_before - rblock_throughput_after
+        ) / self._rblock_throughput_initial
+
+    def get_observation(self, obs_name):
+        return self._cg_env.observation[obs_name]
+
+
 class LlvmMcaEnv(MyEnv):
     def __init__(self, config: TrainConfig, env: CompilerEnv):
         self._cg_env = env
@@ -135,9 +176,7 @@ class LlvmMcaEnv(MyEnv):
             return get_rblock_throughput(self._filepath_o3)
 
     def step(self, action):
-        rblock_throughput_before = get_rblock_throughput(
-            self._filepath, " ".join(self._opts)
-        )
+        rblock_throughput_before = get_rblock_throughput(self._filepath)
         if isinstance(action, str):
             flag = action
         else:
@@ -155,9 +194,7 @@ class LlvmMcaEnv(MyEnv):
         if proc.returncode != 0:
             print(proc.stderr)
             raise Exception(f"Opt step failed {self._cg_env.benchmark}")
-        rblock_throughput_after = get_rblock_throughput(
-            self._filepath, " ".join(self._opts)
-        )
+        rblock_throughput_after = get_rblock_throughput(self._filepath)
         return (
             rblock_throughput_before - rblock_throughput_after
         ) / self._rblock_throughput_initial
@@ -205,7 +242,7 @@ def parse_rblock_throughput(mca_output):
     return float(line.split()[2])
 
 
-def get_rblock_throughput(bc_path, opts=""):
+def get_rblock_throughput(bc_path):
     return parse_rblock_throughput(get_mca_result_from_ir(bc_path))
 
 
