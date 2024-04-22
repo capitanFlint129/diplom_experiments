@@ -58,13 +58,14 @@ class TrainConfig:
     train_val_test_split: bool = False
     skipped_benchmarks: list = field(default_factory=lambda: [])
     compiler_gym_env: str = "llvm-v0"
-    observation_space: list = field(
-        default_factory=lambda: [
-            # "IR2Vec",
-            "InstCountNorm",
-            # "Autophase",
-        ]
-    )
+    observation_space: str = "InstCountNorm"
+    # observation_space: list = field(
+    #     default_factory=lambda: [
+    #         # "IR2Vec",
+    #         "InstCountNorm",
+    #         # "Autophase",
+    #     ]
+    # )
     observation_modifiers: list = field(
         default_factory=lambda: [
             # "start-IR2Vec",
@@ -73,13 +74,11 @@ class TrainConfig:
             # "prev-2",
         ]
     )
-    observation_size: int = 70
+    observation_size: int = 69
     reward_space: str = "IrInstructionCountOz"
     # reward_space: str = "RuntimePointEstimateReward"
     # reward_space: str = "LlvmMca"
-    actions: list = field(
-        default_factory=lambda: COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
-    )
+    actions: list = field(default_factory=lambda: COMPLETE_ACTION_SET)
     special_actions: list = field(
         default_factory=lambda: [
             # "noop",
