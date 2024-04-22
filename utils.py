@@ -106,16 +106,17 @@ def prepare_datasets(
     env,
     random_state: int,
 ) -> tuple[list, list, list]:
-    train_dataset_name = "benchmark://anghabench-v1"
-    train_dataset_size = 5000
+    # train_dataset_name = "benchmark://anghabench-v1"
+    dataset_name = "benchmark://jotaibench-v0"
+    dataset_size = 5000
     test_dataset_name = "benchmark://cbench-v1"
     benchmarks = list(
-        itertools.islice(
-            env.datasets[train_dataset_name].benchmarks(), train_dataset_size
-        )
+        itertools.islice(env.datasets[dataset_name].benchmarks(), dataset_size)
     )
-    train, val = train_test_split(benchmarks, test_size=0.05, random_state=random_state)
+    train, val = train_test_split(benchmarks, test_size=0.01, random_state=random_state)
     test = env.datasets[test_dataset_name]
+    # train = env.datasets[test_dataset_name]
+    # val = env.datasets[test_dataset_name]
     return list(train), list(val), list(test)
 
 

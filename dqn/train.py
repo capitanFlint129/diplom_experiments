@@ -15,6 +15,7 @@ from dqn.dqn import DQNAgent
 from dqn.train_utils import EpisodeData, StepResult, TrainHistory
 from observation.utils import get_observation, ObservationModifier
 from utils import save_model, ValidationResult
+from env.performance_optimization import MyEnv, LlvmMcaEnv
 
 
 def train(
@@ -33,20 +34,24 @@ def train(
         benchmarks=train_benchmarks,
         rng=np.random.default_rng(config.random_state),
     )
+    mca_train_env = LlvmMcaEnv(config, train_env)
+    mca_validation_env = LlvmMcaEnv(config, validation_env)
     train_history = TrainHistory(logging_history_size=config.logging_history_size)
 
     for episode_i in range(config.episodes):
-        train_env.reset()
+        mca_train_env.reset()
         agent.episode_reset()
         episode_data = EpisodeData(remains=config.episode_length)
 
         observation_modifier = ObservationModifier(
             train_env, config.observation_modifiers, config.episode_length
         )
-        base_observation = get_observation(train_env, config)
-        observation = observation_modifier.modify(
-            base_observation, episode_data.remains
-        )
+        # base_observation = get_observation(train_env, config)
+        base_observation = mca_train_env.get_observation(config.observation_space)
+        # observation = observation_modifier.modify(
+        #     base_observation, episode_data.remains
+        # )
+        observation = base_observation
         prev_action = 0
         if "noop" in config.special_actions:
             prev_action = config.actions.index("noop")
@@ -54,10 +59,10 @@ def train(
             while (
                 not episode_data.done
                 and episode_data.actions_count < config.episode_length
-                and episode_data.patience_count < config.patience
+                # and episode_data.patience_count < config.patience
             ):
                 step_result = episode_step(
-                    env=train_env,
+                    env=mca_train_env,
                     config=config,
                     agent=agent,
                     remains_steps=episode_data.remains,
@@ -75,7 +80,7 @@ def train(
                 done = (
                     step_result.done
                     or episode_data.actions_count >= config.episode_length - 1
-                    or episode_data.patience_count > config.patience
+                    # or episode_data.patience_count > config.patience
                 )
                 agent.store_transition(
                     prev_action=prev_action,
@@ -109,7 +114,7 @@ def train(
                 episode_i=episode_i,
                 best_val_mean=train_history.best_val_mean,
                 agent=agent,
-                env=validation_env,
+                env=mca_validation_env,
                 config=config,
                 val_benchmarks=val_benchmarks,
                 enable_logs=enable_validation_logs,
@@ -125,7 +130,7 @@ def _validation_during_train(
     episode_i: int,
     best_val_mean: float,
     agent: DQNAgent,
-    env: CompilerEnv,
+    env: MyEnv,
     config: TrainConfig,
     val_benchmarks: list,
     enable_logs: bool = False,
@@ -190,7 +195,7 @@ def _log_episode_results(
 
 def validate(
     agent,
-    env,
+    env: MyEnv,
     config: TrainConfig,
     val_benchmarks: list,
     use_actions_masking: bool,
@@ -201,7 +206,7 @@ def validate(
     rewards = []
     for i, benchmark in enumerate(val_benchmarks):
         env.reset(benchmark=benchmark)
-        codesize.append(env.observation["IrInstructionCount"])
+        codesize.append(env._cg_env.observation["IrInstructionCount"])
         with Timer() as timer:
             episode_data = rollout(
                 agent, env, config, use_actions_masking=use_actions_masking
@@ -229,42 +234,44 @@ def rollout(
 ) -> EpisodeData:
     agent.episode_reset()
     episode_data = EpisodeData(remains=config.episode_length)
-    base_observation = get_observation(env, config)
+    # base_observation = get_observation(env, config)
+    base_observation = env.get_observation(config.observation_space)
     observation_modifier = ObservationModifier(
         env, config.observation_modifiers, config.episode_length
     )
-    observation = observation_modifier.modify(base_observation, episode_data.remains)
+    # observation = observation_modifier.modify(base_observation, episode_data.remains)
+    observation = base_observation
     best_reward = float("-inf")
     best_sequence = []
     while (
         not episode_data.done
         and episode_data.actions_count < config.episode_length
-        and episode_data.patience_count < config.val_patience
+        # and episode_data.patience_count < config.val_patience
     ):
-        if use_actions_masking:
-            step_result = episode_step(
-                env=env,
-                config=config,
-                agent=agent,
-                remains_steps=episode_data.remains,
-                observation=observation,
-                observation_modifier=observation_modifier,
-                forbidden_actions=episode_data.forbidden_actions,
-                enable_epsilon_greedy=False,
-                eval_mode=True,
-            )
-        else:
-            step_result = episode_step(
-                env=env,
-                config=config,
-                agent=agent,
-                remains_steps=episode_data.remains,
-                observation=observation,
-                observation_modifier=observation_modifier,
-                enable_epsilon_greedy=False,
-                forbidden_actions=None,
-                eval_mode=True,
-            )
+        # if use_actions_masking:
+        #     step_result = episode_step(
+        #         env=env,
+        #         config=config,
+        #         agent=agent,
+        #         remains_steps=episode_data.remains,
+        #         observation=observation,
+        #         observation_modifier=observation_modifier,
+        #         forbidden_actions=episode_data.forbidden_actions,
+        #         enable_epsilon_greedy=False,
+        #         eval_mode=True,
+        #     )
+        # else:
+        step_result = episode_step(
+            env=env,
+            config=config,
+            agent=agent,
+            remains_steps=episode_data.remains,
+            observation=observation,
+            observation_modifier=observation_modifier,
+            enable_epsilon_greedy=False,
+            forbidden_actions=None,
+            eval_mode=False,
+        )
         episode_data.update_after_episode_step(
             step_result=step_result,
             loss_value=None,
@@ -279,7 +286,7 @@ def rollout(
 
 
 def episode_step(
-    env: CompilerEnv,
+    env: MyEnv,
     config: TrainConfig,
     agent: DQNAgent,
     remains_steps: int,
@@ -296,24 +303,25 @@ def episode_step(
         eval_mode=eval_mode,
     )
     flags = config.actions[action]
-    if flags == "noop":
-        flags = [flags]
-        reward, done, info = 0, False, {"action_had_no_effect": True}
-    elif flags == "terminate":
-        flags = [flags]
-        reward, done, info = 0, True, {"action_had_no_effect": True}
-    else:
-        if " " in flags:
-            flags = flags.split()
-            _, reward, done, info = env.multistep(
-                [env.action_space.flags.index(f) for f in flags]
-            )
-        else:
-            _, reward, done, info = env.step(env.action_space.flags.index(flags))
-            flags = [flags]
+    # if flags == "noop":
+    #     flags = [flags]
+    #     reward, done, info = 0, False, {"action_had_no_effect": True}
+    # elif flags == "terminate":
+    #     flags = [flags]
+    #     reward, done, info = 0, True, {"action_had_no_effect": True}
+    # else:
+    #     if " " in flags:
+    #         flags = flags.split()
+    #         _, reward, done, info = env.multistep(
+    #             [env.action_space.flags.index(f) for f in flags]
+    #         )
+    #     else:
+    reward = env.step(env._cg_env.action_space.flags.index(flags))
+    flags = [flags]
 
-    base_observation = get_observation(env, config)
-    observation = observation_modifier.modify(base_observation, remains_steps)
+    base_observation = env.get_observation(config.observation_space)
+    # observation = observation_modifier.modify(base_observation, remains_steps)
+    observation = base_observation
     return StepResult(
         action=action,
         reward=reward,
@@ -321,6 +329,6 @@ def episode_step(
         new_observation=observation,
         new_base_observation=base_observation,
         flags=flags,
-        info=info,
-        done=done,
+        info={},
+        done=False,
     )
