@@ -46,6 +46,8 @@ class DQN(nn.Module):
         self.q_net = nn.Sequential(
             # nn.BatchNorm1d(observation_size),
             nn.Linear(observation_size, fc_dims),
+            # nn.ReLU(),
+            # nn.Linear(fc_dims, fc_dims),
             nn.ReLU(),
             nn.Linear(fc_dims, fc_dims),
             nn.ReLU(),

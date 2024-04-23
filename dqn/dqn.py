@@ -100,8 +100,8 @@ class SimpleDQNAgent(DQNAgent):
 
         self._optimizer = optim.Adam(self.policy_net.parameters(), lr=config.lr)
         self._loss = nn.MSELoss()
-        # self.policy_net.eval()
-        # self.target_net.eval()
+        self.policy_net.eval()
+        self.target_net.eval()
 
     def get_epsilon(self) -> float:
         return self.epsilon
@@ -123,6 +123,7 @@ class SimpleDQNAgent(DQNAgent):
         forbidden_actions: set[int],
         eval_mode: bool,
     ) -> tuple[int, float]:
+        self.policy_net.eval()
         observation = observation.astype(np.float32)
         actions_q = self.policy_net(
             torch.tensor(observation, device=self._device)[None, ...]
@@ -168,8 +169,8 @@ class SimpleDQNAgent(DQNAgent):
             return action, value
 
     def learn(self) -> Optional[float]:
-        # self.policy_net.train()
-        # self.target_net.eval()
+        self.policy_net.train()
+        self.target_net.eval()
         if (
             self._replay_buffer.get_ready_data_size()
             < self._config.learn_memory_threshold
@@ -188,8 +189,8 @@ class SimpleDQNAgent(DQNAgent):
             self.epsilon -= self._config.epsilon_dec
         else:
             self.epsilon = self._config.epsilon_end
-        # self.policy_net.eval()
-        # self.target_net.eval()
+        self.policy_net.eval()
+        self.target_net.eval()
         return loss_val
 
     def store_transition(
@@ -375,8 +376,8 @@ class _TwinDQNSubAgent:
         )
 
     def learn(self, twin_net) -> Optional[float]:
-        # self.policy_net.train()
-        # self.target_net.eval()
+        self.policy_net.train()
+        twin_net.eval()
         if (
             self._replay_buffer.get_ready_data_size()
             < self._config.learn_memory_threshold
@@ -394,8 +395,8 @@ class _TwinDQNSubAgent:
             self.epsilon -= self._config.epsilon_dec
         else:
             self.epsilon = self._config.epsilon_end
-        # self.policy_net.eval()
-        # self.target_net.eval()
+        self.policy_net.eval()
+        twin_net.eval()
         return loss_val
 
     def _get_q_current_and_target(
@@ -575,9 +576,9 @@ class LstmDQNAgent(DQNAgent):
         )
         actions_q = actions_q.squeeze()
         value = actions_q.max().item()
-        if value <= 0:
-            return None, value
         if eval_mode:
+            if value <= 0:
+                return None, value
             while (
                 torch.argmax(actions_q).item() in self._actions_taken
                 and actions_q.max() > 0
@@ -614,8 +615,8 @@ class LstmDQNAgent(DQNAgent):
             return action, value
 
     def learn(self) -> Optional[float]:
-        # self.policy_net.train()
-        # self.target_net.eval()
+        self.policy_net.train()
+        self.target_net.eval()
         if (
             self._replay_buffer.get_ready_data_size()
             < self._config.learn_memory_threshold
@@ -634,8 +635,8 @@ class LstmDQNAgent(DQNAgent):
             self.epsilon -= self._config.epsilon_dec
         else:
             self.epsilon = self._config.epsilon_end
-        # self.policy_net.eval()
-        # self.target_net.eval()
+        self.policy_net.eval()
+        self.target_net.eval()
         return loss_val
 
     def store_transition(

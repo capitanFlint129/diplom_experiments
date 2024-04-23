@@ -210,6 +210,7 @@ def get_ir2vec(ir_text: str) -> np.ndarray:
             if proc.returncode != 0:
                 raise Exception("IR2Vec failed")
             observation = np.loadtxt(result_file.name)
+    observation = observation / np.linalg.norm(observation)
     return observation
 
 
