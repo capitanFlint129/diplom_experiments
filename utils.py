@@ -2,7 +2,7 @@ import itertools
 import os
 import random
 from dataclasses import dataclass
-from typing import Optional, Union
+from typing import Optional
 
 import compiler_gym
 import numpy as np
@@ -12,9 +12,8 @@ from compiler_gym.datasets import FilesDataset
 from compiler_gym.envs import CompilerEnv
 from sklearn.model_selection import train_test_split
 
-from config.config import MODELS_DIR, WANDB_PROJECT_NAME, TrainConfig
+from config.config import MODELS_DIR, WANDB_PROJECT_NAME, TrainConfig, TEST_BENCHMARKS
 from dqn.dqn import DoubleDQNAgent, DQNAgent, LstmDQNAgent, SimpleDQNAgent, TwinDQNAgent
-from env.performance_optimization import RuntimePointEstimateReward, LlvmMcaEnv
 
 
 @dataclass
@@ -108,11 +107,22 @@ def prepare_datasets(
 ) -> tuple[list, list, list]:
     # train_dataset_name = "benchmark://anghabench-v1"
     dataset_name = "benchmark://jotaibench-v0"
-    dataset_size = 5000
+    dataset_size = 7000
     test_dataset_name = "benchmark://cbench-v1"
+    # benchmarks = list(env.datasets[dataset_name].benchmarks())
     benchmarks = list(
         itertools.islice(env.datasets[dataset_name].benchmarks(), dataset_size)
     )
+    benchmarks, test = train_test_split(
+        benchmarks, test_size=0.25, random_state=random_state
+    )
+    benchmarks = benchmarks[:dataset_size]
+    with open(TEST_BENCHMARKS + ".txt", "w") as ouf:
+        ouf.write(
+            "\n".join(
+                [str(benchmark).rsplit("/", maxsplit=1)[-1] for benchmark in test]
+            )
+        )
     train, val = train_test_split(benchmarks, test_size=0.01, random_state=random_state)
     test = env.datasets[test_dataset_name]
     # train = env.datasets[test_dataset_name]
@@ -193,3 +203,30 @@ def _load_dataset(env, dataset_name):
         )
     else:
         return env.datasets[dataset_name]
+
+
+def optimize_with_model(
+    config: TrainConfig, agent: DQNAgent, env: CompilerEnv, print_debug=True
+) -> list[str]:
+    flags = []
+    prev_obs = np.zeros_like(env.observation[config.observation_space])
+    agent.episode_reset()
+    for i in range(10):
+        obs = env.observation[config.observation_space]
+        # assert np.any(prev_obs != obs)
+        action, value = agent.choose_action(
+            obs,
+            enable_epsilon_greedy=False,
+            forbidden_actions=set(),
+            eval_mode=True,
+        )
+        if value <= 0:
+            break
+        if print_debug:
+            print(config.actions[action], end=" ")
+        flags.append(config.actions[action])
+        env.step(env.action_space.flags.index(flags[-1]))
+        prev_obs = obs
+    if print_debug:
+        print()
+    return flags
