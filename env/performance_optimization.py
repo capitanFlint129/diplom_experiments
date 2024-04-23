@@ -50,17 +50,13 @@ class CgLlvmMcaEnv(MyEnv):
         self._cg_env = env
         self._config = config
 
-    @staticmethod
-    def _get_mca_rblock_throughput(ir):
-        return parse_rblock_throughput(get_mca_result_from_ir_str(ir))
-
     def reset(self, benchmark=None):
         attempts = 100
         self._opts = []
         for i in range(attempts):
             try:
                 self._cg_env.reset(benchmark=benchmark)
-                self._rblock_throughput_initial = self._get_mca_rblock_throughput(
+                self._rblock_throughput_initial = get_rblock_throughput_ir(
                     self._cg_env.observation["Ir"]
                 )
                 return
@@ -71,11 +67,11 @@ class CgLlvmMcaEnv(MyEnv):
         raise Exception(f"Failed to reset after {attempts} attempts")
 
     def step(self, action):
-        rblock_throughput_before = self._get_mca_rblock_throughput(
+        rblock_throughput_before = get_rblock_throughput_ir(
             self._cg_env.observation["Ir"]
         )
         self._cg_env.step(action)
-        rblock_throughput_after = self._get_mca_rblock_throughput(
+        rblock_throughput_after = get_rblock_throughput_ir(
             self._cg_env.observation["Ir"]
         )
         return (
@@ -141,7 +137,7 @@ class LlvmMcaEnv(MyEnv):
                 if proc.returncode != 0:
                     print(proc.stderr)
                 else:
-                    self._rblock_throughput_initial = get_rblock_throughput(
+                    self._rblock_throughput_initial = get_rblock_throughput_bc(
                         self._filepath
                     )
                     # print(f"O3 - {o3_rb} | O0 - {self._rblock_throughput_initial}")
@@ -173,10 +169,10 @@ class LlvmMcaEnv(MyEnv):
             print(proc.stderr)
             return None
         else:
-            return get_rblock_throughput(self._filepath_o3)
+            return get_rblock_throughput_bc(self._filepath_o3)
 
     def step(self, action):
-        rblock_throughput_before = get_rblock_throughput(self._filepath)
+        rblock_throughput_before = get_rblock_throughput_bc(self._filepath)
         if isinstance(action, str):
             flag = action
         else:
@@ -194,7 +190,7 @@ class LlvmMcaEnv(MyEnv):
         if proc.returncode != 0:
             print(proc.stderr)
             raise Exception(f"Opt step failed {self._cg_env.benchmark}")
-        rblock_throughput_after = get_rblock_throughput(self._filepath)
+        rblock_throughput_after = get_rblock_throughput_bc(self._filepath)
         return (
             rblock_throughput_before - rblock_throughput_after
         ) / self._rblock_throughput_initial
@@ -242,8 +238,12 @@ def parse_rblock_throughput(mca_output):
     return float(line.split()[2])
 
 
-def get_rblock_throughput(bc_path):
+def get_rblock_throughput_bc(bc_path):
     return parse_rblock_throughput(get_mca_result_from_ir(bc_path))
+
+
+def get_rblock_throughput_ir(ir):
+    return parse_rblock_throughput(get_mca_result_from_ir_str(ir))
 
 
 # def get_mca_result(source_path, optimization):
