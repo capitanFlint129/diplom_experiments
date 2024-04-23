@@ -27,7 +27,7 @@ class TrainConfig:
     max_mem_size: int = 100000  # The maximum memory size
     episodes: int = 4000  # The number of episodes used to learn
     validation_interval: int = 500  # The number of episodes used to learn
-    episode_length: int = 25  # The (MAX) number of transformation passes per episode
+    episode_length: int = 10  # The (MAX) number of transformation passes per episode
     patience: int = 5  # The (MAX) number of times to apply a series of transformations without observable change
     val_patience: int = 5
     eval_with_forbidden_actions: bool = True
@@ -58,7 +58,7 @@ class TrainConfig:
     train_val_test_split: bool = False
     skipped_benchmarks: list = field(default_factory=lambda: [])
     compiler_gym_env: str = "llvm-v0"
-    observation_space: str = "InstCountNorm"
+    observation_space: str = "IR2Vec"
     # observation_space: list = field(
     #     default_factory=lambda: [
     #         # "IR2Vec",
@@ -74,7 +74,7 @@ class TrainConfig:
             # "prev-2",
         ]
     )
-    observation_size: int = 69
+    observation_size: int = 300
     reward_space: str = "IrInstructionCountOz"
     # reward_space: str = "RuntimePointEstimateReward"
     # reward_space: str = "LlvmMca"

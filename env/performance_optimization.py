@@ -1,8 +1,10 @@
 import os
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
+import numpy as np
 from compiler_gym import CompilerEnv
 from compiler_gym.envs import llvm
 
@@ -79,13 +81,15 @@ class CgLlvmMcaEnv(MyEnv):
         ) / self._rblock_throughput_initial
 
     def get_observation(self, obs_name):
-        return self._cg_env.observation[obs_name]
+        if obs_name == "IR2Vec":
+            return get_ir2vec(self._cg_env.observation["Ir"])
+        else:
+            return self._cg_env.observation[obs_name]
 
 
 class LlvmMcaEnv(MyEnv):
     def __init__(self, config: TrainConfig, env: CompilerEnv):
         self._cg_env = env
-        # self._observation_name = observation_name
         self._tmp_dir = f"mca_env_tmp"
         os.makedirs(self._tmp_dir, exist_ok=True)
         self._filename = "tmpfile.bc"
@@ -204,9 +208,41 @@ class LlvmMcaEnv(MyEnv):
             bitcode = Path(self._filepath)
             obs = llvm.compute_observation(space, bitcode)
             return obs[1:] / obs[0]
-        space = self._cg_env.observation.spaces[obs_name]
-        bitcode = Path(self._filepath)
-        return llvm.compute_observation(space, bitcode)
+        elif obs_name == "IR2Vec":
+            return get_ir2vec(self._cg_env.observation["Ir"])
+        else:
+            space = self._cg_env.observation.spaces[obs_name]
+            bitcode = Path(self._filepath)
+            return llvm.compute_observation(space, bitcode)
+
+
+def get_ir2vec(ir_text: str) -> np.ndarray:
+    ir2vec_bin = "/home/flint/diplom/IR2Vec/build/bin/ir2vec"
+    seed_emb_path = (
+        "/home/flint/diplom/IR2Vec/vocabulary/seedEmbeddingVocab-300-llvm10.txt"
+    )
+    with tempfile.NamedTemporaryFile("w") as ll_file:
+        with tempfile.NamedTemporaryFile("r") as result_file:
+            ll_file.write(ir_text)
+            ll_file.flush()
+            proc = subprocess.run(
+                [
+                    ir2vec_bin,
+                    "-fa",
+                    "-vocab",
+                    seed_emb_path,
+                    "-o",
+                    result_file.name,
+                    "-level",
+                    "p",
+                    ll_file.name,
+                ],
+                capture_output=True,
+            )
+            if proc.returncode != 0:
+                raise Exception("IR2Vec failed")
+            observation = np.loadtxt(result_file.name)
+    return observation
 
 
 def get_mca_result_from_ir(bc_path):
