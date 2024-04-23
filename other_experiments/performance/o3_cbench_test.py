@@ -14,6 +14,7 @@ from env.performance_optimization import get_rblock_throughput_ir
 from utils import (
     get_agent,
     get_model_path,
+    optimize_with_model,
 )
 
 
@@ -33,25 +34,6 @@ def apply_pass_sequence(env: CompilerEnv, pass_sequence):
 #         runtimes.append(env.observation["Runtime"][0])
 #     print(np.mean(runtimes), np.std(runtimes))
 #     return np.mean(runtimes)
-
-
-def optimize_with_model(config, agent: DQNAgent, env: CompilerEnv):
-    prev_obs = np.zeros_like(env.observation["InstCountNorm"])
-    for i in range(10):
-        obs = env.observation["InstCountNorm"]
-        # assert np.any(prev_obs != obs)
-        action, value = agent.choose_action(
-            obs,
-            enable_epsilon_greedy=False,
-            forbidden_actions=set(),
-            eval_mode=True,
-        )
-        if value <= 0:
-            break
-        print(COMPLETE_ACTION_SET[action], end=" ")
-        env.step(env.action_space.flags.index(COMPLETE_ACTION_SET[action]))
-        prev_obs = obs
-    print()
 
 
 def main():

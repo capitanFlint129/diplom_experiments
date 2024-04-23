@@ -7,11 +7,11 @@ from pathlib import Path
 import numpy as np
 from compiler_gym import CompilerEnv
 from compiler_gym.envs import llvm
-
 # noinspection PyUnresolvedReferences
 from compiler_gym.wrappers import RuntimePointEstimateReward
 
 from config.config import TrainConfig
+from env.llvm import clang_compile_to_ir, clang_compile_to_ir_o0
 
 LLVM_BINS = "/home/flint/.local/share/compiler_gym/llvm-v0/bin"
 MCA_BIN = os.path.join(LLVM_BINS, "llvm-mca")
@@ -108,27 +108,9 @@ class LlvmMcaEnv(MyEnv):
                 # o3_rb = self._get_03_rb()
                 # self._o3_rb = o3_rb
                 # -O3 -Xclang -disable-llvm-passes
-                proc = subprocess.run(
-                    [
-                        CLANG_BIN,
-                        O0,
-                        "--target=x86_64",
-                        "-Xclang",
-                        # "-disable-llvm-passes",
-                        "-disable-O0-optnone",
-                        "-S",
-                        "-emit-llvm",
-                        "-x",
-                        "c",
-                        "-",
-                        "-o",
-                        self._filepath,
-                    ],
-                    input=self._cg_env.benchmark.source.encode(),
-                    capture_output=True,
+                clang_compile_to_ir_o0(
+                    source=self._cg_env.benchmark.source, result_path=self._filepath
                 )
-                if proc.returncode != 0:
-                    print(proc.stderr)
                 proc = subprocess.run(
                     [
                         LLVM_AS_BIN,
@@ -153,27 +135,12 @@ class LlvmMcaEnv(MyEnv):
         raise Exception(f"Failed to reset after {attempts} attempts")
 
     def _get_03_rb(self):
-        proc = subprocess.run(
-            [
-                CLANG_BIN,
-                O3,
-                "--target=x86_64",
-                "-S",
-                "-emit-llvm",
-                "-x",
-                "c",
-                "-",
-                "-o",
-                self._filepath_o3,
-            ],
-            input=self._cg_env.benchmark.source.encode(),
-            capture_output=True,
+        clang_compile_to_ir(
+            source=self._cg_env.benchmark.source,
+            level=O3,
+            result_path=self._filepath_o3,
         )
-        if proc.returncode != 0:
-            print(proc.stderr)
-            return None
-        else:
-            return get_rblock_throughput_bc(self._filepath_o3)
+        return get_rblock_throughput_bc(self._filepath_o3)
 
     def step(self, action):
         rblock_throughput_before = get_rblock_throughput_bc(self._filepath)
