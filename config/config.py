@@ -7,6 +7,7 @@ WANDB_PROJECT_NAME = "trash2"
 COMPILER_GYM_PATH = "~/.local/share/compiler_gym"
 LLVM_BINS_PATH = os.path.join(COMPILER_GYM_PATH, "llvm-v0/bin")
 MODELS_DIR = "_models"
+TEST_BENCHMARKS = "data/test_benchmarks"
 
 
 @dataclass
@@ -58,7 +59,7 @@ class TrainConfig:
     train_val_test_split: bool = False
     skipped_benchmarks: list = field(default_factory=lambda: [])
     compiler_gym_env: str = "llvm-v0"
-    observation_space: str = "IR2Vec"
+    observation_space: str = "InstCountNorm"
     # observation_space: list = field(
     #     default_factory=lambda: [
     #         # "IR2Vec",
@@ -74,7 +75,7 @@ class TrainConfig:
             # "prev-2",
         ]
     )
-    observation_size: int = 300
+    observation_size: int = 69
     reward_space: str = "IrInstructionCountOz"
     # reward_space: str = "RuntimePointEstimateReward"
     # reward_space: str = "LlvmMca"
