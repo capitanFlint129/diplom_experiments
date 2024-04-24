@@ -15,7 +15,7 @@ from dqn.dqn import DQNAgent
 from dqn.train_utils import EpisodeData, StepResult, TrainHistory
 from observation.utils import get_observation, ObservationModifier
 from utils import save_model, ValidationResult
-from env.performance_optimization import MyEnv, LlvmMcaEnv, CgLlvmMcaEnv
+from env.performance_optimization import MyEnv, LlvmMcaEnv, CgLlvmMcaEnv, CfgGridEnv
 
 
 def train(
@@ -34,12 +34,16 @@ def train(
         benchmarks=train_benchmarks,
         rng=np.random.default_rng(config.random_state),
     )
-    mca_train_env = CgLlvmMcaEnv(config, train_env)
-    mca_validation_env = CgLlvmMcaEnv(config, validation_env)
+    # mca_train_env = CgLlvmMcaEnv(config, train_env)
+    # mca_validation_env = CgLlvmMcaEnv(config, validation_env)
+
+    cfg_train_env = CfgGridEnv(config, train_env)
+    cfg_validation_env = CfgGridEnv(config, validation_env)
+
     train_history = TrainHistory(logging_history_size=config.logging_history_size)
 
     for episode_i in range(config.episodes):
-        mca_train_env.reset()
+        cfg_train_env.reset()
         agent.episode_reset()
         episode_data = EpisodeData(remains=config.episode_length)
 
@@ -47,7 +51,7 @@ def train(
             train_env, config.observation_modifiers, config.episode_length
         )
         # base_observation = get_observation(train_env, config)
-        base_observation = mca_train_env.get_observation(config.observation_space)
+        base_observation = cfg_train_env.get_observation(config.observation_space)
         # observation = observation_modifier.modify(
         #     base_observation, episode_data.remains
         # )
@@ -62,7 +66,7 @@ def train(
                 # and episode_data.patience_count < config.patience
             ):
                 step_result = episode_step(
-                    env=mca_train_env,
+                    env=cfg_train_env,
                     config=config,
                     agent=agent,
                     remains_steps=episode_data.remains,
@@ -114,7 +118,7 @@ def train(
                 episode_i=episode_i,
                 best_val_mean=train_history.best_val_mean,
                 agent=agent,
-                env=mca_validation_env,
+                env=cfg_validation_env,
                 config=config,
                 val_benchmarks=val_benchmarks,
                 enable_logs=enable_validation_logs,
