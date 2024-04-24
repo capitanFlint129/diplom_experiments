@@ -8,7 +8,7 @@ from tabulate import tabulate
 from tqdm import tqdm
 
 from config.config import TrainConfig
-from env.performance_optimization import get_rblock_throughput_ir
+from env.cfg_grind import compile_and_get_instructions
 from utils import (
     get_agent,
     get_model_path,
@@ -17,6 +17,9 @@ from utils import (
 
 MODEL_ITERS = 10
 RUNTIME_COUNT = 30
+
+
+# WORKAROUND_CBENCH_COMMAND_ARGS = None
 
 
 def apply_pass_sequence(env: CompilerEnv, pass_sequence):
@@ -54,15 +57,15 @@ def main():
         "o3_runtime": [],
         "model_runtime": [],
         #
-        "base_thr": [],
-        "o3_thr": [],
-        "model_thr": [],
+        "base_inst": [],
+        "o3_inst": [],
+        "model_inst": [],
         #
         "base_speedup": [],
         "o3_speedup": [],
         #
-        "base_thr_imp": [],
-        "o3_thr_imp": [],
+        "base_inst_imp": [],
+        "o3_inst_imp": [],
     }
 
     config = TrainConfig()
@@ -76,42 +79,64 @@ def main():
 
     pd_results = pd.DataFrame(columns=list(results.keys()))
 
+    math_benchs = {
+        "qsort",
+        "stringsearch",
+        "susan",
+        "tiff2bw",
+        "tiff2rgba",
+        "tiffdither",
+        "tiffmedian",
+    }
     for benchmark in tqdm(benchmarks):
         with compiler_gym.make("llvm-v0", benchmark=benchmark) as new_env:
-            # try:
-            # env.reset(benchmark=benchmark)
-            # except BenchmarkInitError:
-            # print(f"Benchmark {benchmark} not runnable, skip it")
-            # continue
-            # results["benchmark"].append(str(benchmark))
-            # results["base_runtime"].append(get_runtime(env))
             new_env.reset()
-
             if not new_env.observation["IsRunnable"]:
                 print(f"Benchmark {benchmark} not runnable, skip it")
                 continue
 
+            try:
+                benchmark.validate(new_env)
+            except Exception as e:
+                benchmark_args = e.msg.split(".bc")[-1].strip()
+                cg_working_dir = e.dir
+
+            linkopts = (
+                ["-lm"]
+                if str(benchmark).rsplit("/", maxsplit=1)[-1] in math_benchs
+                else []
+            )
             results["benchmark"].append(str(benchmark).rsplit("/", maxsplit=1)[-1])
 
             new_env.runtime_observation_count = RUNTIME_COUNT
             new_env.runtime_warmup_count = 0
-            # new_env.apply(env.state)
             new_env.reset()
             base_runtimes = new_env.observation.Runtime()
             assert len(base_runtimes) == RUNTIME_COUNT
             results["base_runtime"].append(np.median(base_runtimes))
-            results["base_thr"].append(
-                get_rblock_throughput_ir(new_env.observation["Ir"])
+            results["base_inst"].append(
+                compile_and_get_instructions(
+                    ir=new_env.observation["Ir"],
+                    sequence=[],
+                    result_path="tmp_o3_cbench_test_cfg_grind_bin",
+                    execution_args=benchmark_args,
+                    linkopts=linkopts,
+                )
             )
 
             new_env.reset()
-            # apply_pass_sequence(new_env, O1_SEQ)
             new_env.send_param("llvm.apply_baseline_optimizations", "-O3")
             o3_runtimes = new_env.observation.Runtime()
             assert len(o3_runtimes) == RUNTIME_COUNT
             results["o3_runtime"].append(np.median(o3_runtimes))
-            results["o3_thr"].append(
-                get_rblock_throughput_ir(new_env.observation["Ir"])
+            results["o3_inst"].append(
+                compile_and_get_instructions(
+                    ir=new_env.observation["Ir"],
+                    sequence=[],
+                    result_path="tmp_o3_cbench_test_cfg_grind_bin",
+                    execution_args=benchmark_args,
+                    linkopts=linkopts,
+                )
             )
 
             new_env.reset()
@@ -119,23 +144,27 @@ def main():
             model_runtimes = new_env.observation.Runtime()
             assert len(model_runtimes) == RUNTIME_COUNT
             results["model_runtime"].append(np.median(model_runtimes))
-            results["model_thr"].append(
-                get_rblock_throughput_ir(new_env.observation["Ir"])
+            results["model_inst"].append(
+                compile_and_get_instructions(
+                    ir=new_env.observation["Ir"],
+                    sequence=[],
+                    result_path="tmp_o3_cbench_test_cfg_grind_bin",
+                    execution_args=benchmark_args,
+                    linkopts=linkopts,
+                )
             )
 
             base_speedup = get_speedup(base_runtimes, model_runtimes)
             o3_speedup = get_speedup(o3_runtimes, model_runtimes)
 
-            base_rblock_throughput_imp = (
-                results["base_thr"][-1] / results["model_thr"][-1]
-            )
-            o3_rblock_throughput_imp = results["o3_thr"][-1] / results["model_thr"][-1]
+            base_rblock_inst_imp = results["base_inst"][-1] / results["model_inst"][-1]
+            o3_rblock_inst_imp = results["o3_inst"][-1] / results["model_inst"][-1]
 
             results["base_speedup"].append(base_speedup)
             results["o3_speedup"].append(o3_speedup)
 
-            results["base_thr_imp"].append(base_rblock_throughput_imp)
-            results["o3_thr_imp"].append(o3_rblock_throughput_imp)
+            results["base_inst_imp"].append(base_rblock_inst_imp)
+            results["o3_inst_imp"].append(o3_rblock_inst_imp)
 
             pd_results.loc[len(pd_results)] = [results[key][-1] for key in results]
 
@@ -147,7 +176,7 @@ def main():
                 )
             )
 
-    pd_results.to_csv("o3_cbench_test_results.csv")
+    pd_results.to_csv("o3_cbench_test_cfg_grind.csv")
     print(
         tabulate(
             pd_results,

@@ -2,7 +2,9 @@ import os
 import subprocess
 import sys
 import tempfile
+from abc import abstractmethod, ABC
 from pathlib import Path
+from typing import Union
 
 import numpy as np
 from compiler_gym import CompilerEnv
@@ -12,7 +14,11 @@ from compiler_gym.envs import llvm
 from compiler_gym.wrappers import RuntimePointEstimateReward
 
 from config.config import TrainConfig
-from env.llvm import clang_compile_to_ir, clang_compile_to_ir_o0
+from env.cfg_grind import compile_and_get_instructions
+from env.llvm import (
+    clang_compile_to_ir,
+    clang_compile_to_ir_o0,
+)
 
 LLVM_BINS = "/home/flint/.local/share/compiler_gym/llvm-v0/bin"
 MCA_BIN = os.path.join(LLVM_BINS, "llvm-mca")
@@ -34,18 +40,93 @@ O3 = "-O3"
 OZ = "-Oz"
 
 
-class MyEnv:
+class MyEnv(ABC):
+    @abstractmethod
     def reset(self, benchmark=None) -> None:
         pass
 
-    def step(self, action) -> float:
+    @abstractmethod
+    def step(self, action: Union[int, str]) -> float:
         pass
 
     # def multistep(self):
     #     pass
 
-    def get_observation(self, obs_name):
+    @abstractmethod
+    def get_observation(self, obs_name: str) -> np.ndarray:
         pass
+
+
+class CfgGridEnv(MyEnv):
+    def __init__(self, config: TrainConfig, env: CompilerEnv, debug=False):
+        self._cg_env = env
+        self._tmp_dir = f"_cfg_grind_env_tmp"
+        os.makedirs(self._tmp_dir, exist_ok=True)
+        self._filename = "tmpfile"
+        self._bin_filepath = os.path.join(self._tmp_dir, self._filename)
+        self._config = config
+        self._executed_insts_o3 = None
+        self._executed_insts_initial = None
+        self._executed_insts_prev = None
+        self._debug = debug
+
+    def reset(self, benchmark=None):
+        attempts = 100
+        self._opts = []
+        for i in range(attempts):
+            try:
+                self._cg_env.reset(benchmark=benchmark)
+
+                # O3
+                if self._debug:
+                    self._executed_insts_o3 = self._compile_and_get_instructions(
+                        sequence=[O3]
+                    )
+
+                # Initial
+                self._executed_insts_initial = self._compile_and_get_instructions(
+                    sequence=[]
+                )
+                if self._debug:
+                    print(
+                        f"O3: {self._executed_insts_o3} - O0: {self._executed_insts_initial}"
+                    )
+                self._executed_insts_prev = self._executed_insts_initial
+                return
+            except ValueError as e:
+                print(e, file=sys.stderr)
+            except Exception as e:
+                print(e, file=sys.stderr)
+        raise Exception(f"Failed to reset after {attempts} attempts")
+
+    def step(self, action):
+        self._cg_env.step(action)
+        executed_insts = self._compile_and_get_instructions(sequence=[])
+        reward = (
+            self._executed_insts_prev - executed_insts
+        ) / self._executed_insts_initial
+
+        if self._debug:
+            print(
+                f"reward: {reward} - executed_insts: {executed_insts} - executed_insts_prev: {self._executed_insts_prev} - executed_insts_initial: {self._executed_insts_initial}"
+            )
+        self._executed_insts_prev = executed_insts
+        return reward
+
+    def get_observation(self, obs_name):
+        if obs_name == "IR2Vec":
+            return get_ir2vec(self._cg_env.observation["Ir"])
+        else:
+            return self._cg_env.observation[obs_name]
+
+    def _compile_and_get_instructions(self, sequence) -> int:
+        return compile_and_get_instructions(
+            ir=self._cg_env.observation["Ir"],
+            sequence=sequence,
+            result_path=self._bin_filepath,
+            execution_args="0",
+            linkopts=[],
+        )
 
 
 class CgLlvmMcaEnv(MyEnv):
@@ -91,7 +172,7 @@ class CgLlvmMcaEnv(MyEnv):
 class LlvmMcaEnv(MyEnv):
     def __init__(self, config: TrainConfig, env: CompilerEnv):
         self._cg_env = env
-        self._tmp_dir = f"mca_env_tmp"
+        self._tmp_dir = f"_mca_env_tmp"
         os.makedirs(self._tmp_dir, exist_ok=True)
         self._filename = "tmpfile.bc"
         self._filename_o3 = "tmpfile_o3.bc"

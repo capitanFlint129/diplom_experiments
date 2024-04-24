@@ -54,6 +54,38 @@ def compile_one_source_with_opt_sequence(source_path, result_path, sequence):
         raise Exception(f"Compilation failed {proc.stderr}")
 
 
+def compile_ll_with_opt_sequence(ir, result_path, sequence, linkopts):
+    proc = subprocess.run(
+        " | ".join(
+            [
+                f"opt {' '.join(sequence)} -S -o {result_path}.ll",
+                # f"llc -filetype=obj -o tmp.o -lm",
+            ]
+        ),
+        input=ir.encode(),
+        shell=True,
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        print(proc.stderr)
+        raise Exception(f"Compilation failed {proc.stderr}")
+    proc = subprocess.run(
+        [
+            CLANG_BIN,
+            f"{result_path}.ll",
+        ]
+        + linkopts
+        + [
+            "-o",
+            result_path,
+        ],
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        print(proc.stderr)
+        raise Exception(f"Compilation failed {proc.stderr}")
+
+
 def clang_compile_to_ir(
     source: str, level: str, result_path: str = "-"
 ) -> Optional[str]:

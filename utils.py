@@ -206,12 +206,12 @@ def _load_dataset(env, dataset_name):
 
 
 def optimize_with_model(
-    config: TrainConfig, agent: DQNAgent, env: CompilerEnv, print_debug=True
+    config: TrainConfig, agent: DQNAgent, env: CompilerEnv, iters=10, print_debug=True
 ) -> list[str]:
     flags = []
     prev_obs = np.zeros_like(env.observation[config.observation_space])
     agent.episode_reset()
-    for i in range(10):
+    for i in range(iters):
         obs = env.observation[config.observation_space]
         # assert np.any(prev_obs != obs)
         action, value = agent.choose_action(
