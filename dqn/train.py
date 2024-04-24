@@ -86,11 +86,15 @@ def train(
                     or episode_data.actions_count >= config.episode_length - 1
                     # or episode_data.patience_count > config.patience
                 )
+                train_reward = step_result.reward
+                train_reward *= config.reward_scale
+                if train_reward < -14.767:
+                    train_reward = -np.emath.logn(1.2, -train_reward)
                 agent.store_transition(
                     prev_action=prev_action,
                     action=step_result.action,
                     observation=observation,
-                    reward=step_result.reward,
+                    reward=train_reward,
                     new_observation=step_result.new_observation,
                     done=done,
                 )
@@ -321,8 +325,6 @@ def episode_step(
     #         )
     #     else:
     reward = env.step(env._cg_env.action_space.flags.index(flags))
-    if reward < 0 and reward < -14.767:
-        reward = -np.log(1.2, -reward)
     flags = [flags]
 
     base_observation = env.get_observation(config.observation_space)

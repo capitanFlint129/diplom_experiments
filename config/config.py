@@ -24,9 +24,9 @@ class TrainConfig:
     # Learning
     lr: float = 1e-4  # The learning rate
     tau: float = 0.99  # soft update coefficient
-    batch_size: int = 64  # The batch size
+    batch_size: int = 128  # The batch size
     max_mem_size: int = 100000  # The maximum memory size
-    episodes: int = 4000  # The number of episodes used to learn
+    episodes: int = 8000  # The number of episodes used to learn
     validation_interval: int = 500  # The number of episodes used to learn
     episode_length: int = 10  # The (MAX) number of transformation passes per episode
     patience: int = 5  # The (MAX) number of times to apply a series of transformations without observable change
@@ -79,7 +79,8 @@ class TrainConfig:
     reward_space: str = "IrInstructionCountOz"
     # reward_space: str = "RuntimePointEstimateReward"
     # reward_space: str = "LlvmMca"
-    actions: list = field(default_factory=lambda: COMPLETE_ACTION_SET)
+    actions: list = field(default_factory=lambda: COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET)
+    reward_scale: float = 1e3
     special_actions: list = field(
         default_factory=lambda: [
             # "noop",
