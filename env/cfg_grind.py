@@ -22,15 +22,15 @@ def get_executed_instructions(bin_path: str, execution_args: str) -> int:
     #         MAP_FILE,
     #     ],
     # )
-    proc = subprocess.run(
-        f"{CFG_GRIND_ASMMAP_BIN} {bin_path} > {MAP_FILE}",
-        shell=True,
-        capture_output=True,
-    )
-
-    if proc.returncode != 0:
-        print(proc.stderr)
-        raise Exception(f"cfggrind_asmmap failed {bin_path}: {proc.stderr}")
+    # proc = subprocess.run(
+    #     f"{CFG_GRIND_ASMMAP_BIN} {bin_path} > {MAP_FILE}",
+    #     shell=True,
+    #     capture_output=True,
+    # )
+    #
+    # if proc.returncode != 0:
+    #     print(proc.stderr)
+    #     raise Exception(f"cfggrind_asmmap failed {bin_path}: {proc.stderr}")
 
     proc = subprocess.run(
         [
@@ -38,7 +38,7 @@ def get_executed_instructions(bin_path: str, execution_args: str) -> int:
             "-q",
             "--tool=cfggrind",
             f"--cfg-outfile={CFG_FILE}",
-            f"--instrs-map={MAP_FILE}",
+            # f"--instrs-map={MAP_FILE}",
             "--cfg-dump=bubble",
             f"./{bin_path}",
         ]
@@ -54,8 +54,8 @@ def get_executed_instructions(bin_path: str, execution_args: str) -> int:
             CFG_GRIND_INFO_BIN,
             "-s",
             "program",
-            "-i",
-            MAP_FILE,
+            # "-i",
+            # MAP_FILE,
             "-m",
             "json",
             CFG_FILE,
