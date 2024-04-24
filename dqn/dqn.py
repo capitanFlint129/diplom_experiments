@@ -127,6 +127,7 @@ class SimpleDQNAgent(DQNAgent):
         actions_q = self.policy_net(
             torch.tensor(observation, device=self._device)[None, ...]
         )
+        assert len(self._config.actions) == actions_q.shape[-1]
         value = actions_q.max().item()
         actions_q = actions_q.squeeze()
         if eval_mode:
@@ -319,6 +320,7 @@ class _TwinDQNSubAgent:
         )
         value = actions_q.max().item()
         actions_q = actions_q.squeeze()
+        assert len(self._config.actions) == actions_q.shape[-1]
         if eval_mode:
             while (
                 torch.argmax(actions_q).item() in self._actions_taken
@@ -574,6 +576,7 @@ class LstmDQNAgent(DQNAgent):
             c_prev=self.c_prev,
         )
         actions_q = actions_q.squeeze()
+        assert len(self._config.actions) == actions_q.shape[-1]
         value = actions_q.max().item()
         if value <= 0:
             return None, value
