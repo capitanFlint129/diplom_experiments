@@ -321,6 +321,8 @@ def episode_step(
     #         )
     #     else:
     reward = env.step(env._cg_env.action_space.flags.index(flags))
+    if reward < 0 and reward < -14.767:
+        reward = -np.log(1.2, -reward)
     flags = [flags]
 
     base_observation = env.get_observation(config.observation_space)
