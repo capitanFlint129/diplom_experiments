@@ -7,15 +7,16 @@ from compiler_gym import CompilerEnv
 from tabulate import tabulate
 from tqdm import tqdm
 
-from config.action_config import COMPLETE_ACTION_SET
 from config.config import TrainConfig
-from dqn.dqn import DQNAgent
 from env.performance_optimization import get_rblock_throughput_ir
 from utils import (
     get_agent,
     get_model_path,
     optimize_with_model,
 )
+
+MODEL_ITERS = 10
+RUNTIME_COUNT = 30
 
 
 def apply_pass_sequence(env: CompilerEnv, pass_sequence):
@@ -26,6 +27,10 @@ def apply_pass_sequence(env: CompilerEnv, pass_sequence):
                 env.action_space.flags.index(pass_el)
             )
             # print(reward)
+
+
+def get_speedup(compare_runtimes, model_runtimes) -> float:
+    return np.median(compare_runtimes) / max(np.median(model_runtimes), 1e-12)
 
 
 # def get_runtime(env: CompilerEnv, n=10):
@@ -66,12 +71,11 @@ def main():
     agent = get_agent(
         config,
         device,
-        policy_net_path=get_model_path("lively-snowflake-49"),
+        policy_net_path=get_model_path("zesty-morning-52"),
     )
 
     pd_results = pd.DataFrame(columns=list(results.keys()))
 
-    runtime_count = 30
     for benchmark in tqdm(benchmarks):
         with compiler_gym.make("llvm-v0", benchmark=benchmark) as new_env:
             # try:
@@ -89,12 +93,12 @@ def main():
 
             results["benchmark"].append(str(benchmark).rsplit("/", maxsplit=1)[-1])
 
-            new_env.runtime_observation_count = runtime_count
+            new_env.runtime_observation_count = RUNTIME_COUNT
             new_env.runtime_warmup_count = 0
             # new_env.apply(env.state)
             new_env.reset()
             base_runtimes = new_env.observation.Runtime()
-            assert len(base_runtimes) == runtime_count
+            assert len(base_runtimes) == RUNTIME_COUNT
             results["base_runtime"].append(np.median(base_runtimes))
             results["base_thr"].append(
                 get_rblock_throughput_ir(new_env.observation["Ir"])
@@ -104,25 +108,23 @@ def main():
             # apply_pass_sequence(new_env, O1_SEQ)
             new_env.send_param("llvm.apply_baseline_optimizations", "-O3")
             o3_runtimes = new_env.observation.Runtime()
-            assert len(o3_runtimes) == runtime_count
+            assert len(o3_runtimes) == RUNTIME_COUNT
             results["o3_runtime"].append(np.median(o3_runtimes))
             results["o3_thr"].append(
                 get_rblock_throughput_ir(new_env.observation["Ir"])
             )
 
             new_env.reset()
-            optimize_with_model(config, agent, new_env)
+            optimize_with_model(config, agent, new_env, iters=MODEL_ITERS)
             model_runtimes = new_env.observation.Runtime()
-            assert len(model_runtimes) == runtime_count
+            assert len(model_runtimes) == RUNTIME_COUNT
             results["model_runtime"].append(np.median(model_runtimes))
             results["model_thr"].append(
                 get_rblock_throughput_ir(new_env.observation["Ir"])
             )
 
-            base_speedup = np.median(base_runtimes) / max(
-                np.median(model_runtimes), 1e-12
-            )
-            o3_speedup = np.median(o3_runtimes) / max(np.median(model_runtimes), 1e-12)
+            base_speedup = get_speedup(base_runtimes, model_runtimes)
+            o3_speedup = get_speedup(o3_runtimes, model_runtimes)
 
             base_rblock_throughput_imp = (
                 results["base_thr"][-1] / results["model_thr"][-1]
