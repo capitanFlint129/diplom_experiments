@@ -543,7 +543,7 @@ class LstmDQNAgent(DQNAgent):
         self.prev_action = 0
 
         self._optimizer = optim.Adam(self.policy_net.parameters(), lr=config.lr)
-        self._loss = nn.MSELoss()
+        self._loss = nn.HuberLoss()
 
     def get_epsilon(self) -> float:
         return self.epsilon
