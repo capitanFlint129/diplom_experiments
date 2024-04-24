@@ -1,13 +1,18 @@
 import json
 import os
+import random
 import subprocess
 
 import pandas as pd
 from tqdm import tqdm
 
+from env.cfg_grind import get_executed_instructions
+
 DATASET_URI = "benchmark://jotaibench-v0"
 RUN_NAME = "lively-snowflake-49"
+RESULT_DIR = "_eval_results"
 RUNS = 30
+MEASURE_EXECUTED_INSTRUCTIONS = True
 
 
 def parse_exec_time(time_stdout) -> float:
@@ -55,6 +60,8 @@ def measure_execution_mean_and_std(
 
 
 def main():
+    os.makedirs(RESULT_DIR, exist_ok=True)
+
     result = {
         "benchmark": [],
         "O3 runtime, mean": [],
@@ -66,9 +73,20 @@ def main():
         "O3 speedup": [],
         "O0 speedup": [],
     }
+
+    exec_inst = {
+        "O3 exec_inst": [],
+        "O0 exec_inst": [],
+        "model exec_inst": [],
+        "O3 exec_inst imp": [],
+        "O0 exec_inst imp": [],
+    }
+
     execution_args = "0"
-    benchmarks = sorted(os.listdir("data/model"))
-    for benchmark in tqdm(benchmarks):
+    benchmarks = list(sorted(os.listdir("data/model")))
+    random.seed(0)
+    random.shuffle(benchmarks)
+    for benchmark in tqdm(benchmarks[:100]):
         o3_runtimes_mean, o3_runtimes_std = measure_execution_mean_and_std(
             f"data/O3/{benchmark}", execution_args=execution_args
         )
@@ -91,7 +109,26 @@ def main():
         result["O3 speedup"].append(o3_runtimes_mean / model_runtimes_mean)
         result["O0 speedup"].append(o0_runtimes_mean / model_runtimes_mean)
 
+        if MEASURE_EXECUTED_INSTRUCTIONS:
+            o3_exec_inst = get_executed_instructions(
+                f"data/O3/{benchmark}", execution_args
+            )
+            o0_exec_inst = get_executed_instructions(
+                f"data/O0/{benchmark}", execution_args
+            )
+            model_exec_inst = get_executed_instructions(
+                f"data/model/{benchmark}", execution_args
+            )
+            exec_inst["O3 exec_inst"].append(o3_exec_inst)
+            exec_inst["O0 exec_inst"].append(o0_exec_inst)
+            exec_inst["model exec_inst"].append(model_exec_inst)
+            exec_inst["O3 exec_inst imp"].append(o3_exec_inst / model_exec_inst)
+            exec_inst["O0 exec_inst imp"].append(o0_exec_inst / model_exec_inst)
+
+    if MEASURE_EXECUTED_INSTRUCTIONS:
+        result.update(exec_inst)
     result_df = pd.DataFrame(data=result)
+    result_df.to_csv(os.path.join(RESULT_DIR, f"{RUN_NAME}.csv"))
     print(result_df.drop(columns=["benchmark"]).mean())
 
 
