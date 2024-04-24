@@ -13,7 +13,7 @@ TEST_BENCHMARKS = "data/test_benchmarks"
 @dataclass
 class TrainConfig:
     # Algorithm section
-    algorithm: str = "DQN"
+    algorithm: str = "LstmDQN"
     enable_dueling_dqn: bool = False
     gamma: float = 0.9
     epsilon: float = 1.0  # The starting value for epsilon
@@ -22,9 +22,9 @@ class TrainConfig:
     fc_dim: int = 128  # The dimension of a fully connected layer
     lstm_hidden_size: int = 256  # The dimension of a fully connected layer
     # Learning
-    lr: float = 1e-3  # The learning rate
+    lr: float = 1e-4  # The learning rate
     tau: float = 0.99  # soft update coefficient
-    batch_size: int = 32  # The batch size
+    batch_size: int = 64  # The batch size
     max_mem_size: int = 100000  # The maximum memory size
     episodes: int = 4000  # The number of episodes used to learn
     validation_interval: int = 500  # The number of episodes used to learn
