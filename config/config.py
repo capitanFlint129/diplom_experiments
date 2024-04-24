@@ -79,9 +79,7 @@ class TrainConfig:
     reward_space: str = "IrInstructionCountOz"
     # reward_space: str = "RuntimePointEstimateReward"
     # reward_space: str = "LlvmMca"
-    actions: list = field(
-        default_factory=lambda: COMPILER_GYM_LEADERBOARD_DQN_ACTION_SET
-    )
+    actions: list = field(default_factory=lambda: O3_ACTION_SET)
     reward_scale: float = 1e3
     special_actions: list = field(
         default_factory=lambda: [
