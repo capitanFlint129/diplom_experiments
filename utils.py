@@ -8,6 +8,7 @@ import compiler_gym
 import numpy as np
 import plotly.graph_objects as go
 import torch
+import wandb
 from compiler_gym.datasets import FilesDataset
 from compiler_gym.envs import CompilerEnv
 from sklearn.model_selection import train_test_split
@@ -29,6 +30,8 @@ class ValidationResult:
     geomean_reward: float
     mean_reward: float
     mean_walltime: float
+    step_reward_hist: wandb.Histogram = None
+    step_reward_hist_std: wandb.Histogram = None
 
 
 def get_agent(config: TrainConfig, device, policy_net_path: Optional[str]) -> DQNAgent:

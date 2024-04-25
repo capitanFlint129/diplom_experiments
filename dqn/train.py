@@ -1,4 +1,3 @@
-import itertools
 import sys
 from typing import Optional
 
@@ -13,9 +12,9 @@ from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
 from config.config import TrainConfig
 from dqn.dqn import DQNAgent
 from dqn.train_utils import EpisodeData, StepResult, TrainHistory
-from observation.utils import get_observation, ObservationModifier
+from env.performance_optimization import MyEnv, CfgGridEnv
+from observation.utils import ObservationModifier
 from utils import save_model, ValidationResult
-from env.performance_optimization import MyEnv, LlvmMcaEnv, CgLlvmMcaEnv, CfgGridEnv
 
 
 def train(
@@ -154,6 +153,8 @@ def _validation_during_train(
     log_data = {}
     log_data["val_geomean_reward"] = validation_result.geomean_reward
     log_data["val_mean_reward"] = validation_result.mean_reward
+    log_data["val_reward_for_step"] = validation_result.step_reward_hist
+    log_data["val_reward_for_step, std"] = validation_result.step_reward_hist_std
     run.log(
         log_data,
         step=episode_i,
@@ -187,6 +188,7 @@ def _log_episode_results(
         + f" Average rewards sum: {average_rewards_sum}"
         + f" Action: {' '.join(episode_data.chosen_flags)}"
     )
+    reward_hist, reward_hist_std = train_history.reward_hist_for_step()
     run.log(
         {
             "average_rewards_sum_for_last_episodes": average_rewards_sum,
@@ -196,6 +198,8 @@ def _log_episode_results(
             "total_episode_reward": episode_data.total_reward,
             "episode_length": episode_data.actions_count,
             "mean_values": np.mean(episode_data.values),
+            "reward_for_step": reward_hist,
+            "reward_for_step, std": reward_hist,
         },
         step=episode_i,
     )
@@ -212,6 +216,7 @@ def validate(
     times = []
     codesize = []
     rewards = []
+    train_history = TrainHistory(logging_history_size=config.logging_history_size)
     for i, benchmark in enumerate(val_benchmarks):
         env.reset(benchmark=benchmark)
         codesize.append(env._cg_env.observation["IrInstructionCount"])
@@ -221,6 +226,7 @@ def validate(
             )
         rewards.append(episode_data.total_reward)
         times.append(timer.time)
+        train_history.update(episode_data)
         if enable_logs:
             print(
                 f"{i} - {benchmark} - reward: {episode_data.total_reward} - time: {timer.time} - actions: {' '.join(episode_data.chosen_flags)}"
@@ -229,10 +235,15 @@ def validate(
     geomean_reward = geometric_mean(rewards)
     mean_reward = arithmetic_mean(rewards)
     mean_walltime = arithmetic_mean(times)
+    step_reward_hist, step_reward_hist_std = train_history.reward_hist_for_step(
+        log_size=len(val_benchmarks)
+    )
     return ValidationResult(
         geomean_reward=geomean_reward,
         mean_reward=mean_reward,
         mean_walltime=mean_walltime,
+        step_reward_hist=step_reward_hist,
+        step_reward_hist_std=step_reward_hist_std,
     )
 
 

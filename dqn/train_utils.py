@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Optional, Any
 
+import wandb
 import numpy as np
 import scipy
 
@@ -29,6 +30,7 @@ class EpisodeData:
     patience_count: int = 0
     losses: list[float] = field(default_factory=lambda: [])
     values: list[float] = field(default_factory=lambda: [])
+    rewards: list[float] = field(default_factory=lambda: [])
     chosen_flags: list[str] = field(default_factory=lambda: [])
     forbidden_actions: set[int] = field(default_factory=lambda: set())
     remains: int = TrainConfig.episode_length
@@ -41,6 +43,7 @@ class EpisodeData:
         self.chosen_flags.extend(step_result.flags)
         self.actions_count += 1
         self.remains -= 1
+        self.rewards.append(step_result.reward)
         self.total_reward += step_result.reward
         if step_result.reward < 0:
             self.total_negative_reward += step_result.reward
@@ -62,6 +65,7 @@ class EpisodeData:
 class TrainHistory:
     logging_history_size: int
     rewards_history: list[float] = field(default_factory=lambda: [])
+    rewards_histogram: list[list[float]] = field(default_factory=lambda: [])
     negative_rewards_history: list[float] = field(default_factory=lambda: [])
     best_val_mean: float = 0
 
@@ -80,9 +84,30 @@ class TrainHistory:
             log_size = self.logging_history_size
         return np.std(self.rewards_history[-log_size:])
 
+    def reward_hist_for_step(self, log_size: Optional[int] = None):
+        if log_size is None:
+            log_size = self.logging_history_size
+        data = [
+            [np.mean(step_data[-log_size:])] for step_data in self.rewards_histogram
+        ]
+        table = wandb.Table(data=data, columns=["rewards"])
+        reward_hist = wandb.plot.histogram(table, "rewards", title="reward_hist")
+
+        data = [[np.std(step_data[-log_size:])] for step_data in self.rewards_histogram]
+        table = wandb.Table(data=data, columns=["rewards_std"])
+        reward_hist_std = wandb.plot.histogram(
+            table, "rewards_std", title="reward_hist_std"
+        )
+        return reward_hist, reward_hist_std
+
     def update(self, episode_data: EpisodeData) -> None:
         self.rewards_history.append(episode_data.total_reward)
         self.negative_rewards_history.append(episode_data.total_negative_reward)
+        if len(self.rewards_histogram) == 0:
+            self.rewards_histogram = [[reward] for reward in episode_data.rewards]
+        else:
+            for i, reward in enumerate(episode_data.rewards):
+                self.rewards_histogram[i].append(reward)
 
 
 def get_binned_statistics(
