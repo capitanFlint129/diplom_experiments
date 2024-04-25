@@ -267,7 +267,7 @@ def get_ir2vec(ir_text: str) -> np.ndarray:
                     ll_file.name,
                 ],
                 capture_output=True,
-                timeout=30,
+                timeout=90,
             )
             if proc.returncode != 0:
                 raise Exception("IR2Vec failed")
