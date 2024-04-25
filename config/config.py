@@ -22,7 +22,7 @@ class TrainConfig:
     fc_dim: int = 128  # The dimension of a fully connected layer
     lstm_hidden_size: int = 256  # The dimension of a fully connected layer
     # Learning
-    lr: float = 1e-4  # The learning rate
+    lr: float = 5e-5  # The learning rate
     tau: float = 0.99  # soft update coefficient
     batch_size: int = 128  # The batch size
     max_mem_size: int = 100000  # The maximum memory size
@@ -59,7 +59,7 @@ class TrainConfig:
     train_val_test_split: bool = False
     skipped_benchmarks: list = field(default_factory=lambda: [])
     compiler_gym_env: str = "llvm-v0"
-    observation_space: str = "InstCountNorm"
+    observation_space: str = "IR2Vec"
     # observation_space: list = field(
     #     default_factory=lambda: [
     #         # "IR2Vec",
@@ -75,7 +75,7 @@ class TrainConfig:
             # "prev-2",
         ]
     )
-    observation_size: int = 69
+    observation_size: int = 300
     reward_space: str = "IrInstructionCountOz"
     # reward_space: str = "RuntimePointEstimateReward"
     # reward_space: str = "LlvmMca"
