@@ -50,17 +50,21 @@ def main():
         #
         "base_runtime": [],
         "o3_runtime": [],
+        "o2_runtime": [],
         "model_runtime": [],
         #
         "base_inst": [],
         "o3_inst": [],
+        "o2_inst": [],
         "model_inst": [],
         #
         "base_speedup": [],
         "o3_speedup": [],
+        "o2_speedup": [],
         #
         "base_inst_imp": [],
         "o3_inst_imp": [],
+        "o2_inst_imp": [],
     }
 
     config = TrainConfig()
@@ -137,11 +141,11 @@ def main():
             results["base_runtime"].append(base_mean)
 
             new_env.reset()
-            new_env.send_param("llvm.apply_baseline_optimizations", "-O3")
+            # new_env.send_param("llvm.apply_baseline_optimizations", "-O3")
             results["o3_inst"].append(
                 compile_and_get_instructions(
                     ir=new_env.observation["Ir"],
-                    sequence=[],
+                    sequence=["-O3"],
                     result_path=BIN_NAME,
                     execution_args=benchmark_args,
                     linkopts=linkopts,
@@ -152,17 +156,36 @@ def main():
             )
             results["o3_runtime"].append(o3_mean)
 
+            new_env.reset()
+            results["o2_inst"].append(
+                compile_and_get_instructions(
+                    ir=new_env.observation["Ir"],
+                    sequence=["-O2"],
+                    result_path=BIN_NAME,
+                    execution_args=benchmark_args,
+                    linkopts=linkopts,
+                )
+            )
+            o2_mean, o2_std = measure_execution_mean_and_std(
+                f"./{BIN_NAME}", benchmark_args
+            )
+            results["o2_runtime"].append(o2_mean)
+
             base_speedup = get_speedup(base_mean, model_mean)
             o3_speedup = get_speedup(o3_mean, model_mean)
+            o2_speedup = get_speedup(o2_mean, model_mean)
 
-            base_rblock_inst_imp = results["base_inst"][-1] / results["model_inst"][-1]
-            o3_rblock_inst_imp = results["o3_inst"][-1] / results["model_inst"][-1]
+            base_inst_imp = results["base_inst"][-1] / results["model_inst"][-1]
+            o3_inst_imp = results["o3_inst"][-1] / results["model_inst"][-1]
+            o2_inst_imp = results["o2_inst"][-1] / results["model_inst"][-1]
 
             results["base_speedup"].append(base_speedup)
             results["o3_speedup"].append(o3_speedup)
+            results["o2_speedup"].append(o2_speedup)
 
-            results["base_inst_imp"].append(base_rblock_inst_imp)
-            results["o3_inst_imp"].append(o3_rblock_inst_imp)
+            results["base_inst_imp"].append(base_inst_imp)
+            results["o3_inst_imp"].append(o3_inst_imp)
+            results["o2_inst_imp"].append(o2_inst_imp)
 
             results["benchmark"].append(str(benchmark).rsplit("/", maxsplit=1)[-1])
 

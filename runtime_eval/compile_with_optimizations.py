@@ -26,6 +26,10 @@ def get_benchmark_source_path(benchmark_name):
 
 
 def main():
+    os.makedirs("data/O0", exist_ok=True)
+    os.makedirs("data/O2", exist_ok=True)
+    os.makedirs("data/O3", exist_ok=True)
+    os.makedirs("data/model", exist_ok=True)
     model_optimizations = pd.read_csv("data/optimizations.csv")
     for row in tqdm(model_optimizations.iterrows(), total=model_optimizations.shape[0]):
         benchmark_name = row[1].benchmark.strip()
@@ -38,6 +42,12 @@ def main():
                 source_path=source_path,
                 result_path=f"data/O0/{benchmark_name}",
                 sequence=["-O0"],
+            )
+
+            compile_one_source_with_opt_sequence(
+                source_path=source_path,
+                result_path=f"data/O2/{benchmark_name}",
+                sequence=["-O2"],
             )
 
             compile_one_source_with_opt_sequence(

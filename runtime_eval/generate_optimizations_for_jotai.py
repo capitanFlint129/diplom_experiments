@@ -11,7 +11,7 @@ from utils import (
 from utils import make_env
 
 DATASET_URI = "benchmark://jotaibench-v0"
-RUN_NAME = "lively-snowflake-49"
+RUN_NAME = "peach-hill-96"
 
 
 def main():
