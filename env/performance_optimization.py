@@ -19,6 +19,7 @@ from env.llvm import (
     clang_compile_to_ir,
     clang_compile_to_ir_o0,
 )
+from utils import get_ir2vec
 
 LLVM_BINS = "/home/flint/.local/share/compiler_gym/llvm-v0/bin"
 MCA_BIN = os.path.join(LLVM_BINS, "llvm-mca")
@@ -263,36 +264,6 @@ class LlvmMcaEnv(MyEnv):
             space = self._cg_env.observation.spaces[obs_name]
             bitcode = Path(self._filepath)
             return llvm.compute_observation(space, bitcode)
-
-
-def get_ir2vec(ir_text: str) -> np.ndarray:
-    ir2vec_bin = "/home/flint/diplom/IR2Vec/build/bin/ir2vec"
-    seed_emb_path = (
-        "/home/flint/diplom/IR2Vec/vocabulary/seedEmbeddingVocab-300-llvm10.txt"
-    )
-    with tempfile.NamedTemporaryFile("w") as ll_file:
-        with tempfile.NamedTemporaryFile("r") as result_file:
-            ll_file.write(ir_text)
-            ll_file.flush()
-            proc = subprocess.run(
-                [
-                    ir2vec_bin,
-                    "-fa",
-                    "-vocab",
-                    seed_emb_path,
-                    "-o",
-                    result_file.name,
-                    "-level",
-                    "p",
-                    ll_file.name,
-                ],
-                capture_output=True,
-            )
-            if proc.returncode != 0:
-                raise Exception("IR2Vec failed")
-            observation = np.loadtxt(result_file.name)
-    observation = observation / np.linalg.norm(observation)
-    return observation
 
 
 def get_mca_result_from_ir(bc_path):

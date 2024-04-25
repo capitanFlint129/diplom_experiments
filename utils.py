@@ -1,6 +1,8 @@
 import itertools
 import os
 import random
+import subprocess
+import tempfile
 from dataclasses import dataclass
 from typing import Optional
 
@@ -212,10 +214,11 @@ def optimize_with_model(
     config: TrainConfig, agent: DQNAgent, env: CompilerEnv, iters=10, print_debug=True
 ) -> list[str]:
     flags = []
-    prev_obs = np.zeros_like(env.observation[config.observation_space])
+    prev_obs = np.zeros((config.observation_size,))
     agent.episode_reset()
     for i in range(iters):
-        obs = env.observation[config.observation_space]
+
+        obs = _get_obs(env, config.observation_space)
         # assert np.any(prev_obs != obs)
         action, value = agent.choose_action(
             obs,
@@ -233,3 +236,41 @@ def optimize_with_model(
     if print_debug:
         print()
     return flags
+
+
+def _get_obs(env, obs_name):
+    if obs_name == "IR2Vec":
+        return get_ir2vec(env.observation["Ir"])
+    else:
+        return env.observation[obs_name]
+
+
+def get_ir2vec(ir_text: str) -> np.ndarray:
+    ir2vec_bin = "/home/flint/diplom/IR2Vec/build/bin/ir2vec"
+    seed_emb_path = (
+        "/home/flint/diplom/IR2Vec/vocabulary/seedEmbeddingVocab-300-llvm10.txt"
+    )
+    with tempfile.NamedTemporaryFile("w") as ll_file:
+        with tempfile.NamedTemporaryFile("r") as result_file:
+            ll_file.write(ir_text)
+            ll_file.flush()
+            proc = subprocess.run(
+                [
+                    ir2vec_bin,
+                    "-fa",
+                    "-vocab",
+                    seed_emb_path,
+                    "-o",
+                    result_file.name,
+                    "-level",
+                    "p",
+                    ll_file.name,
+                ],
+                capture_output=True,
+                timeout=30,
+            )
+            if proc.returncode != 0:
+                raise Exception("IR2Vec failed")
+            observation = np.loadtxt(result_file.name)
+    observation = observation / np.linalg.norm(observation)
+    return observation

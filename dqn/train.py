@@ -1,4 +1,5 @@
 import sys
+from subprocess import TimeoutExpired
 from typing import Optional
 
 import numpy as np
@@ -101,6 +102,8 @@ def train(
                 prev_action = step_result.action
         except SessionNotFound as e:
             print(f"Warning! SessionNotFound error occured {e}", file=sys.stderr)
+        except TimeoutExpired as e:
+            print(f"Timeout: {e}", file=sys.stderr)
         agent.episode_done()
         train_history.update(episode_data)
 
@@ -214,23 +217,26 @@ def validate(
     enable_logs: bool = False,
 ) -> ValidationResult:
     times = []
-    codesize = []
+    # codesize = []
     rewards = []
     train_history = TrainHistory(logging_history_size=config.logging_history_size)
     for i, benchmark in enumerate(val_benchmarks):
         env.reset(benchmark=benchmark)
-        codesize.append(env._cg_env.observation["IrInstructionCount"])
-        with Timer() as timer:
-            episode_data = rollout(
-                agent, env, config, use_actions_masking=use_actions_masking
-            )
-        rewards.append(episode_data.total_reward)
-        times.append(timer.time)
-        train_history.update(episode_data)
-        if enable_logs:
-            print(
-                f"{i} - {benchmark} - reward: {episode_data.total_reward} - time: {timer.time} - actions: {' '.join(episode_data.chosen_flags)}"
-            )
+        # codesize.append(env._cg_env.observation["IrInstructionCount"])
+        try:
+            with Timer() as timer:
+                episode_data = rollout(
+                    agent, env, config, use_actions_masking=use_actions_masking
+                )
+            rewards.append(episode_data.total_reward)
+            times.append(timer.time)
+            train_history.update(episode_data)
+            if enable_logs:
+                print(
+                    f"{i} - {benchmark} - reward: {episode_data.total_reward} - time: {timer.time} - actions: {' '.join(episode_data.chosen_flags)}"
+                )
+        except TimeoutExpired as e:
+            print(f"Timeout skip benchmark {str(benchmark)}: {e}", file=sys.stderr)
 
     geomean_reward = geometric_mean(rewards)
     mean_reward = arithmetic_mean(rewards)

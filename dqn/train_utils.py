@@ -99,7 +99,7 @@ class TrainHistory:
             for i, step_data in enumerate(self.rewards_histogram)
         ]
         table = wandb.Table(data=data, columns=["step", "reward_std"])
-        reward_hist_std = wandb.plot.scatter(table, "step", "reward, std")
+        reward_hist_std = wandb.plot.scatter(table, "step", "reward_std")
         return reward_hist, reward_hist_std
 
     def update(self, episode_data: EpisodeData) -> None:
