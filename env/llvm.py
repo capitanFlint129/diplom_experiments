@@ -69,10 +69,14 @@ def compile_ll_with_opt_sequence(ir, result_path, sequence, linkopts):
     if proc.returncode != 0:
         print(proc.stderr)
         raise Exception(f"Compilation failed {proc.stderr}")
+    compile_ll(f"{result_path}.ll", result_path, linkopts=linkopts)
+
+
+def compile_ll(source_path, result_path, linkopts):
     proc = subprocess.run(
         [
             CLANG_BIN,
-            f"{result_path}.ll",
+            source_path,
         ]
         + linkopts
         + [

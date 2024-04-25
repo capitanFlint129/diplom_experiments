@@ -1,7 +1,6 @@
 import os
 import subprocess
 import sys
-import tempfile
 from abc import abstractmethod, ABC
 from pathlib import Path
 from typing import Union
@@ -14,7 +13,10 @@ from compiler_gym.envs import llvm
 from compiler_gym.wrappers import RuntimePointEstimateReward
 
 from config.config import TrainConfig
-from env.cfg_grind import compile_and_get_instructions
+from env.cfg_grind import (
+    compile_and_get_instructions,
+    compile_and_get_instructions_no_sequence,
+)
 from env.llvm import (
     clang_compile_to_ir,
     clang_compile_to_ir_o0,
@@ -80,14 +82,12 @@ class CfgGridEnv(MyEnv):
 
                 # O3
                 if self._debug:
-                    self._executed_insts_o3 = self._compile_and_get_instructions(
+                    self._executed_insts_o3 = self._compile_and_get_instructions_seq(
                         sequence=[O3]
                     )
 
                 # Initial
-                self._executed_insts_initial = self._compile_and_get_instructions(
-                    sequence=[]
-                )
+                self._executed_insts_initial = self._compile_and_get_instructions()
                 if self._debug:
                     print(
                         f"O3: {self._executed_insts_o3} - O0: {self._executed_insts_initial}"
@@ -102,7 +102,7 @@ class CfgGridEnv(MyEnv):
 
     def step(self, action):
         self._cg_env.step(action)
-        executed_insts = self._compile_and_get_instructions(sequence=[])
+        executed_insts = self._compile_and_get_instructions()
         reward = (
             self._executed_insts_prev - executed_insts
         ) / self._executed_insts_initial
@@ -120,7 +120,15 @@ class CfgGridEnv(MyEnv):
         else:
             return self._cg_env.observation[obs_name]
 
-    def _compile_and_get_instructions(self, sequence) -> int:
+    def _compile_and_get_instructions(self) -> int:
+        return compile_and_get_instructions_no_sequence(
+            ir=self._cg_env.observation["Ir"],
+            result_path=self._bin_filepath,
+            execution_args="0",
+            linkopts=[],
+        )
+
+    def _compile_and_get_instructions_seq(self, sequence) -> int:
         return compile_and_get_instructions(
             ir=self._cg_env.observation["Ir"],
             sequence=sequence,

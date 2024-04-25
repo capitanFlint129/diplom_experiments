@@ -2,7 +2,7 @@ import json
 import os.path
 import subprocess
 
-from env.llvm import compile_ll_with_opt_sequence
+from env.llvm import compile_ll_with_opt_sequence, compile_ll
 
 CFG_GRIND_ASMMAP_BIN = "cfggrind_asmmap"
 CFG_GRIND_INFO_BIN = "cfggrind_info"
@@ -87,4 +87,17 @@ def compile_and_get_instructions(
             sequence=sequence,
             linkopts=linkopts + ["-lm"],
         )
+    return get_executed_instructions(result_path, execution_args)
+
+
+def compile_and_get_instructions_no_sequence(
+    ir: str, result_path: str, execution_args: str, linkopts
+) -> int:
+    with open(f"{result_path}.ll", "w") as ouf:
+        ouf.write(ir)
+    try:
+        compile_ll(f"{result_path}.ll", result_path, linkopts=linkopts)
+    except Exception as e:
+        print(f"Compilation failed, recompile with -lm: {e}")
+        compile_ll(f"{result_path}.ll", result_path, linkopts=linkopts + ["-lm"])
     return get_executed_instructions(result_path, execution_args)
