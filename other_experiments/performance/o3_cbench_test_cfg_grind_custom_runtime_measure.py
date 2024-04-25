@@ -1,3 +1,5 @@
+from subprocess import TimeoutExpired
+
 import compiler_gym
 import gym
 import pandas as pd
@@ -15,10 +17,10 @@ from utils import (
     optimize_with_model,
 )
 
-MODEL_ITERS = 10
-RUNTIME_COUNT = 30
+MODEL_ITERS = 25
+# RUNTIME_COUNT = 30
 BIN_NAME = "tmp_o3_cbench_test_cfg_grind_bin"
-RUN_TIME = "daily-capybara-88"
+RUN_TIME = "peach-hill-96"
 
 # WORKAROUND_CBENCH_COMMAND_ARGS = None
 
@@ -99,10 +101,26 @@ def main():
                 if str(benchmark).rsplit("/", maxsplit=1)[-1] in math_benchs
                 else []
             )
-            results["benchmark"].append(str(benchmark).rsplit("/", maxsplit=1)[-1])
 
-            new_env.runtime_observation_count = RUNTIME_COUNT
-            new_env.runtime_warmup_count = 0
+            new_env.reset()
+            try:
+                optimize_with_model(config, agent, new_env, iters=MODEL_ITERS)
+            except TimeoutExpired as e:
+                print(f"IR2vec timeout skip benchmark: {e}")
+            results["model_inst"].append(
+                compile_and_get_instructions(
+                    ir=new_env.observation["Ir"],
+                    sequence=[],
+                    result_path=BIN_NAME,
+                    execution_args=benchmark_args,
+                    linkopts=linkopts,
+                )
+            )
+            model_mean, model_std = measure_execution_mean_and_std(
+                f"./{BIN_NAME}", benchmark_args
+            )
+            results["model_runtime"].append(model_mean)
+
             new_env.reset()
             results["base_inst"].append(
                 compile_and_get_instructions(
@@ -114,7 +132,7 @@ def main():
                 )
             )
             base_mean, base_std = measure_execution_mean_and_std(
-                f"./{BIN_NAME}", benchmark_args, runs=RUNTIME_COUNT
+                f"./{BIN_NAME}", benchmark_args
             )
             results["base_runtime"].append(base_mean)
 
@@ -130,25 +148,9 @@ def main():
                 )
             )
             o3_mean, o3_std = measure_execution_mean_and_std(
-                f"./{BIN_NAME}", benchmark_args, runs=RUNTIME_COUNT
+                f"./{BIN_NAME}", benchmark_args
             )
             results["o3_runtime"].append(o3_mean)
-
-            new_env.reset()
-            optimize_with_model(config, agent, new_env, iters=MODEL_ITERS)
-            results["model_inst"].append(
-                compile_and_get_instructions(
-                    ir=new_env.observation["Ir"],
-                    sequence=[],
-                    result_path=BIN_NAME,
-                    execution_args=benchmark_args,
-                    linkopts=linkopts,
-                )
-            )
-            model_mean, model_std = measure_execution_mean_and_std(
-                f"./{BIN_NAME}", benchmark_args, runs=RUNTIME_COUNT
-            )
-            results["model_runtime"].append(model_mean)
 
             base_speedup = get_speedup(base_mean, model_mean)
             o3_speedup = get_speedup(o3_mean, model_mean)
@@ -161,6 +163,8 @@ def main():
 
             results["base_inst_imp"].append(base_rblock_inst_imp)
             results["o3_inst_imp"].append(o3_rblock_inst_imp)
+
+            results["benchmark"].append(str(benchmark).rsplit("/", maxsplit=1)[-1])
 
             pd_results.loc[len(pd_results)] = [results[key][-1] for key in results]
 
