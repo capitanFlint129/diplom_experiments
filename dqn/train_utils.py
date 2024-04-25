@@ -88,16 +88,18 @@ class TrainHistory:
         if log_size is None:
             log_size = self.logging_history_size
         data = [
-            [np.mean(step_data[-log_size:])] for step_data in self.rewards_histogram
+            [i, np.mean(step_data[-log_size:])]
+            for i, step_data in enumerate(self.rewards_histogram)
         ]
-        table = wandb.Table(data=data, columns=["rewards"])
-        reward_hist = wandb.plot.histogram(table, "rewards", title="reward_hist")
+        table = wandb.Table(data=data, columns=["step", "reward"])
+        reward_hist = wandb.plot.scatter(table, "step", "reward")
 
-        data = [[np.std(step_data[-log_size:])] for step_data in self.rewards_histogram]
-        table = wandb.Table(data=data, columns=["rewards_std"])
-        reward_hist_std = wandb.plot.histogram(
-            table, "rewards_std", title="reward_hist_std"
-        )
+        data = [
+            [i, np.std(step_data[-log_size:])]
+            for i, step_data in enumerate(self.rewards_histogram)
+        ]
+        table = wandb.Table(data=data, columns=["step", "reward_std"])
+        reward_hist_std = wandb.plot.scatter(table, "step", "reward, std")
         return reward_hist, reward_hist_std
 
     def update(self, episode_data: EpisodeData) -> None:
