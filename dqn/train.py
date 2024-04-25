@@ -154,7 +154,7 @@ def _validation_during_train(
     log_data["val_geomean_reward"] = validation_result.geomean_reward
     log_data["val_mean_reward"] = validation_result.mean_reward
     log_data["val_reward_for_step"] = validation_result.step_reward_hist
-    log_data["val_reward_for_step, std"] = validation_result.step_reward_hist_std
+    log_data["val_reward_for_step_std"] = validation_result.step_reward_hist_std
     run.log(
         log_data,
         step=episode_i,
@@ -199,7 +199,7 @@ def _log_episode_results(
             "episode_length": episode_data.actions_count,
             "mean_values": np.mean(episode_data.values),
             "reward_for_step": reward_hist,
-            "reward_for_step, std": reward_hist,
+            "reward_for_step_std": reward_hist,
         },
         step=episode_i,
     )
