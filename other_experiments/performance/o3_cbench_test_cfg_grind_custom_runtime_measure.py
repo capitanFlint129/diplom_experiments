@@ -35,10 +35,6 @@ def apply_pass_sequence(env: CompilerEnv, pass_sequence):
             # print(reward)
 
 
-def get_speedup(compare_mean, model_mean) -> float:
-    return compare_mean / max(model_mean, 1e-12)
-
-
 def main():
     env: CompilerEnv = gym.make("llvm-v0")
     # env = RuntimePointEstimateReward(
@@ -171,13 +167,19 @@ def main():
             )
             results["o2_runtime"].append(o2_mean)
 
-            base_speedup = get_speedup(base_mean, model_mean)
-            o3_speedup = get_speedup(o3_mean, model_mean)
-            o2_speedup = get_speedup(o2_mean, model_mean)
+            base_speedup = (base_mean - model_mean) / base_mean
+            o3_speedup = (o3_mean - model_mean) / base_mean
+            o2_speedup = (o2_mean - model_mean) / base_mean
 
-            base_inst_imp = results["base_inst"][-1] / results["model_inst"][-1]
-            o3_inst_imp = results["o3_inst"][-1] / results["model_inst"][-1]
-            o2_inst_imp = results["o2_inst"][-1] / results["model_inst"][-1]
+            base_inst_imp = (
+                results["base_inst"][-1] - results["model_inst"][-1]
+            ) / results["base_inst"][-1]
+            o3_inst_imp = (
+                results["o3_inst"][-1] - results["model_inst"][-1]
+            ) / results["base_inst"][-1]
+            o2_inst_imp = (
+                results["o2_inst"][-1] - results["model_inst"][-1]
+            ) / results["base_inst"][-1]
 
             results["base_speedup"].append(base_speedup)
             results["o3_speedup"].append(o3_speedup)

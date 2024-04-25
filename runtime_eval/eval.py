@@ -117,9 +117,15 @@ def main():
         result["O0 runtime, std"].append(o0_runtimes_std)
         result["model runtime, mean"].append(model_runtimes_mean)
         result["model runtime, std"].append(model_runtimes_std)
-        result["O3 speedup"].append(o3_runtimes_mean / model_runtimes_mean)
-        result["O2 speedup"].append(o2_runtimes_mean / model_runtimes_mean)
-        result["O0 speedup"].append(o0_runtimes_mean / model_runtimes_mean)
+        result["O3 speedup"].append(
+            (o3_runtimes_mean - model_runtimes_mean) / o0_runtimes_mean
+        )
+        result["O2 speedup"].append(
+            (o2_runtimes_mean - model_runtimes_mean) / o0_runtimes_mean
+        )
+        result["O0 speedup"].append(
+            (o0_runtimes_mean - model_runtimes_mean) / o0_runtimes_mean
+        )
 
         if MEASURE_EXECUTED_INSTRUCTIONS:
             o3_exec_inst = get_executed_instructions(
