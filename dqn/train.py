@@ -72,7 +72,7 @@ def train(
                     remains_steps=episode_data.remains,
                     observation=observation,
                     observation_modifier=observation_modifier,
-                    forbidden_actions=episode_data.forbidden_actions,
+                    forbidden_actions=set(),
                     enable_epsilon_greedy=True,
                     eval_mode=False,
                 )

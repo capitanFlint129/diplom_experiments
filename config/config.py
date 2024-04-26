@@ -24,7 +24,7 @@ class TrainConfig:
     # Learning
     lr: float = 1e-4  # The learning rate
     tau: float = 0.99  # soft update coefficient
-    batch_size: int = 512  # The batch size
+    batch_size: int = 256  # The batch size
     max_mem_size: int = 100000  # The maximum memory size
     episodes: int = 30000  # The number of episodes used to learn
     validation_interval: int = 500  # The number of episodes used to learn
@@ -34,7 +34,7 @@ class TrainConfig:
     eval_with_forbidden_actions: bool = True
     eval_with_bestsequence: bool = False
     learn_memory_threshold: int = max(batch_size, 32)
-    enable_soft_update: bool = True
+    enable_soft_update: bool = False
     replace_period: int = 500
 
     # General section
