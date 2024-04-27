@@ -10,11 +10,11 @@ import compiler_gym
 import numpy as np
 import plotly.graph_objects as go
 import torch
-import wandb
 from compiler_gym.datasets import FilesDataset
 from compiler_gym.envs import CompilerEnv
 from sklearn.model_selection import train_test_split
 
+import wandb
 from config.config import MODELS_DIR, WANDB_PROJECT_NAME, TrainConfig, TEST_BENCHMARKS
 from dqn.dqn import DoubleDQNAgent, DQNAgent, LstmDQNAgent, SimpleDQNAgent, TwinDQNAgent
 
@@ -247,31 +247,35 @@ def _get_obs(env, obs_name):
 
 
 def get_ir2vec(ir_text: str) -> np.ndarray:
+    with tempfile.NamedTemporaryFile("w") as ll_file:
+        ll_file.write(ir_text)
+        ll_file.flush()
+        return get_ir2vec_from_file(ll_file.name)
+
+
+def get_ir2vec_from_file(filepath: str) -> np.ndarray:
     ir2vec_bin = "/home/flint/diplom/IR2Vec/build/bin/ir2vec"
     seed_emb_path = (
         "/home/flint/diplom/IR2Vec/vocabulary/seedEmbeddingVocab-300-llvm10.txt"
     )
-    with tempfile.NamedTemporaryFile("w") as ll_file:
-        with tempfile.NamedTemporaryFile("r") as result_file:
-            ll_file.write(ir_text)
-            ll_file.flush()
-            proc = subprocess.run(
-                [
-                    ir2vec_bin,
-                    "-fa",
-                    "-vocab",
-                    seed_emb_path,
-                    "-o",
-                    result_file.name,
-                    "-level",
-                    "p",
-                    ll_file.name,
-                ],
-                capture_output=True,
-                timeout=120,
-            )
-            if proc.returncode != 0:
-                raise Exception("IR2Vec failed")
-            observation = np.loadtxt(result_file.name)
+    with tempfile.NamedTemporaryFile("r") as result_file:
+        proc = subprocess.run(
+            [
+                ir2vec_bin,
+                "-fa",
+                "-vocab",
+                seed_emb_path,
+                "-o",
+                result_file.name,
+                "-level",
+                "p",
+                filepath,
+            ],
+            capture_output=True,
+            timeout=120,
+        )
+        if proc.returncode != 0:
+            raise Exception("IR2Vec failed")
+        observation = np.loadtxt(result_file.name)
     observation = observation / np.linalg.norm(observation)
     return observation
