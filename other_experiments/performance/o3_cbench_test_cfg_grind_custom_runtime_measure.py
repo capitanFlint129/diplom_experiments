@@ -20,7 +20,7 @@ from utils import (
 MODEL_ITERS = 25
 # RUNTIME_COUNT = 30
 BIN_NAME = "tmp_o3_cbench_test_cfg_grind_bin"
-RUN_TIME = "peach-hill-96"
+RUN_TIME = "tough-bee-111"
 
 # WORKAROUND_CBENCH_COMMAND_ARGS = None
 
@@ -83,7 +83,14 @@ def main():
         "tiffdither",
         "tiffmedian",
     }
+
+    skipped_benchmarks = {
+        # "bzip2",
+    }
     for benchmark in tqdm(benchmarks):
+        benchmark_name =  str(benchmark).rsplit("/", maxsplit=1)[-1]
+        if benchmark_name in skipped_benchmarks:
+            continue
         with compiler_gym.make("llvm-v0", benchmark=benchmark) as new_env:
             new_env.reset()
             if not new_env.observation["IsRunnable"]:
@@ -98,7 +105,7 @@ def main():
 
             linkopts = (
                 ["-lm"]
-                if str(benchmark).rsplit("/", maxsplit=1)[-1] in math_benchs
+                if benchmark_name in math_benchs
                 else []
             )
 
@@ -189,7 +196,7 @@ def main():
             results["o3_inst_imp"].append(o3_inst_imp)
             results["o2_inst_imp"].append(o2_inst_imp)
 
-            results["benchmark"].append(str(benchmark).rsplit("/", maxsplit=1)[-1])
+            results["benchmark"].append(benchmark_name)
 
             pd_results.loc[len(pd_results)] = [results[key][-1] for key in results]
 

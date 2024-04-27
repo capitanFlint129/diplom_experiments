@@ -230,7 +230,7 @@ def optimize_with_model(
         if value <= 0:
             break
         if print_debug:
-            print(config.actions[action], end=" ")
+            print(f"{config.actions[action]}({value})", end=" ")
         flags.append(config.actions[action])
         env.step(env.action_space.flags.index(flags[-1]))
         prev_obs = obs
