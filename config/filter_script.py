@@ -1,17 +1,16 @@
-from config.action_config import O23_SUBSEQ_POSET_LIKE
-from config.config import TrainConfig
-from utils import make_env
+from action_config import O2_SUBSEQ_POSET_LIKE
+import compiler_gym
 
-config = TrainConfig()
-env = make_env(config)
+env = compiler_gym.make("llvm-v0")
 
 result = []
 
-for seq in O23_SUBSEQ_POSET_LIKE:
+for seq in O2_SUBSEQ_POSET_LIKE:
     cur_seq = []
     for action in seq.split():
         if action in env.action_space.flags:
             cur_seq.append(action)
-    result.append(cur_seq)
+    result.append(" ".join(cur_seq))
 
+env.close()
 print(result)

@@ -108,11 +108,15 @@ class CfgGridEnv(MyEnv):
                 )
             return 0
         if len(flags) > 1:
-            self._cg_env.multistep([self._cg_env.action_space.flags.index(f) for f in flags])
+            self._cg_env.multistep(
+                [self._cg_env.action_space.flags.index(f) for f in flags]
+            )
         else:
-            self._cg_env.step(self._cg_env.action_space.flags.index(flags))
+            self._cg_env.step(self._cg_env.action_space.flags.index(flags[0]))
         executed_insts = self._compile_and_get_instructions()
-        reward = (self._executed_insts_prev - executed_insts) / self._executed_insts_initial
+        reward = (
+            self._executed_insts_prev - executed_insts
+        ) / self._executed_insts_initial
         if self._debug:
             print(
                 f"reward: {reward} - executed_insts: {executed_insts} - executed_insts_prev: {self._executed_insts_prev} - executed_insts_initial: {self._executed_insts_initial}"
@@ -174,7 +178,7 @@ class CgLlvmMcaEnv(MyEnv):
             self._cg_env.observation["Ir"]
         )
         return (
-                rblock_throughput_before - rblock_throughput_after
+            rblock_throughput_before - rblock_throughput_after
         ) / self._rblock_throughput_initial
 
     def get_observation(self, obs_name):
@@ -260,7 +264,7 @@ class LlvmMcaEnv(MyEnv):
             raise Exception(f"Opt step failed {self._cg_env.benchmark}")
         rblock_throughput_after = get_rblock_throughput_bc(self._filepath)
         return (
-                rblock_throughput_before - rblock_throughput_after
+            rblock_throughput_before - rblock_throughput_after
         ) / self._rblock_throughput_initial
 
     def multistep(self):
@@ -315,6 +319,7 @@ def get_rblock_throughput_bc(bc_path):
 
 def get_rblock_throughput_ir(ir):
     return parse_rblock_throughput(get_mca_result_from_ir_str(ir))
+
 
 # def get_mca_result(source_path, optimization):
 #     proc = subprocess.run(
