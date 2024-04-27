@@ -129,7 +129,7 @@ def prepare_datasets(
                 [str(benchmark).rsplit("/", maxsplit=1)[-1] for benchmark in test]
             )
         )
-    train, val = train_test_split(benchmarks, test_size=0.02, random_state=random_state)
+    train, val = train_test_split(benchmarks, test_size=0.01, random_state=random_state)
     test = env.datasets[test_dataset_name]
     # train = env.datasets[test_dataset_name]
     # val = env.datasets[test_dataset_name]
