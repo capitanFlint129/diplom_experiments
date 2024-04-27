@@ -22,7 +22,7 @@ def replace_source_with_bytecode(source_dir, bytecode_dir):
                 # Check if the corresponding bytecode file exists
                 if os.path.exists(bytecode_path):
                     # Remove the source file
-                    os.remove(source_path)
+                    # os.remove(source_path)
                     # Copy the bytecode file to the source directory
                     shutil.copy(bytecode_path, source_path.split(".")[0] + ".bc")
                 else:
@@ -31,7 +31,9 @@ def replace_source_with_bytecode(source_dir, bytecode_dir):
 
 if __name__ == "__main__":
     source_directory = (
-        "/home/flint/diplom/eval_llvm_test_suite/llvm-test-suite-bc-sources"
+        "/home/flint/diplom/eval_llvm_test_suite/0-test-suite-bc-sources/SingleSource"
     )
-    bytecode_directory = "/home/flint/diplom/eval_llvm_test_suite/build-O0-save-temps"
+    bytecode_directory = (
+        "/home/flint/diplom/eval_llvm_test_suite/1-build-O0-save-temps/SingleSource"
+    )
     replace_source_with_bytecode(source_directory, bytecode_directory)

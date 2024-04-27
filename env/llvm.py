@@ -75,8 +75,23 @@ def compile_ll_with_opt_sequence(ir, result_path, sequence, linkopts):
 def compile_ll(source_path, result_path, linkopts):
     proc = subprocess.run(
         [
-            CLANG_BIN,
+            "llc",
+            # "-O=3",
+            "-filetype=obj",
             source_path,
+            "-o",
+            f"{result_path}.o",
+        ],
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        print(proc.stderr)
+        raise Exception(f"llc: Compilation failed {proc.stderr}")
+    proc = subprocess.run(
+        # clang hello-world.o -o hello-world
+        [
+            CLANG_BIN,
+            f"{result_path}.o",
         ]
         + linkopts
         + [

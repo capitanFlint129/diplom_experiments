@@ -10,7 +10,7 @@ from tqdm import tqdm
 
 from config.config import TrainConfig
 from env.cfg_grind import compile_and_get_instructions
-from runtime_eval.eval import measure_execution_mean_and_std
+from runtime_eval.jotai.eval import measure_execution_mean_and_std
 from utils import (
     get_agent,
     get_model_path,
@@ -20,7 +20,7 @@ from utils import (
 MODEL_ITERS = 25
 # RUNTIME_COUNT = 30
 BIN_NAME = "tmp_o3_cbench_test_cfg_grind_bin"
-RUN_TIME = "tough-bee-111"
+RUN_TIME = "misunderstood-sunset-112"
 
 # WORKAROUND_CBENCH_COMMAND_ARGS = None
 
@@ -88,7 +88,7 @@ def main():
         # "bzip2",
     }
     for benchmark in tqdm(benchmarks):
-        benchmark_name =  str(benchmark).rsplit("/", maxsplit=1)[-1]
+        benchmark_name = str(benchmark).rsplit("/", maxsplit=1)[-1]
         if benchmark_name in skipped_benchmarks:
             continue
         with compiler_gym.make("llvm-v0", benchmark=benchmark) as new_env:
@@ -103,11 +103,7 @@ def main():
                 benchmark_args = e.msg.split(".bc")[-1].strip()
                 cg_working_dir = e.dir
 
-            linkopts = (
-                ["-lm"]
-                if benchmark_name in math_benchs
-                else []
-            )
+            linkopts = ["-lm"] if benchmark_name in math_benchs else []
 
             new_env.reset()
             try:
