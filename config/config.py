@@ -80,7 +80,7 @@ class TrainConfig:
     # reward_space: str = "RuntimePointEstimateReward"
     # reward_space: str = "LlvmMca"
     actions: list = field(default_factory=lambda: O23_SUBSEQ_POSET_LIKE)
-    reward_scale: float = 1e3
+    reward_scale: float = 1
     special_actions: list = field(
         default_factory=lambda: [
             "noop",
