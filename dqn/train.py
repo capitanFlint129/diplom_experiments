@@ -88,8 +88,8 @@ def train(
                 )
                 train_reward = step_result.reward
                 train_reward *= config.reward_scale
-                if train_reward < -14.767:
-                    train_reward = -np.emath.logn(1.2, -train_reward)
+                # if train_reward < -14.767:
+                #     train_reward = -np.emath.logn(1.2, -train_reward)
                 agent.store_transition(
                     prev_action=prev_action,
                     action=step_result.action,
@@ -183,13 +183,16 @@ def _log_episode_results(
     average_rewards_sum = train_history.get_average_rewards_sum()
     average_negative_rewards_sum = train_history.get_average_negative_rewards_sum()
     std_rewards_sum = train_history.get_rewards_std()
+    actions_str = ' '.join([
+        f"{' '.join(flags)}({reward.round(7)})" for flags, reward in zip(episode_data.chosen_flags, episode_data.rewards)
+    ])
     print(
         f"{episode_i} - {env.benchmark}\n"
         + "Total: {:.4f}".format(episode_data.total_reward)
         + " Total neg: {:.4f}".format(episode_data.total_negative_reward)
         + " Epsilon: {:.4f}".format(epsilon)
         + f" Average rewards sum: {average_rewards_sum}"
-        + f" Action: {' '.join(episode_data.chosen_flags)}"
+        + f" Action: {actions_str}"
     )
     # reward_hist, reward_hist_std = train_history.reward_hist_for_step()
     run.log(
@@ -232,8 +235,12 @@ def validate(
             times.append(timer.time)
             train_history.update(episode_data)
             if enable_logs:
+                actions_str = ' '.join([
+                    f"{' '.join(flags)}({reward.round(7)})" for flags, reward in
+                    zip(episode_data.chosen_flags, episode_data.rewards)
+                ])
                 print(
-                    f"{i} - {benchmark} - reward: {episode_data.total_reward} - time: {timer.time} - actions: {' '.join(episode_data.chosen_flags)}"
+                    f"{i} - {benchmark} - reward: {episode_data.total_reward} - time: {timer.time} - actions: {actions_str}"
                 )
         except TimeoutExpired as e:
             print(f"Timeout skip benchmark {str(benchmark)}: {e}", file=sys.stderr)
@@ -264,8 +271,8 @@ def rollout(
     observation_modifier = ObservationModifier(
         env, config.observation_modifiers, config.episode_length
     )
-    # observation = observation_modifier.modify(base_observation, episode_data.remains)
-    observation = base_observation
+    observation = observation_modifier.modify(base_observation, episode_data.remains)
+    # observation = base_observation
     best_reward = float("-inf")
     best_sequence = []
     while (
@@ -303,7 +310,7 @@ def rollout(
         )
         if episode_data.total_reward > best_reward:
             best_reward = episode_data.total_reward
-            best_sequence.extend(step_result.flags)
+            best_sequence.append(step_result.flags)
     if config.eval_with_bestsequence:
         episode_data.total_reward = best_reward
         episode_data.chosen_flags = best_sequence
@@ -328,25 +335,12 @@ def episode_step(
         eval_mode=eval_mode,
     )
     flags = config.actions[action]
-    # if flags == "noop":
-    #     flags = [flags]
-    #     reward, done, info = 0, False, {"action_had_no_effect": True}
-    # elif flags == "terminate":
-    #     flags = [flags]
-    #     reward, done, info = 0, True, {"action_had_no_effect": True}
-    # else:
-    #     if " " in flags:
-    #         flags = flags.split()
-    #         _, reward, done, info = env.multistep(
-    #             [env.action_space.flags.index(f) for f in flags]
-    #         )
-    #     else:
-    reward = env.step(env._cg_env.action_space.flags.index(flags))
-    flags = [flags]
+    flags = flags.split()
+    reward = env.step(flags)
 
     base_observation = env.get_observation(config.observation_space)
-    # observation = observation_modifier.modify(base_observation, remains_steps)
-    observation = base_observation
+    observation = observation_modifier.modify(base_observation, remains_steps)
+    # observation = base_observation
     return StepResult(
         action=action,
         reward=reward,

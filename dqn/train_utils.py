@@ -31,7 +31,7 @@ class EpisodeData:
     losses: list[float] = field(default_factory=lambda: [])
     values: list[float] = field(default_factory=lambda: [])
     rewards: list[float] = field(default_factory=lambda: [])
-    chosen_flags: list[str] = field(default_factory=lambda: [])
+    chosen_flags: list[list[str]] = field(default_factory=lambda: [])
     forbidden_actions: set[int] = field(default_factory=lambda: set())
     remains: int = TrainConfig.episode_length
 
@@ -40,7 +40,7 @@ class EpisodeData:
         step_result: StepResult,
         loss_value: Optional[float],
     ) -> None:
-        self.chosen_flags.extend(step_result.flags)
+        self.chosen_flags.append(step_result.flags)
         self.actions_count += 1
         self.remains -= 1
         self.rewards.append(step_result.reward)

@@ -107,28 +107,29 @@ def fix_seed(seed: int) -> None:
 
 
 def prepare_datasets(
+    run_name,
     env,
     random_state: int,
 ) -> tuple[list, list, list]:
     # train_dataset_name = "benchmark://anghabench-v1"
     dataset_name = "benchmark://jotaibench-v0"
-    dataset_size = 7000
+    # dataset_size = 7000
     test_dataset_name = "benchmark://cbench-v1"
-    # benchmarks = list(env.datasets[dataset_name].benchmarks())
-    benchmarks = list(
-        itertools.islice(env.datasets[dataset_name].benchmarks(), dataset_size)
-    )
+    benchmarks = list(env.datasets[dataset_name].benchmarks())
+    # benchmarks = list(
+    #     itertools.islice(env.datasets[dataset_name].benchmarks(), dataset_size)
+    # )
     benchmarks, test = train_test_split(
-        benchmarks, test_size=0.25, random_state=random_state
+        benchmarks, test_size=0.25, random_state=random_state + 10
     )
-    benchmarks = benchmarks[:dataset_size]
-    with open(TEST_BENCHMARKS + ".txt", "w") as ouf:
+    # benchmarks = benchmarks[:dataset_size]
+    with open(f"{run_name}_{TEST_BENCHMARKS}.txt", "w") as ouf:
         ouf.write(
             "\n".join(
                 [str(benchmark).rsplit("/", maxsplit=1)[-1] for benchmark in test]
             )
         )
-    train, val = train_test_split(benchmarks, test_size=0.01, random_state=random_state)
+    train, val = train_test_split(benchmarks, test_size=0.02, random_state=random_state)
     test = env.datasets[test_dataset_name]
     # train = env.datasets[test_dataset_name]
     # val = env.datasets[test_dataset_name]

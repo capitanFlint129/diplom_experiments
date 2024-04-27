@@ -19,6 +19,7 @@ from utils import (
 def main():
     config = TrainConfig()
     config.actions = config.special_actions + config.actions
+    assert config.actions[0] == "noop"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     run = wandb.init(
         project=WANDB_PROJECT_NAME,
@@ -28,6 +29,7 @@ def main():
     with make_env(config) as train_env:
         fix_seed(config.random_state)
         train_benchmarks, val_benchmarks, test_benchmarks = prepare_datasets(
+            run.name,
             train_env,
             random_state=config.random_state,
         )

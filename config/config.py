@@ -18,7 +18,7 @@ class TrainConfig:
     gamma: float = 0.9
     epsilon: float = 1.0  # The starting value for epsilon
     epsilon_end: float = 0.05  # The ending value for epsilon
-    epsilon_dec: float = 5e-5  # The decrement value for epsilon
+    epsilon_dec: float = 3e-5  # The decrement value for epsilon
     fc_dim: int = 128  # The dimension of a fully connected layer
     lstm_hidden_size: int = 256  # The dimension of a fully connected layer
     # Learning
@@ -28,7 +28,7 @@ class TrainConfig:
     max_mem_size: int = 100000  # The maximum memory size
     episodes: int = 30000  # The number of episodes used to learn
     validation_interval: int = 500  # The number of episodes used to learn
-    episode_length: int = 25  # The (MAX) number of transformation passes per episode
+    episode_length: int = 20  # The (MAX) number of transformation passes per episode
     patience: int = 5  # The (MAX) number of times to apply a series of transformations without observable change
     val_patience: int = 5
     eval_with_forbidden_actions: bool = True
@@ -70,8 +70,8 @@ class TrainConfig:
     observation_modifiers: list = field(
         default_factory=lambda: [
             # "start-IR2Vec",
-            "remains-counter",
-            # "remains-counter-normalized",
+            # "remains-counter",
+            "remains-counter-normalized",
             # "prev-2",
         ]
     )
@@ -79,11 +79,11 @@ class TrainConfig:
     reward_space: str = "IrInstructionCountOz"
     # reward_space: str = "RuntimePointEstimateReward"
     # reward_space: str = "LlvmMca"
-    actions: list = field(default_factory=lambda: O3_ACTION_SET)
+    actions: list = field(default_factory=lambda: O23_SUBSEQ_POSET_LIKE)
     reward_scale: float = 1e3
     special_actions: list = field(
         default_factory=lambda: [
-            # "noop",
+            "noop",
         ]
     )
     # Experiment section (logging and reproduce)
