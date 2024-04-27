@@ -123,7 +123,7 @@ def prepare_datasets(
         benchmarks, test_size=0.25, random_state=random_state + 10
     )
     # benchmarks = benchmarks[:dataset_size]
-    with open(f"{run_name}_{TEST_BENCHMARKS}.txt", "w") as ouf:
+    with open(f"{TEST_BENCHMARKS}_{run_name}.txt", "w") as ouf:
         ouf.write(
             "\n".join(
                 [str(benchmark).rsplit("/", maxsplit=1)[-1] for benchmark in test]

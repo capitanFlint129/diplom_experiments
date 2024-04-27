@@ -52,10 +52,10 @@ def train(
         )
         # base_observation = get_observation(train_env, config)
         base_observation = cfg_train_env.get_observation(config.observation_space)
-        # observation = observation_modifier.modify(
-        #     base_observation, episode_data.remains
-        # )
-        observation = base_observation
+        observation = observation_modifier.modify(
+            base_observation, episode_data.remains
+        )
+        # observation = base_observation
         prev_action = 0
         if "noop" in config.special_actions:
             prev_action = config.actions.index("noop")
@@ -184,7 +184,7 @@ def _log_episode_results(
     average_negative_rewards_sum = train_history.get_average_negative_rewards_sum()
     std_rewards_sum = train_history.get_rewards_std()
     actions_str = ' '.join([
-        f"{' '.join(flags)}({reward.round(7)})" for flags, reward in zip(episode_data.chosen_flags, episode_data.rewards)
+        f"{' '.join(flags)}({round(reward, 7)})" for flags, reward in zip(episode_data.chosen_flags, episode_data.rewards)
     ])
     print(
         f"{episode_i} - {env.benchmark}\n"
@@ -236,7 +236,7 @@ def validate(
             train_history.update(episode_data)
             if enable_logs:
                 actions_str = ' '.join([
-                    f"{' '.join(flags)}({reward.round(7)})" for flags, reward in
+                    f"{' '.join(flags)}({round(reward, 7)})" for flags, reward in
                     zip(episode_data.chosen_flags, episode_data.rewards)
                 ])
                 print(

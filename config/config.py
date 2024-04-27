@@ -75,7 +75,7 @@ class TrainConfig:
             # "prev-2",
         ]
     )
-    observation_size: int = 300
+    observation_size: int = 301
     reward_space: str = "IrInstructionCountOz"
     # reward_space: str = "RuntimePointEstimateReward"
     # reward_space: str = "LlvmMca"
