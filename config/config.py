@@ -59,7 +59,7 @@ class TrainConfig:
     train_val_test_split: bool = False
     skipped_benchmarks: list = field(default_factory=lambda: [])
     compiler_gym_env: str = "llvm-v0"
-    observation_space: str = "IR2Vec"
+    observation_space: str = "InstCountNorm"
     # observation_space: list = field(
     #     default_factory=lambda: [
     #         # "IR2Vec",
@@ -75,7 +75,7 @@ class TrainConfig:
             # "prev-2",
         ]
     )
-    observation_size: int = 301
+    observation_size: int = 70
     reward_space: str = "IrInstructionCountOz"
     # reward_space: str = "RuntimePointEstimateReward"
     # reward_space: str = "LlvmMca"
