@@ -17,7 +17,7 @@ from utils import (
     optimize_with_model,
 )
 
-MODEL_ITERS = 25
+# MODEL_ITERS = 25
 # RUNTIME_COUNT = 30
 BIN_NAME = "tmp_o3_cbench_test_cfg_grind_bin"
 RUN_NAME = "pleasant-sound-131"
@@ -107,7 +107,7 @@ def main():
 
             new_env.reset()
             try:
-                optimize_with_model(config, agent, new_env, iters=MODEL_ITERS)
+                optimize_with_model(config, agent, new_env, iters=config.episode_length)
             except TimeoutExpired as e:
                 print(f"IR2vec timeout skip benchmark: {e}")
             except Exception as e:
