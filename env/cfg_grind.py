@@ -64,7 +64,7 @@ def get_executed_instructions(bin_path: str, execution_args: str) -> int:
     )
     if proc.returncode != 0:
         print(proc.stderr)
-        raise Exception(f"valgrind failed {bin_path}: {proc.stderr}")
+        raise Exception(f"cfggrind failed {bin_path}: {proc.stderr}")
     cfg_grind_result = json.loads(proc.stdout.decode())
     return cfg_grind_result["dynamic"]["instructions"]["count"]
 

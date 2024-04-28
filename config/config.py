@@ -90,3 +90,6 @@ class TrainConfig:
     logging_history_size: int = 100
     random_state: int = 99
     codesize_bins_number: int = 23
+
+    def __post_init__(self):
+        self.actions = self.special_actions + self.actions

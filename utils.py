@@ -17,6 +17,7 @@ from sklearn.model_selection import train_test_split
 import wandb
 from config.config import MODELS_DIR, WANDB_PROJECT_NAME, TrainConfig, TEST_BENCHMARKS
 from dqn.dqn import DoubleDQNAgent, DQNAgent, LstmDQNAgent, SimpleDQNAgent, TwinDQNAgent
+from observation.utils import ObservationModifier
 
 
 @dataclass
@@ -217,9 +218,15 @@ def optimize_with_model(
     flags = []
     prev_obs = np.zeros((config.observation_size,))
     agent.episode_reset()
+    
+    observation_modifier = ObservationModifier(
+        None, config.observation_modifiers, config.episode_length
+    )
     for i in range(iters):
-
-        obs = _get_obs(env, config.observation_space)
+        base_observation = _get_obs(env, config.observation_space)
+        obs = observation_modifier.modify(
+            base_observation, config.episode_length - i
+        )
         # assert np.any(prev_obs != obs)
         action, value = agent.choose_action(
             obs,
@@ -229,10 +236,19 @@ def optimize_with_model(
         )
         if value <= 0:
             break
+        cur_flags = config.actions[action].split()
+        if cur_flags[0] == "noop":
+            pass
+        elif len(cur_flags) > 1:
+            env.multistep(
+                [env.action_space.flags.index(f) for f in cur_flags]
+            )
+        else:
+            env.step(env.action_space.flags.index(cur_flags[0]))
+
         if print_debug:
             print(f"{config.actions[action]}({value})", end=" ")
         flags.append(config.actions[action])
-        env.step(env.action_space.flags.index(flags[-1]))
         prev_obs = obs
     if print_debug:
         print()

@@ -104,6 +104,9 @@ def train(
             print(f"Warning! SessionNotFound error occured {e}", file=sys.stderr)
         except TimeoutExpired as e:
             print(f"Timeout: {e}", file=sys.stderr)
+        except Exception as e:
+            print(f"train step failed skip it: {e}")
+
         agent.episode_done()
         train_history.update(episode_data)
 
@@ -183,9 +186,12 @@ def _log_episode_results(
     average_rewards_sum = train_history.get_average_rewards_sum()
     average_negative_rewards_sum = train_history.get_average_negative_rewards_sum()
     std_rewards_sum = train_history.get_rewards_std()
-    actions_str = ' '.join([
-        f"{' '.join(flags)}({round(reward, 7)})" for flags, reward in zip(episode_data.chosen_flags, episode_data.rewards)
-    ])
+    actions_str = " ".join(
+        [
+            f"{' '.join(flags)}({round(reward, 7)})"
+            for flags, reward in zip(episode_data.chosen_flags, episode_data.rewards)
+        ]
+    )
     print(
         f"{episode_i} - {env.benchmark}\n"
         + "Total: {:.4f}".format(episode_data.total_reward)
@@ -235,15 +241,21 @@ def validate(
             times.append(timer.time)
             train_history.update(episode_data)
             if enable_logs:
-                actions_str = ' '.join([
-                    f"{' '.join(flags)}({round(reward, 7)})" for flags, reward in
-                    zip(episode_data.chosen_flags, episode_data.rewards)
-                ])
+                actions_str = " ".join(
+                    [
+                        f"{' '.join(flags)}({round(reward, 7)})"
+                        for flags, reward in zip(
+                            episode_data.chosen_flags, episode_data.rewards
+                        )
+                    ]
+                )
                 print(
                     f"{i} - {benchmark} - reward: {episode_data.total_reward} - time: {timer.time} - actions: {actions_str}"
                 )
         except TimeoutExpired as e:
             print(f"Timeout skip benchmark {str(benchmark)}: {e}", file=sys.stderr)
+        except Exception as e:
+            print(f"benchmark {benchmark} validation failed skip it: {e}")
 
     geomean_reward = geometric_mean(rewards)
     mean_reward = arithmetic_mean(rewards)

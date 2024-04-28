@@ -20,7 +20,7 @@ from utils import (
 MODEL_ITERS = 25
 # RUNTIME_COUNT = 30
 BIN_NAME = "tmp_o3_cbench_test_cfg_grind_bin"
-RUN_TIME = "misunderstood-sunset-112"
+RUN_TIME = "ruby-pond-129"
 
 # WORKAROUND_CBENCH_COMMAND_ARGS = None
 

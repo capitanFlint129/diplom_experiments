@@ -131,11 +131,19 @@ class CfgGridEnv(MyEnv):
             return self._cg_env.observation[obs_name]
 
     def _compile_and_get_instructions(self) -> int:
-        return compile_and_get_instructions_no_sequence(
-            ir=self._cg_env.observation["Ir"],
-            result_path=self._bin_filepath,
-            execution_args="0",
-            linkopts=[],
+        attempts = 10
+        for i in range(attempts):
+            try:
+                return compile_and_get_instructions_no_sequence(
+                    ir=self._cg_env.observation["Ir"],
+                    result_path=self._bin_filepath,
+                    execution_args="0",
+                    linkopts=[],
+                )
+            except Exception as e:
+                print(f"compile_and_get_instructions_no_sequence failed: {e}")
+        raise Exception(
+            f"compile_and_get_instructions_no_sequence failed after {attempts} attempts"
         )
 
     def _compile_and_get_instructions_seq(self, sequence) -> int:
