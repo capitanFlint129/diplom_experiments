@@ -20,7 +20,7 @@ from utils import (
 MODEL_ITERS = 25
 # RUNTIME_COUNT = 30
 BIN_NAME = "tmp_o3_cbench_test_cfg_grind_bin"
-RUN_TIME = "ruby-pond-129"
+RUN_NAME = "pleasant-sound-131"
 
 # WORKAROUND_CBENCH_COMMAND_ARGS = None
 
@@ -69,7 +69,7 @@ def main():
     agent = get_agent(
         config,
         device,
-        policy_net_path=get_model_path(RUN_TIME),
+        policy_net_path=get_model_path(RUN_NAME),
     )
 
     pd_results = pd.DataFrame(columns=list(results.keys()))
@@ -110,6 +110,9 @@ def main():
                 optimize_with_model(config, agent, new_env, iters=MODEL_ITERS)
             except TimeoutExpired as e:
                 print(f"IR2vec timeout skip benchmark: {e}")
+            except Exception as e:
+                print(f"Exception. Skip benchmark: {e}")
+                continue
             results["model_inst"].append(
                 compile_and_get_instructions(
                     ir=new_env.observation["Ir"],
@@ -204,7 +207,7 @@ def main():
                 )
             )
 
-    pd_results.to_csv("o3_cbench_test_cfg_grind_custom_runtime_measure.csv")
+    pd_results.to_csv(f"{RUN_NAME}_o3_cbench_test_cfg_grind_custom_runtime_measure.csv")
     print(
         tabulate(
             pd_results,
