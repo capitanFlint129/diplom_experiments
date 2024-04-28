@@ -95,6 +95,7 @@ def compile_ll(source_path, result_path, linkopts):
         ]
         + linkopts
         + [
+            "-no-pie",
             "-o",
             result_path,
         ],
