@@ -1,3 +1,5 @@
+# [10, 37, 49, 87, 91, 103, 120, 224, 247, 265, 278]
+
 POSET_RL_ODG = [
     "-instcombine -barrier -elim-avail-extern -rpo-functionattrs -globalopt -globaldce -constmerge",
     "-instcombine -barrier -elim-avail-extern -rpo-functionattrs -globalopt -globaldce -float2int -lower-constant-intrinsics",
@@ -131,6 +133,21 @@ O23_SUBSEQ_POSET_LIKE = [
     "-simplifycfg -slp-vectorizer -instcombine",
     "-loop-simplify -lcssa -loop-unroll -instcombine -loop-simplify -lcssa -licm -alignment-from-assumptions",
     "-strip-dead-prototypes -globaldce -constmerge -loop-simplify -lcssa -loop-sink -instsimplify -div-rem-pairs -simplifycfg",
+]
+
+O3_SUBSEQ_CBENCH_MINS = [
+    "-ee-instrument -simplifycfg -sroa",
+    "-early-cse -lower-expect -forceattrs -inferattrs -callsite-splitting -ipsccp -called-value-propagation -attributor -globalopt -mem2reg -deadargelim -instcombine",
+    "-simplifycfg -prune-eh -inline -functionattrs -argpromotion -sroa",
+    "-early-cse-memssa -speculative-execution -jump-threading -correlated-propagation -simplifycfg -aggressive-instcombine -instcombine -libcalls-shrinkwrap -pgo-memop-opt -tailcallelim -simplifycfg -reassociate -loop-simplify",
+    "-lcssa",
+    "-loop-rotate -licm -loop-unswitch -simplifycfg",
+    "-instcombine -loop-simplify -lcssa -indvars -loop-idiom -loop-deletion -loop-unroll -mldst-motion",
+    "-gvn -memcpyopt -sccp -bdce",
+    "-instcombine -jump-threading -correlated-propagation -dse -loop-simplify -lcssa -licm -adce -simplifycfg -instcombine -barrier -elim-avail-extern -rpo-functionattrs",
+    "-globalopt -globaldce -float2int -lower-constant-intrinsics -loop-simplify -lcssa -loop-rotate -loop-distribute -loop-vectorize -loop-simplify -loop-load-elim -instcombine -simplifycfg",
+    "-slp-vectorizer -instcombine -loop-simplify -lcssa -loop-unroll -instcombine -loop-simplify -lcssa -licm -alignment-from-assumptions -strip-dead-prototypes -globaldce -constmerge -loop-simplify -lcssa -loop-sink -instsimplify -div-rem-pairs",
+    "-simplifycfg",
 ]
 
 # O23_SUBSEQ_POSET_LIKE = [
