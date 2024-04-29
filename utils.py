@@ -15,7 +15,12 @@ from compiler_gym.envs import CompilerEnv
 from sklearn.model_selection import train_test_split
 
 import wandb
-from config.config import MODELS_DIR, WANDB_PROJECT_NAME, TrainConfig, TEST_BENCHMARKS
+from config.config import (
+    MODELS_DIR,
+    WANDB_PROJECT_NAME,
+    TrainConfig,
+    TEST_BENCHMARKS_DIR,
+)
 from dqn.dqn import DoubleDQNAgent, DQNAgent, LstmDQNAgent, SimpleDQNAgent, TwinDQNAgent
 from observation.utils import ObservationModifier
 
@@ -124,7 +129,9 @@ def prepare_datasets(
         benchmarks, test_size=0.25, random_state=random_state + 10
     )
     # benchmarks = benchmarks[:dataset_size]
-    with open(f"{TEST_BENCHMARKS}_{run_name}.txt", "w") as ouf:
+    with open(
+        os.path.join(TEST_BENCHMARKS_DIR, f"test_benchmarks_{run_name}.txt"), "w"
+    ) as ouf:
         ouf.write(
             "\n".join(
                 [str(benchmark).rsplit("/", maxsplit=1)[-1] for benchmark in test]
@@ -218,15 +225,13 @@ def optimize_with_model(
     flags = []
     prev_obs = np.zeros((config.observation_size,))
     agent.episode_reset()
-    
+
     observation_modifier = ObservationModifier(
         None, config.observation_modifiers, config.episode_length
     )
     for i in range(iters):
         base_observation = _get_obs(env, config.observation_space)
-        obs = observation_modifier.modify(
-            base_observation, config.episode_length - i
-        )
+        obs = observation_modifier.modify(base_observation, config.episode_length - i)
         # assert np.any(prev_obs != obs)
         action, value = agent.choose_action(
             obs,
@@ -240,9 +245,7 @@ def optimize_with_model(
         if cur_flags[0] == "noop":
             pass
         elif len(cur_flags) > 1:
-            env.multistep(
-                [env.action_space.flags.index(f) for f in cur_flags]
-            )
+            env.multistep([env.action_space.flags.index(f) for f in cur_flags])
         else:
             env.step(env.action_space.flags.index(cur_flags[0]))
 
