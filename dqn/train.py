@@ -315,7 +315,7 @@ def rollout(
             observation_modifier=observation_modifier,
             enable_epsilon_greedy=False,
             forbidden_actions=None,
-            eval_mode=False,
+            eval_mode=True,
         )
         episode_data.update_after_episode_step(
             step_result=step_result,

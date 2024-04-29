@@ -51,8 +51,6 @@ class DQN(nn.Module):
             nn.ReLU(),
             nn.Linear(fc_dims, fc_dims),
             nn.ReLU(),
-            nn.Linear(fc_dims, fc_dims),
-            nn.ReLU(),
             nn.Linear(fc_dims, n_actions),
         )
 

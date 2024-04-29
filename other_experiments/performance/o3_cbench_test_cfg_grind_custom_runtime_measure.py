@@ -1,3 +1,4 @@
+import os
 from subprocess import TimeoutExpired
 
 import compiler_gym
@@ -11,6 +12,7 @@ from tqdm import tqdm
 from config.config import TrainConfig
 from env.cfg_grind import compile_and_get_instructions
 from runtime_eval.jotai.eval import measure_execution_mean_and_std
+from runtime_eval.hyperfine_utils import save_whisker_plot
 from utils import (
     get_agent,
     get_model_path,
@@ -19,8 +21,11 @@ from utils import (
 
 # MODEL_ITERS = 25
 # RUNTIME_COUNT = 30
+BENCHMARKS_LIMIT = None
+CBENCH_EVAL_DIR = "cbench_eval_dir"
+RUN_NAME = "trim-terrain-134"
 BIN_NAME = "tmp_o3_cbench_test_cfg_grind_bin"
-RUN_NAME = "pleasant-sound-131"
+EVAL_FILES_DIR = os.path.join(CBENCH_EVAL_DIR, RUN_NAME)
 
 # WORKAROUND_CBENCH_COMMAND_ARGS = None
 
@@ -35,11 +40,72 @@ def apply_pass_sequence(env: CompilerEnv, pass_sequence):
             # print(reward)
 
 
+
+def process_optimizator(optimizator_name, env, results: dict, hypefine_results: dict, linkopts, benchmark_args, prepare_command, sequence) -> tuple[float, float, dict]:
+    bin_path = os.path.join(EVAL_FILES_DIR, BIN_NAME)
+    results[f"{optimizator_name}_inst"].append(
+        compile_and_get_instructions(
+            ir=env.observation["Ir"],
+            sequence=sequence,
+            result_path=bin_path,
+            execution_args=benchmark_args,
+            linkopts=linkopts,
+        )
+    )
+    mean, std, hyperfine_result = measure_execution_mean_and_std(
+        f"./{bin_path}", benchmark_args, prepare_command=prepare_command, specific_name=optimizator_name, warmup=10,
+    )
+    hypefine_results[optimizator_name][results["benchmark"][-1]] = hyperfine_result
+    results[f"{optimizator_name}_runtime"].append(mean)
+    return mean, std
+
+
+def print_df_last_row(df):
+    print(
+        tabulate(
+            df.iloc[[len(df) - 1]],
+            headers="keys",
+            tablefmt="psql",
+        )
+    )
+
+def print_df(df):
+    print(
+        tabulate(
+            df,
+            headers="keys",
+            tablefmt="psql",
+        )
+    )
+
+
+def save_hyperfine_whisker_plots(hypefine_results: dict[str, dict[str, dict]], split_by_optimizator=True):
+    plots_dir = os.path.join(EVAL_FILES_DIR, "whisker_plots")
+    os.makedirs(plots_dir, exist_ok=True)
+    if split_by_optimizator:
+        benchmarks_names = list(hypefine_results[next(iter(hypefine_results.keys()))].keys())
+        for benchmark_name in benchmarks_names:
+            hyperfine_run_data = {
+                optimizator_name: hypefine_results[optimizator_name][benchmark_name] for optimizator_name in hypefine_results
+            }
+            save_whisker_plot(
+                hyperfine_run_data,
+                result_filename=os.path.join(plots_dir, f"{benchmark_name}_whisker_plot.svg"),
+                title=benchmark_name,
+            )
+    else:
+        for optimizator_name, hyperfine_run_data in hypefine_results.items():
+            save_whisker_plot(
+                hyperfine_run_data,
+                result_filename=os.path.join(plots_dir, f"{optimizator_name}_whisker_plot.svg"),
+                title=os.path.join(EVAL_FILES_DIR, optimizator_name),
+            )
+
+
 def main():
+    os.makedirs(EVAL_FILES_DIR, exist_ok=True)
+
     env: CompilerEnv = gym.make("llvm-v0")
-    # env = RuntimePointEstimateReward(
-    #     env=env,
-    # )
     benchmarks = list(env.datasets["benchmark://cbench-v1"].benchmarks())
     results = {
         "benchmark": [],
@@ -73,6 +139,13 @@ def main():
     )
 
     pd_results = pd.DataFrame(columns=list(results.keys()))
+    pd_results_std = pd.DataFrame(columns=[
+        "benchmark",
+        "base_runtime",
+        "o3_runtime",
+        "o2_runtime",
+        "model_runtime",
+    ])
 
     math_benchs = {
         "qsort",
@@ -85,9 +158,16 @@ def main():
     }
 
     skipped_benchmarks = {
-        # "bzip2",
+        "bzip2",
     }
-    for benchmark in tqdm(benchmarks):
+    hypefine_results = {
+        "base": {},
+        "o3": {},
+        "o2": {},
+        "model": {},
+    }
+
+    for benchmark in tqdm(benchmarks[:BENCHMARKS_LIMIT]):
         benchmark_name = str(benchmark).rsplit("/", maxsplit=1)[-1]
         if benchmark_name in skipped_benchmarks:
             continue
@@ -104,6 +184,8 @@ def main():
                 cg_working_dir = e.dir
 
             linkopts = ["-lm"] if benchmark_name in math_benchs else []
+            # prepare_command = 'sync; echo 3 | sudo tee /proc/sys/vm/drop_caches'
+            prepare_command = ''
 
             new_env.reset()
             try:
@@ -113,65 +195,19 @@ def main():
             except Exception as e:
                 print(f"Exception. Skip benchmark: {e}")
                 continue
-            results["model_inst"].append(
-                compile_and_get_instructions(
-                    ir=new_env.observation["Ir"],
-                    sequence=[],
-                    result_path=BIN_NAME,
-                    execution_args=benchmark_args,
-                    linkopts=linkopts,
-                )
-            )
-            model_mean, model_std = measure_execution_mean_and_std(
-                f"./{BIN_NAME}", benchmark_args
-            )
-            results["model_runtime"].append(model_mean)
+
+            results["benchmark"].append(benchmark_name)
+            
+            model_mean, model_std = process_optimizator("model", new_env, results, hypefine_results, linkopts, benchmark_args, prepare_command, sequence=[])
 
             new_env.reset()
-            results["base_inst"].append(
-                compile_and_get_instructions(
-                    ir=new_env.observation["Ir"],
-                    sequence=[],
-                    result_path=BIN_NAME,
-                    execution_args=benchmark_args,
-                    linkopts=linkopts,
-                )
-            )
-            base_mean, base_std = measure_execution_mean_and_std(
-                f"./{BIN_NAME}", benchmark_args
-            )
-            results["base_runtime"].append(base_mean)
+            base_mean, base_std = process_optimizator("base", new_env, results, hypefine_results, linkopts, benchmark_args, prepare_command, sequence=[])
 
             new_env.reset()
-            # new_env.send_param("llvm.apply_baseline_optimizations", "-O3")
-            results["o3_inst"].append(
-                compile_and_get_instructions(
-                    ir=new_env.observation["Ir"],
-                    sequence=["-O3"],
-                    result_path=BIN_NAME,
-                    execution_args=benchmark_args,
-                    linkopts=linkopts,
-                )
-            )
-            o3_mean, o3_std = measure_execution_mean_and_std(
-                f"./{BIN_NAME}", benchmark_args
-            )
-            results["o3_runtime"].append(o3_mean)
+            o3_mean, o3_std = process_optimizator("o3", new_env, results, hypefine_results, linkopts, benchmark_args, prepare_command, sequence=["-O3"])
 
             new_env.reset()
-            results["o2_inst"].append(
-                compile_and_get_instructions(
-                    ir=new_env.observation["Ir"],
-                    sequence=["-O2"],
-                    result_path=BIN_NAME,
-                    execution_args=benchmark_args,
-                    linkopts=linkopts,
-                )
-            )
-            o2_mean, o2_std = measure_execution_mean_and_std(
-                f"./{BIN_NAME}", benchmark_args
-            )
-            results["o2_runtime"].append(o2_mean)
+            o2_mean, o2_std = process_optimizator("o2", new_env, results, hypefine_results, linkopts, benchmark_args, prepare_command, sequence=["-O2"])
 
             base_speedup = (base_mean - model_mean) / base_mean
             o3_speedup = (o3_mean - model_mean) / base_mean
@@ -195,26 +231,17 @@ def main():
             results["o3_inst_imp"].append(o3_inst_imp)
             results["o2_inst_imp"].append(o2_inst_imp)
 
-            results["benchmark"].append(benchmark_name)
-
             pd_results.loc[len(pd_results)] = [results[key][-1] for key in results]
+            pd_results_std.loc[len(pd_results_std)] = [benchmark_name, base_std, o3_std, o2_std, model_std]
 
-            print(
-                tabulate(
-                    pd_results.iloc[[len(pd_results) - 1]],
-                    headers="keys",
-                    tablefmt="psql",
-                )
-            )
+            print_df_last_row(pd_results)
+            print_df_last_row(pd_results_std)
 
-    pd_results.to_csv(f"{RUN_NAME}_o3_cbench_test_cfg_grind_custom_runtime_measure.csv")
-    print(
-        tabulate(
-            pd_results,
-            headers="keys",
-            tablefmt="psql",
-        )
-    )
+    pd_results.to_csv(os.path.join(EVAL_FILES_DIR, "runtime_measure.csv"))
+    pd_results_std.to_csv(os.path.join(EVAL_FILES_DIR, "runtime_measure_std.csv"))
+    save_hyperfine_whisker_plots(hypefine_results)
+    print_df(pd_results)
+    print_df(pd_results_std)
     print(pd_results.drop(columns=["benchmark"]).mean())
 
 

@@ -582,11 +582,11 @@ class LstmDQNAgent(DQNAgent):
         if eval_mode:
             if value <= 0:
                 return None, value
-            while (
-                torch.argmax(actions_q).item() in self._actions_taken
-                and actions_q.max() > 0
-            ):
-                actions_q[torch.argmax(actions_q).item()] = 0.0
+            # while (
+            #     torch.argmax(actions_q).item() in self._actions_taken
+            #     and actions_q.max() > 0
+            # ):
+            #     actions_q[torch.argmax(actions_q).item()] = 0.0
             action = torch.argmax(actions_q).item()
             self._actions_taken.append(action)
             return action, value

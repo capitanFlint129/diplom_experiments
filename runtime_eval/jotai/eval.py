@@ -34,8 +34,8 @@ def parse_exec_time_hyperfine(time_stdout) -> float:
 
 
 def measure_execution_mean_and_std(
-    bin_path, execution_args: str = "", runs=RUNS
-) -> tuple[float, float]:
+    bin_path, execution_args: str = "", prepare_command="", runs=RUNS, specific_name="", warmup=0,
+) -> tuple[float, float, dict]:
     # with Timer() as timer:
     #     proc = subprocess.run(
     #         [bin_path] + execution_args.split(),
@@ -46,17 +46,22 @@ def measure_execution_mean_and_std(
     #     print(proc.stderr)
     #     raise Exception(f"run failed: {proc.stderr}")
     # runtimes.append(timer.time)
+    filename = f"{specific_name}_hyperfine_result.json"
+    if len(prepare_command) != 0:
+        command = f"hyperfine --prepare '{prepare_command}' --warmup {0} '{bin_path} {execution_args}' --export-json {filename} --show-output"
+    else:
+        command = f"hyperfine --warmup {0} '{bin_path} {execution_args}' --export-json {filename} --show-output"
     proc = subprocess.run(
-        f"hyperfine '{bin_path} {execution_args}' --export-json hyperfine_result.json --show-output",
+        command,
         shell=True,
         capture_output=True,
     )
     if proc.returncode != 0:
         print(proc.stderr)
         raise Exception(f"run failed: {proc.stderr}")
-    with open("hyperfine_result.json", "r") as hyperfine_result:
+    with open(filename, "r") as hyperfine_result:
         result = json.load(hyperfine_result)
-    return result["results"][0]["mean"], result["results"][0]["stddev"]
+    return result["results"][0]["mean"], result["results"][0]["stddev"], result["results"][0]
 
 
 def main():
