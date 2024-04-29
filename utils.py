@@ -129,6 +129,7 @@ def prepare_datasets(
         benchmarks, test_size=0.25, random_state=random_state + 10
     )
     # benchmarks = benchmarks[:dataset_size]
+    os.makedirs(TEST_BENCHMARKS_DIR, exist_ok=True)
     with open(
         os.path.join(TEST_BENCHMARKS_DIR, f"test_benchmarks_{run_name}.txt"), "w"
     ) as ouf:
