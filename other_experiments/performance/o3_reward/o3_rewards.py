@@ -94,8 +94,8 @@ def main():
                     linkopts=linkopts,
                 )
             )
-            base_mean, base_std = measure_execution_mean_and_std(
-                f"./{BIN_NAME}", benchmark_args, runs=RUNTIME_COUNT
+            base_mean, base_std, _ = measure_execution_mean_and_std(
+                f"./{BIN_NAME}", benchmark_args
             )
             results["base_runtime"].append(base_mean)
 
@@ -110,8 +110,8 @@ def main():
                     linkopts=linkopts,
                 )
             )
-            o3_mean, o3_std = measure_execution_mean_and_std(
-                f"./{BIN_NAME}", benchmark_args, runs=RUNTIME_COUNT
+            o3_mean, o3_std, _ = measure_execution_mean_and_std(
+                f"./{BIN_NAME}", benchmark_args
             )
             results["o3_runtime"].append(o3_mean)
 
@@ -126,8 +126,8 @@ def main():
                     linkopts=linkopts,
                 )
             )
-            model_mean, model_std = measure_execution_mean_and_std(
-                f"./{BIN_NAME}", benchmark_args, runs=RUNTIME_COUNT
+            model_mean, model_std, _ = measure_execution_mean_and_std(
+                f"./{BIN_NAME}", benchmark_args
             )
             results["model_runtime"].append(model_mean)
 

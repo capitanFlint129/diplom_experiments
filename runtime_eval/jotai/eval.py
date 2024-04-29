@@ -1,13 +1,12 @@
+import argparse
 import json
 import os
-import random
 import subprocess
 
 import pandas as pd
 from tqdm import tqdm
 
 from env.cfg_grind import get_executed_instructions
-from runtime_eval.jotai.generate_optimizations_for_jotai import RUN_NAME
 
 DATASET_URI = "benchmark://jotaibench-v0"
 RESULT_DIR = "_eval_results"
@@ -34,7 +33,11 @@ def parse_exec_time_hyperfine(time_stdout) -> float:
 
 
 def measure_execution_mean_and_std(
-    bin_path, execution_args: str = "", prepare_command="", runs=RUNS, specific_name="", warmup=0,
+    bin_path,
+    execution_args: str = "",
+    prepare_command="",
+    specific_name="",
+    warmup=0,
 ) -> tuple[float, float, dict]:
     # with Timer() as timer:
     #     proc = subprocess.run(
@@ -50,7 +53,7 @@ def measure_execution_mean_and_std(
     if len(prepare_command) != 0:
         command = f"hyperfine --prepare '{prepare_command}' --warmup {0} '{bin_path} {execution_args}' --export-json {filename} --show-output"
     else:
-        command = f"hyperfine --warmup {0} '{bin_path} {execution_args}' --export-json {filename} --show-output"
+        command = f"hyperfine --warmup {warmup} '{bin_path} {execution_args}' --export-json {filename} --show-output"
     proc = subprocess.run(
         command,
         shell=True,
@@ -61,7 +64,11 @@ def measure_execution_mean_and_std(
         raise Exception(f"run failed: {proc.stderr}")
     with open(filename, "r") as hyperfine_result:
         result = json.load(hyperfine_result)
-    return result["results"][0]["mean"], result["results"][0]["stddev"], result["results"][0]
+    return (
+        result["results"][0]["mean"],
+        result["results"][0]["stddev"],
+        result["results"][0],
+    )
 
 
 def main():
@@ -94,23 +101,25 @@ def main():
 
     execution_args = "0"
     benchmarks = list(sorted(os.listdir("data/model")))
-    random.seed(0)
-    random.shuffle(benchmarks)
+    if args.debug:
+        benchmarks = benchmarks[:100]
+    # random.seed(0)
+    # random.shuffle(benchmarks)
     for benchmark in tqdm(benchmarks[:100]):
-        o3_runtimes_mean, o3_runtimes_std = measure_execution_mean_and_std(
-            f"data/O3/{benchmark}", execution_args=execution_args
+        o3_runtimes_mean, o3_runtimes_std, _ = measure_execution_mean_and_std(
+            f"data/O3/{benchmark}", execution_args=execution_args, warmup=10
         )
 
-        o2_runtimes_mean, o2_runtimes_std = measure_execution_mean_and_std(
-            f"data/O2/{benchmark}", execution_args=execution_args
+        o2_runtimes_mean, o2_runtimes_std, _ = measure_execution_mean_and_std(
+            f"data/O2/{benchmark}", execution_args=execution_args, warmup=10
         )
 
-        o0_runtimes_mean, o0_runtimes_std = measure_execution_mean_and_std(
-            f"data/O0/{benchmark}", execution_args=execution_args
+        o0_runtimes_mean, o0_runtimes_std, _ = measure_execution_mean_and_std(
+            f"data/O0/{benchmark}", execution_args=execution_args, warmup=10
         )
 
-        model_runtimes_mean, model_runtimes_std = measure_execution_mean_and_std(
-            f"data/model/{benchmark}", execution_args=execution_args
+        model_runtimes_mean, model_runtimes_std, _ = measure_execution_mean_and_std(
+            f"data/model/{benchmark}", execution_args=execution_args, warmup=10
         )
 
         result["benchmark"].append(str(benchmark).split("/")[-1])
@@ -149,16 +158,31 @@ def main():
             exec_inst["O2 exec_inst"].append(o2_exec_inst)
             exec_inst["O0 exec_inst"].append(o0_exec_inst)
             exec_inst["model exec_inst"].append(model_exec_inst)
-            exec_inst["O3 exec_inst imp"].append(o3_exec_inst / model_exec_inst)
-            exec_inst["O2 exec_inst imp"].append(o2_exec_inst / model_exec_inst)
-            exec_inst["O0 exec_inst imp"].append(o0_exec_inst / model_exec_inst)
+            exec_inst["O3 exec_inst imp"].append(
+                (o3_exec_inst - model_exec_inst) / o0_exec_inst
+            )
+            exec_inst["O2 exec_inst imp"].append(
+                (o2_exec_inst - model_exec_inst) / o0_exec_inst
+            )
+            exec_inst["O0 exec_inst imp"].append(
+                (o0_exec_inst - model_exec_inst) / o0_exec_inst
+            )
 
     if MEASURE_EXECUTED_INSTRUCTIONS:
         result.update(exec_inst)
     result_df = pd.DataFrame(data=result)
-    result_df.to_csv(os.path.join(RESULT_DIR, f"{RUN_NAME}.csv"))
+    result_df.to_csv(os.path.join(RESULT_DIR, f"{args.run_name}.csv"))
     print(result_df.drop(columns=["benchmark"]).mean())
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("run_name", help="run name")
+    parser.add_argument(
+        "--debug",
+        help="debug",
+        action="store_true",
+    )
+    args = parser.parse_args()
+
     main()

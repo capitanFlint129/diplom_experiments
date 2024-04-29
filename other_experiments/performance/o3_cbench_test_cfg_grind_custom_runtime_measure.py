@@ -11,8 +11,8 @@ from tqdm import tqdm
 
 from config.config import TrainConfig
 from env.cfg_grind import compile_and_get_instructions
-from runtime_eval.jotai.eval import measure_execution_mean_and_std
 from runtime_eval.hyperfine_utils import save_whisker_plot
+from runtime_eval.jotai.eval import measure_execution_mean_and_std
 from utils import (
     get_agent,
     get_model_path,
@@ -40,8 +40,16 @@ def apply_pass_sequence(env: CompilerEnv, pass_sequence):
             # print(reward)
 
 
-
-def process_optimizator(optimizator_name, env, results: dict, hypefine_results: dict, linkopts, benchmark_args, prepare_command, sequence) -> tuple[float, float, dict]:
+def process_optimizator(
+    optimizator_name,
+    env,
+    results: dict,
+    hypefine_results: dict,
+    linkopts,
+    benchmark_args,
+    prepare_command,
+    sequence,
+) -> tuple[float, float]:
     bin_path = os.path.join(EVAL_FILES_DIR, BIN_NAME)
     results[f"{optimizator_name}_inst"].append(
         compile_and_get_instructions(
@@ -53,7 +61,11 @@ def process_optimizator(optimizator_name, env, results: dict, hypefine_results: 
         )
     )
     mean, std, hyperfine_result = measure_execution_mean_and_std(
-        f"./{bin_path}", benchmark_args, prepare_command=prepare_command, specific_name=optimizator_name, warmup=10,
+        f"./{bin_path}",
+        benchmark_args,
+        prepare_command=prepare_command,
+        specific_name=optimizator_name,
+        warmup=10,
     )
     hypefine_results[optimizator_name][results["benchmark"][-1]] = hyperfine_result
     results[f"{optimizator_name}_runtime"].append(mean)
@@ -69,6 +81,7 @@ def print_df_last_row(df):
         )
     )
 
+
 def print_df(df):
     print(
         tabulate(
@@ -79,25 +92,34 @@ def print_df(df):
     )
 
 
-def save_hyperfine_whisker_plots(hypefine_results: dict[str, dict[str, dict]], split_by_optimizator=True):
+def save_hyperfine_whisker_plots(
+    hypefine_results: dict[str, dict[str, dict]], split_by_optimizator=True
+):
     plots_dir = os.path.join(EVAL_FILES_DIR, "whisker_plots")
     os.makedirs(plots_dir, exist_ok=True)
     if split_by_optimizator:
-        benchmarks_names = list(hypefine_results[next(iter(hypefine_results.keys()))].keys())
+        benchmarks_names = list(
+            hypefine_results[next(iter(hypefine_results.keys()))].keys()
+        )
         for benchmark_name in benchmarks_names:
             hyperfine_run_data = {
-                optimizator_name: hypefine_results[optimizator_name][benchmark_name] for optimizator_name in hypefine_results
+                optimizator_name: hypefine_results[optimizator_name][benchmark_name]
+                for optimizator_name in hypefine_results
             }
             save_whisker_plot(
                 hyperfine_run_data,
-                result_filename=os.path.join(plots_dir, f"{benchmark_name}_whisker_plot.svg"),
+                result_filename=os.path.join(
+                    plots_dir, f"{benchmark_name}_whisker_plot.svg"
+                ),
                 title=benchmark_name,
             )
     else:
         for optimizator_name, hyperfine_run_data in hypefine_results.items():
             save_whisker_plot(
                 hyperfine_run_data,
-                result_filename=os.path.join(plots_dir, f"{optimizator_name}_whisker_plot.svg"),
+                result_filename=os.path.join(
+                    plots_dir, f"{optimizator_name}_whisker_plot.svg"
+                ),
                 title=os.path.join(EVAL_FILES_DIR, optimizator_name),
             )
 
@@ -139,13 +161,15 @@ def main():
     )
 
     pd_results = pd.DataFrame(columns=list(results.keys()))
-    pd_results_std = pd.DataFrame(columns=[
-        "benchmark",
-        "base_runtime",
-        "o3_runtime",
-        "o2_runtime",
-        "model_runtime",
-    ])
+    pd_results_std = pd.DataFrame(
+        columns=[
+            "benchmark",
+            "base_runtime",
+            "o3_runtime",
+            "o2_runtime",
+            "model_runtime",
+        ]
+    )
 
     math_benchs = {
         "qsort",
@@ -185,11 +209,13 @@ def main():
 
             linkopts = ["-lm"] if benchmark_name in math_benchs else []
             # prepare_command = 'sync; echo 3 | sudo tee /proc/sys/vm/drop_caches'
-            prepare_command = ''
+            prepare_command = ""
 
             new_env.reset()
             try:
-                optimize_with_model(config, agent, new_env, iters=config.episode_length)
+                optimize_with_model(
+                    config, agent, new_env, iters=config.episode_length, eval_mode=True
+                )
             except TimeoutExpired as e:
                 print(f"IR2vec timeout skip benchmark: {e}")
             except Exception as e:
@@ -197,17 +223,53 @@ def main():
                 continue
 
             results["benchmark"].append(benchmark_name)
-            
-            model_mean, model_std = process_optimizator("model", new_env, results, hypefine_results, linkopts, benchmark_args, prepare_command, sequence=[])
+
+            model_mean, model_std = process_optimizator(
+                "model",
+                new_env,
+                results,
+                hypefine_results,
+                linkopts,
+                benchmark_args,
+                prepare_command,
+                sequence=[],
+            )
 
             new_env.reset()
-            base_mean, base_std = process_optimizator("base", new_env, results, hypefine_results, linkopts, benchmark_args, prepare_command, sequence=[])
+            base_mean, base_std = process_optimizator(
+                "base",
+                new_env,
+                results,
+                hypefine_results,
+                linkopts,
+                benchmark_args,
+                prepare_command,
+                sequence=[],
+            )
 
             new_env.reset()
-            o3_mean, o3_std = process_optimizator("o3", new_env, results, hypefine_results, linkopts, benchmark_args, prepare_command, sequence=["-O3"])
+            o3_mean, o3_std = process_optimizator(
+                "o3",
+                new_env,
+                results,
+                hypefine_results,
+                linkopts,
+                benchmark_args,
+                prepare_command,
+                sequence=["-O3"],
+            )
 
             new_env.reset()
-            o2_mean, o2_std = process_optimizator("o2", new_env, results, hypefine_results, linkopts, benchmark_args, prepare_command, sequence=["-O2"])
+            o2_mean, o2_std = process_optimizator(
+                "o2",
+                new_env,
+                results,
+                hypefine_results,
+                linkopts,
+                benchmark_args,
+                prepare_command,
+                sequence=["-O2"],
+            )
 
             base_speedup = (base_mean - model_mean) / base_mean
             o3_speedup = (o3_mean - model_mean) / base_mean
@@ -232,7 +294,13 @@ def main():
             results["o2_inst_imp"].append(o2_inst_imp)
 
             pd_results.loc[len(pd_results)] = [results[key][-1] for key in results]
-            pd_results_std.loc[len(pd_results_std)] = [benchmark_name, base_std, o3_std, o2_std, model_std]
+            pd_results_std.loc[len(pd_results_std)] = [
+                benchmark_name,
+                base_std,
+                o3_std,
+                o2_std,
+                model_std,
+            ]
 
             print_df_last_row(pd_results)
             print_df_last_row(pd_results_std)

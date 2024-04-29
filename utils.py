@@ -221,7 +221,12 @@ def _load_dataset(env, dataset_name):
 
 
 def optimize_with_model(
-    config: TrainConfig, agent: DQNAgent, env: CompilerEnv, iters=10, print_debug=True
+    config: TrainConfig,
+    agent: DQNAgent,
+    env: CompilerEnv,
+    eval_mode,
+    iters=10,
+    print_debug=True,
 ) -> list[str]:
     flags = []
     prev_obs = np.zeros((config.observation_size,))
@@ -238,7 +243,7 @@ def optimize_with_model(
             obs,
             enable_epsilon_greedy=False,
             forbidden_actions=set(),
-            eval_mode=True,
+            eval_mode=eval_mode,
         )
         if value <= 0:
             break

@@ -25,25 +25,48 @@ O3 = "-O3"
 OZ = "-Oz"
 
 
-def compile_one_source_with_opt_sequence(source_path, result_path, sequence):
-    proc = subprocess.run(
-        " | ".join(
-            [
-                f"{CLANG_BIN} {O0} --target=x86_64 -Xclang -disable-O0-optnone -S -emit-llvm -x c -o - {source_path}",
-                f"opt {' '.join(sequence)} -S -o -",
-                f"llc -filetype=obj -o tmp.o",
-            ]
-        ),
-        shell=True,
-        capture_output=True,
-    )
+def compile_one_source_with_opt_sequence(
+    source_path: str,
+    result_path: str,
+    sequence: list[str],
+    linkopts: list[str],
+    tmpfilename: str = "tmp.o",
+):
+    if len(sequence) == 0:
+        proc = subprocess.run(
+            " | ".join(
+                [
+                    f"{CLANG_BIN} {O0} --target=x86_64 -Xclang -disable-O0-optnone -S -emit-llvm -x c -o - {source_path}",
+                    f"llc -filetype=obj -o {tmpfilename}",
+                ]
+            ),
+            shell=True,
+            capture_output=True,
+        )
+    else:
+        proc = subprocess.run(
+            " | ".join(
+                [
+                    f"{CLANG_BIN} {O0} --target=x86_64 -Xclang -disable-O0-optnone -S -emit-llvm -x c -o - {source_path}",
+                    f"opt {' '.join(sequence)} -S -o -",
+                    f"llc -filetype=obj -o {tmpfilename}",
+                ]
+            ),
+            shell=True,
+            capture_output=True,
+        )
+
     if proc.returncode != 0:
         print(proc.stderr)
-        raise Exception(f"Compilation failed {proc.stderr}")
+        raise Exception(f"\nCompilation failed - {' '.join(sequence)}:\n {proc.stderr}")
     proc = subprocess.run(
         [
             CLANG_BIN,
-            "tmp.o",
+            tmpfilename,
+        ]
+        + linkopts
+        + [
+            "-no-pie",
             "-o",
             result_path,
         ],
@@ -51,7 +74,9 @@ def compile_one_source_with_opt_sequence(source_path, result_path, sequence):
     )
     if proc.returncode != 0:
         print(proc.stderr)
-        raise Exception(f"Compilation failed {proc.stderr}")
+        raise Exception(
+            f"\nCompilation failed {CLANG_BIN} - {' '.join(sequence)}:\n{proc.stderr}"
+        )
 
 
 def compile_ll_with_opt_sequence(ir, result_path, sequence, linkopts):
