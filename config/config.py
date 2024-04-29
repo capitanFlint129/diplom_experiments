@@ -26,6 +26,7 @@ class TrainConfig:
     tau: float = 0.99  # soft update coefficient
     batch_size: int = 256  # The batch size
     max_mem_size: int = 100000  # The maximum memory size
+    prefill: int = 500
     episodes: int = 30000  # The number of episodes used to learn
     validation_interval: int = 500  # The number of episodes used to learn
     episode_length: int = 20  # The (MAX) number of transformation passes per episode
@@ -79,7 +80,7 @@ class TrainConfig:
     reward_space: str = "IrInstructionCountOz"
     # reward_space: str = "RuntimePointEstimateReward"
     # reward_space: str = "LlvmMca"
-    actions: list = field(default_factory=lambda: O3_SUBSEQ_CBENCH_MINS)
+    actions: list = field(default_factory=lambda: O23_SUBSEQ_CBENCH_MINS)
     reward_scale: float = 1
     special_actions: list = field(
         default_factory=lambda: [

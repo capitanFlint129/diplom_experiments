@@ -1,3 +1,4 @@
+import os
 import sys
 from subprocess import TimeoutExpired
 from typing import Optional
@@ -9,13 +10,85 @@ from compiler_gym.errors import SessionNotFound
 from compiler_gym.util.statistics import arithmetic_mean, geometric_mean
 from compiler_gym.util.timer import Timer
 from compiler_gym.wrappers.datasets import RandomOrderBenchmarks
+from tqdm import tqdm
 
+from config.action_config import _O23_SUBSEQ_CBENCH_MINS_O3
 from config.config import TrainConfig
 from dqn.dqn import DQNAgent
 from dqn.train_utils import EpisodeData, StepResult, TrainHistory
 from env.performance_optimization import MyEnv, CfgGridEnv
 from observation.utils import ObservationModifier
 from utils import save_model, ValidationResult
+
+
+def _prefill(
+    cfg_prefill_env: CfgGridEnv,
+    config: TrainConfig,
+    agent: DQNAgent,
+    observation_modifier: ObservationModifier,
+):
+    prefill_dir = "_prefill_cache"
+    prefill_data_file = os.path.join(
+        prefill_dir, f"{config.observation_space}_prefill_o3"
+    )
+    os.makedirs(prefill_dir, exist_ok=True)
+    if os.path.isfile(f"{prefill_data_file}.npz"):
+        loaded = np.load(f"{prefill_data_file}.npz")
+        agent._replay_buffer.from_npz_loaded(loaded, config.prefill)
+        return
+    action_seq = [len(config.special_actions) + el for el in _O23_SUBSEQ_CBENCH_MINS_O3]
+    # o3_seq = [el for el in O3_SEQ if el in cfg_prefill_env._cg_env.action_space.flags]
+    for i in tqdm(range(config.prefill)):
+        cfg_prefill_env.reset()
+        agent.episode_reset()
+
+        base_observation = cfg_prefill_env.get_observation(config.observation_space)
+        observation = observation_modifier.modify(
+            base_observation, config.episode_length
+        )
+        prev_action = 0
+        if "noop" in config.special_actions:
+            prev_action = config.actions.index("noop")
+        remains = config.episode_length
+        # choosen_flags = []
+        for action in action_seq:
+            # choosen_flags.append(config.actions[action])
+            flags = config.actions[action]
+            flags = flags.split()
+            reward = cfg_prefill_env.step(flags)
+
+            base_observation = cfg_prefill_env.get_observation(config.observation_space)
+            new_observation = observation_modifier.modify(base_observation, remains)
+            remains -= 1
+            agent.store_transition(
+                action,
+                observation=observation,
+                reward=reward,
+                new_observation=new_observation,
+                done=False,
+                prev_action=prev_action,
+            )
+            prev_action = action
+            observation = new_observation
+
+        # tmp_choosen_flags = []
+        # for el in choosen_flags:
+        #     tmp_choosen_flags.extend(el.split())
+        # assert tmp_choosen_flags == o3_seq
+        action = config.actions.index("noop")
+        while remains > 0:
+            agent.store_transition(
+                action,
+                observation=observation,
+                reward=0,
+                new_observation=observation,
+                done=remains < 2,
+                prev_action=prev_action,
+            )
+            prev_action = action
+            remains -= 1
+        agent.episode_done()
+    agent._replay_buffer.save_to_npz(prefill_data_file)
 
 
 def train(
@@ -29,6 +102,12 @@ def train(
     enable_validation_logs: bool = False,
 ) -> None:
     validation_env = train_env.fork()
+    prefill_env = RandomOrderBenchmarks(
+        train_env.fork(),
+        benchmarks=train_benchmarks,
+        rng=np.random.default_rng(config.random_state + 100),
+    )
+
     train_env = RandomOrderBenchmarks(
         train_env,
         benchmarks=train_benchmarks,
@@ -42,14 +121,18 @@ def train(
 
     train_history = TrainHistory(logging_history_size=config.logging_history_size)
 
+    observation_modifier = ObservationModifier(
+        train_env, config.observation_modifiers, config.episode_length
+    )
+
+    cfg_prefill_env = CfgGridEnv(config, prefill_env)
+    _prefill(cfg_prefill_env, config, agent, observation_modifier)
+
     for episode_i in range(config.episodes):
         cfg_train_env.reset()
         agent.episode_reset()
         episode_data = EpisodeData(remains=config.episode_length)
 
-        observation_modifier = ObservationModifier(
-            train_env, config.observation_modifiers, config.episode_length
-        )
         # base_observation = get_observation(train_env, config)
         base_observation = cfg_train_env.get_observation(config.observation_space)
         observation = observation_modifier.modify(

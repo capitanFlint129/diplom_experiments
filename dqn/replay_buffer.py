@@ -38,6 +38,9 @@ class ReplayBuffer:
     def get_ready_data_size(self) -> int:
         return self._mem_counter
 
+    def from_npz_loaded(self, loaded, prefill_size):
+        raise NotImplementedError()
+
     def store_transition(
         self,
         action: int,
@@ -107,6 +110,30 @@ class ReplayBufferForLSTM:
         self.reward_mem[index] = reward
         self.terminal_mem[index] = done
         self._mem_counter += 1
+
+    def from_npz_loaded(self, loaded, prefill_size):
+        self.state_mem = loaded["a"]
+        self.new_state_mem = loaded["b"]
+        self.action_mem = loaded["c"]
+        self.prev_action_mem = loaded["d"]
+        self.reward_mem = loaded["e"]
+        self.terminal_mem = loaded["f"]
+        self.episode_start_mem = loaded["g"]
+
+        self._mem_counter = prefill_size
+        self._ready_data_size = prefill_size
+
+    def save_to_npz(self, prefill_file):
+        np.savez_compressed(
+            prefill_file,
+            a=self.state_mem,
+            b=self.new_state_mem,
+            c=self.action_mem,
+            d=self.prev_action_mem,
+            e=self.reward_mem,
+            f=self.terminal_mem,
+            g=self.episode_start_mem,
+        )
 
     def get_batch(self, batch_size: int, device) -> DQNTrainBatch:
         batch_indexes = np.random.choice(self.get_cur_size(), batch_size, replace=False)

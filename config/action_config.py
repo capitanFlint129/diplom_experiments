@@ -150,6 +150,26 @@ O3_SUBSEQ_CBENCH_MINS = [
     "-simplifycfg",
 ]
 
+O23_SUBSEQ_CBENCH_MINS = [
+    "-ee-instrument -simplifycfg -sroa",
+    "-early-cse -lower-expect -forceattrs -inferattrs -callsite-splitting -ipsccp -called-value-propagation -attributor -globalopt -mem2reg -deadargelim -instcombine",  # O3
+    "-early-cse -lower-expect -forceattrs -inferattrs -ipsccp -called-value-propagation -attributor -globalopt -mem2reg -deadargelim -instcombine",  # O2
+    "-simplifycfg -prune-eh -inline -functionattrs -argpromotion -sroa",  # O3
+    "-simplifycfg -prune-eh -inline -functionattrs -sroa",  # O2
+    "-early-cse-memssa -speculative-execution -jump-threading -correlated-propagation -simplifycfg -aggressive-instcombine -instcombine -libcalls-shrinkwrap -pgo-memop-opt -tailcallelim -simplifycfg -reassociate -loop-simplify",  # O3
+    "-early-cse-memssa -speculative-execution -jump-threading -correlated-propagation -simplifycfg -instcombine -libcalls-shrinkwrap -pgo-memop-opt -tailcallelim -simplifycfg -reassociate -loop-simplify",  # O2
+    "-lcssa",
+    "-loop-rotate -licm -loop-unswitch -simplifycfg",
+    "-instcombine -loop-simplify -lcssa -indvars -loop-idiom -loop-deletion -loop-unroll -mldst-motion",
+    "-gvn -memcpyopt -sccp -bdce",
+    "-instcombine -jump-threading -correlated-propagation -dse -loop-simplify -lcssa -licm -adce -simplifycfg -instcombine -barrier -elim-avail-extern -rpo-functionattrs",
+    "-globalopt -globaldce -float2int -lower-constant-intrinsics -loop-simplify -lcssa -loop-rotate -loop-distribute -loop-vectorize -loop-simplify -loop-load-elim -instcombine -simplifycfg",
+    "-slp-vectorizer -instcombine -loop-simplify -lcssa -loop-unroll -instcombine -loop-simplify -lcssa -licm -alignment-from-assumptions -strip-dead-prototypes -globaldce -constmerge -loop-simplify -lcssa -loop-sink -instsimplify -div-rem-pairs",
+    "-simplifycfg",
+]
+
+_O23_SUBSEQ_CBENCH_MINS_O3 = [0, 1, 3, 5, 7, 8, 9, 10, 11, 12, 13, 14]
+_O23_SUBSEQ_CBENCH_MINS_O2 = [0, 2, 4, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 # O23_SUBSEQ_POSET_LIKE = [
 #     ['-ee-instrument', '-simplifycfg', '-sroa', '-early-cse', '-lower-expect', '-forceattrs', '-inferattrs',
 #      '-callsite-splitting', '-ipsccp', '-called-value-propagation', '-attributor', '-globalopt', '-mem2reg'],
