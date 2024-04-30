@@ -157,9 +157,11 @@ class CfgGridEnv(MyEnv):
 
 
 class CgLlvmMcaEnv(MyEnv):
-    def __init__(self, config: TrainConfig, env: CompilerEnv):
+    def __init__(self, config: TrainConfig, env: CompilerEnv, debug: bool = False):
         self._cg_env = env
         self._config = config
+        self._debug = debug
+        self._rblock_throughput_prev = None
 
     def reset(self, benchmark=None):
         attempts = 100
@@ -170,6 +172,7 @@ class CgLlvmMcaEnv(MyEnv):
                 self._rblock_throughput_initial = get_rblock_throughput_ir(
                     self._cg_env.observation["Ir"]
                 )
+                self._rblock_throughput_prev = self._rblock_throughput_initial
                 return
             except ValueError as e:
                 print(e, file=sys.stderr)
@@ -177,17 +180,30 @@ class CgLlvmMcaEnv(MyEnv):
                 print(e, file=sys.stderr)
         raise Exception(f"Failed to reset after {attempts} attempts")
 
-    def step(self, action):
-        rblock_throughput_before = get_rblock_throughput_ir(
-            self._cg_env.observation["Ir"]
-        )
-        self._cg_env.step(action)
-        rblock_throughput_after = get_rblock_throughput_ir(
-            self._cg_env.observation["Ir"]
-        )
-        return (
-            rblock_throughput_before - rblock_throughput_after
+    def step(self, flags: list[str]):
+        if flags[0] == "noop":
+            if self._debug:
+                print(
+                    f"reward: {0} - throughput: {self._rblock_throughput_prev} - throughput_prev: {self._rblock_throughput_prev} - throughput_initial: {self._rblock_throughput_initial}"
+                )
+            return 0
+        if len(flags) > 1:
+            self._cg_env.multistep(
+                [self._cg_env.action_space.flags.index(f) for f in flags]
+            )
+        else:
+            self._cg_env.step(self._cg_env.action_space.flags.index(flags[0]))
+
+        rblock_throughput = get_rblock_throughput_ir(self._cg_env.observation["Ir"])
+        reward = (
+            self._rblock_throughput_prev - rblock_throughput
         ) / self._rblock_throughput_initial
+        if self._debug:
+            print(
+                f"reward: {reward} - throughput: {rblock_throughput} - throughput_prev: {self._rblock_throughput_prev} - throughput_initial: {self._rblock_throughput_initial}"
+            )
+        self._rblock_throughput_prev = rblock_throughput
+        return reward
 
     def get_observation(self, obs_name):
         if obs_name == "IR2Vec":
