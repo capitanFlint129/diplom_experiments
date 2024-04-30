@@ -102,7 +102,7 @@ def get_model_path(model_name: str) -> str:
 def make_env(config: TrainConfig):
     return compiler_gym.make(
         config.compiler_gym_env,
-        reward_space=config.reward_space,
+        # reward_space=config.reward_space,
     )
 
 
