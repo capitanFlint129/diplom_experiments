@@ -11,6 +11,19 @@ LLVM_BINS_PATH = os.path.join(COMPILER_GYM_PATH, "llvm-v0/bin")
 MODELS_DIR = "_models"
 TEST_BENCHMARKS_DIR = "data/test_benchmarks"
 MODELS_DIR_PROJECT = os.path.join(MODELS_DIR, WANDB_PROJECT_NAME)
+RAW_IR_OBSERVATION_NAME = "Ir"
+LLVM_BINS = "/home/flint/.local/share/compiler_gym/llvm-v0/bin"
+MCA_BIN = os.path.join(LLVM_BINS, "llvm-mca")
+# # CLANG_BIN = os.path.join(LLVM_BINS, 'clang')
+# CLANG_BIN = "clang"
+LLC_BIN = os.path.join(LLVM_BINS, "llc")
+# JOTAI_BENCHMARKS_DIRS = [
+#     "/home/flint/diplom/jotai-benchmarks/benchmarks/anghaLeaves/",
+#     "/home/flint/diplom/jotai-benchmarks/benchmarks/anghaMath/",
+# ]
+# TMP_DIR = "tmp"
+LLVM_AS_BIN = os.path.join(LLVM_BINS, "llvm-as")
+OPT_BIN = os.path.join(LLVM_BINS, "opt")
 
 
 @dataclass_json
@@ -18,8 +31,6 @@ MODELS_DIR_PROJECT = os.path.join(MODELS_DIR, WANDB_PROJECT_NAME)
 class TrainConfig:
     # Algorithm section
     algorithm: str = "LstmDQN"
-    # reward_space: str = "CfgInstructions"
-    reward_space: str = "MCA"
     enable_dueling_dqn: bool = False
     gamma: float = 0.9
     epsilon: float = 1.0  # The starting value for epsilon
@@ -78,14 +89,14 @@ class TrainConfig:
         default_factory=lambda: [
             # "start-IR2Vec",
             # "remains-counter",
+            "mca",
             "remains-counter-normalized",
             # "prev-2",
         ]
     )
-    observation_size: int = 301
-    # reward_space: str = "IrInstructionCountOz"
-    # reward_space: str = "RuntimePointEstimateReward"
-    # reward_space: str = "LlvmMca"
+    # reward_space: str = "CfgInstructions"
+    reward_space: str = "MCA"
+    observation_size: int = 0
     actions: list = field(default_factory=lambda: O23_SUBSEQ_CBENCH_MINS)
     reward_scale: float = 1
     special_actions: list = field(
@@ -101,6 +112,20 @@ class TrainConfig:
     def __post_init__(self):
         if self.special_actions[0] != self.actions[0]:
             self.actions = self.special_actions + self.actions
+
+        if self.observation_space.startswith("IR2Vec"):
+            self.observation_size = 300
+        elif self.observation_space.startswith("InstCount"):
+            self.observation_size = 69
+        elif self.observation_space.startswith("Autophase"):
+            self.observation_size = 56
+
+        if "mca" in self.observation_modifiers:
+            self.observation_size += 3
+        if "remains-counter" in self.observation_modifiers:
+            self.observation_size += 1
+        if "remains-counter-normalized" in self.observation_modifiers:
+            self.observation_size += 1
 
     def save(self, run_name: str, replace=False):
         if not os.path.exists(MODELS_DIR_PROJECT):
