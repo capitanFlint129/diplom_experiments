@@ -1,6 +1,8 @@
 import os
 from dataclasses import dataclass, field
 
+from dataclasses_json import dataclass_json
+
 from config.action_config import *
 
 WANDB_PROJECT_NAME = "trash2"
@@ -10,10 +12,13 @@ MODELS_DIR = "_models"
 TEST_BENCHMARKS_DIR = "data/test_benchmarks"
 
 
+@dataclass_json
 @dataclass
 class TrainConfig:
     # Algorithm section
     algorithm: str = "LstmDQN"
+    # reward_space: str = "CfgInstructions"
+    reward_space: str = "MCA"
     enable_dueling_dqn: bool = False
     gamma: float = 0.9
     epsilon: float = 1.0  # The starting value for epsilon
@@ -26,7 +31,7 @@ class TrainConfig:
     tau: float = 0.99  # soft update coefficient
     batch_size: int = 256  # The batch size
     max_mem_size: int = 100000  # The maximum memory size
-    prefill: int = 500
+    prefill: int = 0
     episodes: int = 30000  # The number of episodes used to learn
     validation_interval: int = 500  # The number of episodes used to learn
     episode_length: int = 20  # The (MAX) number of transformation passes per episode
@@ -57,10 +62,10 @@ class TrainConfig:
     #         # "benchmark://opencv-v0",
     #     ]
     # )
-    train_val_test_split: bool = False
-    skipped_benchmarks: list = field(default_factory=lambda: [])
+    # train_val_test_split: bool = False
+    # skipped_benchmarks: list = field(default_factory=lambda: [])
     compiler_gym_env: str = "llvm-v0"
-    observation_space: str = "IR2Vec"
+    observation_space: str = "InstCountNorm"
     # observation_space: list = field(
     #     default_factory=lambda: [
     #         # "IR2Vec",
@@ -76,8 +81,8 @@ class TrainConfig:
             # "prev-2",
         ]
     )
-    observation_size: int = 301
-    reward_space: str = "IrInstructionCountOz"
+    observation_size: int = 70
+    # reward_space: str = "IrInstructionCountOz"
     # reward_space: str = "RuntimePointEstimateReward"
     # reward_space: str = "LlvmMca"
     actions: list = field(default_factory=lambda: O23_SUBSEQ_CBENCH_MINS)
@@ -94,3 +99,10 @@ class TrainConfig:
 
     def __post_init__(self):
         self.actions = self.special_actions + self.actions
+
+    def save(self, run_name: str):
+        models_dir = os.path.join(MODELS_DIR, WANDB_PROJECT_NAME)
+        if not os.path.exists(models_dir):
+            os.makedirs(models_dir)
+        with open(os.path.join(models_dir, f"{run_name}_config.json"), "w") as ouf:
+            ouf.write(self.to_json())

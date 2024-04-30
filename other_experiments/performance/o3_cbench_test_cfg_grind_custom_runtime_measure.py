@@ -23,7 +23,7 @@ from utils import (
 # RUNTIME_COUNT = 30
 BENCHMARKS_LIMIT = None
 CBENCH_EVAL_DIR = "cbench_eval_dir"
-RUN_NAME = "trim-terrain-134"
+RUN_NAME = "zesty-morning-52"
 BIN_NAME = "tmp_o3_cbench_test_cfg_grind_bin"
 EVAL_FILES_DIR = os.path.join(CBENCH_EVAL_DIR, RUN_NAME)
 

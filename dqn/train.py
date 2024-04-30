@@ -16,79 +16,9 @@ from config.action_config import _O23_SUBSEQ_CBENCH_MINS_O3
 from config.config import TrainConfig
 from dqn.dqn import DQNAgent
 from dqn.train_utils import EpisodeData, StepResult, TrainHistory
-from env.performance_optimization import MyEnv, CfgGridEnv
+from env.performance_optimization import MyEnv, CfgGridEnv, CgLlvmMcaEnv
 from observation.utils import ObservationModifier
 from utils import save_model, ValidationResult
-
-
-def _prefill(
-    cfg_prefill_env: CfgGridEnv,
-    config: TrainConfig,
-    agent: DQNAgent,
-    observation_modifier: ObservationModifier,
-):
-    prefill_dir = "_prefill_cache"
-    prefill_data_file = os.path.join(
-        prefill_dir, f"{config.observation_space}_prefill_o3"
-    )
-    os.makedirs(prefill_dir, exist_ok=True)
-    if os.path.isfile(f"{prefill_data_file}.npz"):
-        loaded = np.load(f"{prefill_data_file}.npz")
-        agent._replay_buffer.from_npz_loaded(loaded, config.prefill)
-        return
-    action_seq = [len(config.special_actions) + el for el in _O23_SUBSEQ_CBENCH_MINS_O3]
-    # o3_seq = [el for el in O3_SEQ if el in cfg_prefill_env._cg_env.action_space.flags]
-    for i in tqdm(range(config.prefill)):
-        cfg_prefill_env.reset()
-        agent.episode_reset()
-
-        base_observation = cfg_prefill_env.get_observation(config.observation_space)
-        observation = observation_modifier.modify(
-            base_observation, config.episode_length
-        )
-        prev_action = 0
-        if "noop" in config.special_actions:
-            prev_action = config.actions.index("noop")
-        remains = config.episode_length
-        # choosen_flags = []
-        for action in action_seq:
-            # choosen_flags.append(config.actions[action])
-            flags = config.actions[action]
-            flags = flags.split()
-            reward = cfg_prefill_env.step(flags)
-
-            base_observation = cfg_prefill_env.get_observation(config.observation_space)
-            new_observation = observation_modifier.modify(base_observation, remains)
-            remains -= 1
-            agent.store_transition(
-                action,
-                observation=observation,
-                reward=reward,
-                new_observation=new_observation,
-                done=False,
-                prev_action=prev_action,
-            )
-            prev_action = action
-            observation = new_observation
-
-        # tmp_choosen_flags = []
-        # for el in choosen_flags:
-        #     tmp_choosen_flags.extend(el.split())
-        # assert tmp_choosen_flags == o3_seq
-        action = config.actions.index("noop")
-        while remains > 0:
-            agent.store_transition(
-                action,
-                observation=observation,
-                reward=0,
-                new_observation=observation,
-                done=remains < 2,
-                prev_action=prev_action,
-            )
-            prev_action = action
-            remains -= 1
-        agent.episode_done()
-    agent._replay_buffer.save_to_npz(prefill_data_file)
 
 
 def train(
@@ -113,28 +43,27 @@ def train(
         benchmarks=train_benchmarks,
         rng=np.random.default_rng(config.random_state),
     )
-    # mca_train_env = CgLlvmMcaEnv(config, train_env)
-    # mca_validation_env = CgLlvmMcaEnv(config, validation_env)
-
-    cfg_train_env = CfgGridEnv(config, train_env)
-    cfg_validation_env = CfgGridEnv(config, validation_env)
-
+    custom_train_env, custom_validation_env = _get_envs(
+        config, train_env=train_env, validation_env=validation_env
+    )
     train_history = TrainHistory(logging_history_size=config.logging_history_size)
 
     observation_modifier = ObservationModifier(
         train_env, config.observation_modifiers, config.episode_length
     )
 
-    cfg_prefill_env = CfgGridEnv(config, prefill_env)
-    _prefill(cfg_prefill_env, config, agent, observation_modifier)
+    if config.prefill > 0:
+        cfg_prefill_env = CfgGridEnv(config, prefill_env)
+        _prefill(cfg_prefill_env, config, agent, observation_modifier)
+        prefill_env.close()
 
     for episode_i in range(config.episodes):
-        cfg_train_env.reset()
+        custom_train_env.reset()
         agent.episode_reset()
         episode_data = EpisodeData(remains=config.episode_length)
 
         # base_observation = get_observation(train_env, config)
-        base_observation = cfg_train_env.get_observation(config.observation_space)
+        base_observation = custom_train_env.get_observation(config.observation_space)
         observation = observation_modifier.modify(
             base_observation, episode_data.remains
         )
@@ -149,7 +78,7 @@ def train(
                 # and episode_data.patience_count < config.patience
             ):
                 step_result = episode_step(
-                    env=cfg_train_env,
+                    env=custom_train_env,
                     config=config,
                     agent=agent,
                     remains_steps=episode_data.remains,
@@ -210,7 +139,7 @@ def train(
                 episode_i=episode_i,
                 best_val_mean=train_history.best_val_mean,
                 agent=agent,
-                env=cfg_validation_env,
+                env=custom_validation_env,
                 config=config,
                 val_benchmarks=val_benchmarks,
                 enable_logs=enable_validation_logs,
@@ -219,6 +148,95 @@ def train(
         state_dict=agent.get_policy_net_state_dict(), model_name=run.name, replace=False
     )
     validation_env.close()
+
+
+def _get_envs(
+    config: TrainConfig, train_env: CompilerEnv, validation_env: CompilerEnv
+) -> tuple[MyEnv, MyEnv]:
+    if config.reward_space == "MCA":
+        custom_train_env = CgLlvmMcaEnv(config, train_env)
+        custom_validation_env = CgLlvmMcaEnv(config, validation_env)
+    elif config.reward_space == "CfgInstructions":
+        custom_train_env = CfgGridEnv(config, train_env)
+        custom_validation_env = CfgGridEnv(config, validation_env)
+    else:
+        raise Exception("unknown reward space")
+    return custom_train_env, custom_validation_env
+
+
+def _prefill(
+    prefill_env: MyEnv,
+    config: TrainConfig,
+    agent: DQNAgent,
+    observation_modifier: ObservationModifier,
+):
+    prefill_dir = "_prefill_cache"
+    prefill_data_file = os.path.join(
+        prefill_dir, f"{config.observation_space}_prefill_o3"
+    )
+    os.makedirs(prefill_dir, exist_ok=True)
+    if os.path.isfile(f"{prefill_data_file}.npz"):
+        loaded = np.load(f"{prefill_data_file}.npz")
+        agent._replay_buffer.from_npz_loaded(loaded, config.prefill)
+        return
+    action_seq = [len(config.special_actions) + el for el in _O23_SUBSEQ_CBENCH_MINS_O3]
+    # o3_seq = [el for el in O3_SEQ if el in cfg_prefill_env._cg_env.action_space.flags]
+    rewards = []
+    for i in tqdm(range(config.prefill)):
+        prefill_env.reset()
+        agent.episode_reset()
+
+        base_observation = prefill_env.get_observation(config.observation_space)
+        observation = observation_modifier.modify(
+            base_observation, config.episode_length
+        )
+        prev_action = 0
+        if "noop" in config.special_actions:
+            prev_action = config.actions.index("noop")
+        remains = config.episode_length
+        # choosen_flags = []
+        reward_sum = 0
+        for action in action_seq:
+            # choosen_flags.append(config.actions[action])
+            flags = config.actions[action]
+            flags = flags.split()
+            reward = prefill_env.step(flags)
+            reward_sum += reward
+
+            base_observation = prefill_env.get_observation(config.observation_space)
+            new_observation = observation_modifier.modify(base_observation, remains)
+            remains -= 1
+            agent.store_transition(
+                action,
+                observation=observation,
+                reward=reward,
+                new_observation=new_observation,
+                done=False,
+                prev_action=prev_action,
+            )
+            prev_action = action
+            observation = new_observation
+
+        # tmp_choosen_flags = []
+        # for el in choosen_flags:
+        #     tmp_choosen_flags.extend(el.split())
+        # assert tmp_choosen_flags == o3_seq
+        action = config.actions.index("noop")
+        while remains > 0:
+            agent.store_transition(
+                action,
+                observation=observation,
+                reward=0,
+                new_observation=observation,
+                done=remains < 2,
+                prev_action=prev_action,
+            )
+            prev_action = action
+            remains -= 1
+        agent.episode_done()
+        rewards.append(reward_sum)
+        print(np.mean(rewards))
+    agent._replay_buffer.save_to_npz(prefill_data_file)
 
 
 def _validation_during_train(

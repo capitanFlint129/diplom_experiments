@@ -115,7 +115,9 @@ def main():
             )
 
             new_env.reset()
-            optimize_with_model(config, agent, new_env, iters=MODEL_ITERS)
+            optimize_with_model(
+                config, agent, new_env, iters=MODEL_ITERS, eval_mode=True
+            )
             model_runtimes = new_env.observation.Runtime()
             assert len(model_runtimes) == RUNTIME_COUNT
             results["model_runtime"].append(np.median(model_runtimes))

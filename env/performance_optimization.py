@@ -8,7 +8,6 @@ from typing import Union
 import numpy as np
 from compiler_gym import CompilerEnv
 from compiler_gym.envs import llvm
-
 # noinspection PyUnresolvedReferences
 from compiler_gym.wrappers import RuntimePointEstimateReward
 
@@ -303,10 +302,10 @@ def get_mca_result_from_ir(bc_path):
     return proc.stdout
 
 
-def get_mca_result_from_ir_str(ir):
+def get_mca_result_from_ir_str(ir: str):
     proc = subprocess.run(
         f"{LLC_BIN} -o - | llvm-mca",
-        input=ir,
+        input=ir.encode(),
         capture_output=True,
         shell=True,
         encoding="utf-8",
