@@ -306,7 +306,7 @@ def get_mca_result_from_ir(bc_path):
 def get_mca_result_from_ir_str(ir: str):
     proc = subprocess.run(
         f"{LLC_BIN} -o - | llvm-mca",
-        input=ir.encode(),
+        input=ir,
         capture_output=True,
         shell=True,
         encoding="utf-8",
