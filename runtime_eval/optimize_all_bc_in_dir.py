@@ -33,7 +33,7 @@ def optimize_file(filepath, config, agent, iters, print_debug=True):
         for i in range(iters):
             base_observation = get_ir2vec_from_file(ll_file.name)
             observation = observation_modifier.modify(
-                base_observation, config.episode_length - i
+                base_observation, config.episode_length - i, ll_file.read()
             )
             action, value = agent.choose_action(
                 observation=observation,

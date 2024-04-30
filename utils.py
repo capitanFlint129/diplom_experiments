@@ -238,7 +238,9 @@ def optimize_with_model(
     )
     for i in range(iters):
         base_observation = _get_obs(env, config.observation_space)
-        obs = observation_modifier.modify(base_observation, config.episode_length - i)
+        obs = observation_modifier.modify(
+            base_observation, config.episode_length - i, env.observation["Ir"]
+        )
         # assert np.any(prev_obs != obs)
         action, value = agent.choose_action(
             obs,

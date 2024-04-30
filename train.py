@@ -17,8 +17,19 @@ from utils import (
 
 
 def main():
+    api = wandb.Api()  # set to your entity and project
+    num_id = (
+        max(
+            [
+                int(r.name.split("-")[-1])
+                for r in api.runs(f"tekkengod/{WANDB_PROJECT_NAME}")
+                if r.name.split("-")[-1].isdecimal()
+            ]
+        )
+        + 1
+    )
     print("RUN NAME: ", end="")
-    run_name = input()
+    run_name = f"{input().strip()}-{num_id}"
     config = TrainConfig()
     assert config.actions[0] == "noop"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")

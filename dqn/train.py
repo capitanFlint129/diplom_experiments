@@ -65,7 +65,9 @@ def train(
         # base_observation = get_observation(train_env, config)
         base_observation = custom_train_env.get_observation(config.observation_space)
         observation = observation_modifier.modify(
-            base_observation, episode_data.remains
+            base_observation,
+            episode_data.remains,
+            custom_train_env,
         )
         # observation = base_observation
         prev_action = 0
@@ -188,7 +190,7 @@ def _prefill(
 
         base_observation = prefill_env.get_observation(config.observation_space)
         observation = observation_modifier.modify(
-            base_observation, config.episode_length
+            base_observation, config.episode_length, prefill_env
         )
         prev_action = 0
         if "noop" in config.special_actions:
@@ -204,7 +206,9 @@ def _prefill(
             reward_sum += reward
 
             base_observation = prefill_env.get_observation(config.observation_space)
-            new_observation = observation_modifier.modify(base_observation, remains)
+            new_observation = observation_modifier.modify(
+                base_observation, remains, prefill_env
+            )
             remains -= 1
             agent.store_transition(
                 action,
@@ -376,7 +380,7 @@ def validate(
 
 @torch.no_grad()
 def rollout(
-    agent: DQNAgent, env, config: TrainConfig, use_actions_masking
+    agent: DQNAgent, env: MyEnv, config: TrainConfig, use_actions_masking
 ) -> EpisodeData:
     agent.episode_reset()
     episode_data = EpisodeData(remains=config.episode_length)
@@ -385,7 +389,9 @@ def rollout(
     observation_modifier = ObservationModifier(
         env, config.observation_modifiers, config.episode_length
     )
-    observation = observation_modifier.modify(base_observation, episode_data.remains)
+    observation = observation_modifier.modify(
+        base_observation, episode_data.remains, env
+    )
     # observation = base_observation
     best_reward = float("-inf")
     best_sequence = []
@@ -453,7 +459,7 @@ def episode_step(
     reward = env.step(flags)
 
     base_observation = env.get_observation(config.observation_space)
-    observation = observation_modifier.modify(base_observation, remains_steps)
+    observation = observation_modifier.modify(base_observation, remains_steps, env)
     # observation = base_observation
     return StepResult(
         action=action,
