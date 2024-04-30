@@ -77,7 +77,7 @@ class TrainConfig:
     # train_val_test_split: bool = False
     # skipped_benchmarks: list = field(default_factory=lambda: [])
     compiler_gym_env: str = "llvm-v0"
-    observation_space: str = "IR2Vec"
+    observation_space: str = "InstCountNorm+AutophaseNorm"
     # observation_space: list = field(
     #     default_factory=lambda: [
     #         # "IR2Vec",
@@ -119,6 +119,8 @@ class TrainConfig:
             self.observation_size = 69
         elif self.observation_space.startswith("Autophase"):
             self.observation_size = 56
+        elif self.observation_space == "InstCountNorm+AutophaseNorm":
+            self.observation_size = 125
 
         if "mca" in self.observation_modifiers:
             self.observation_size += 3

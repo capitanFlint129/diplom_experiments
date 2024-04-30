@@ -3,6 +3,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+import numpy as np
 from compiler_gym import CompilerEnv
 from compiler_gym.envs import llvm
 
@@ -94,10 +95,7 @@ class CfgGridEnv(MyEnv):
         return reward
 
     def get_observation(self, obs_name):
-        if obs_name == "IR2Vec":
-            return get_ir2vec(self._cg_env.observation["Ir"])
-        else:
-            return self._cg_env.observation[obs_name]
+        return _get_observation_from_cg(self._cg_env, obs_name)
 
     def _compile_and_get_instructions(self) -> int:
         attempts = 10
@@ -178,10 +176,7 @@ class CgLlvmMcaEnv(MyEnv):
         return reward
 
     def get_observation(self, obs_name):
-        if obs_name == "IR2Vec":
-            return get_ir2vec(self._cg_env.observation["Ir"])
-        else:
-            return self._cg_env.observation[obs_name]
+        return _get_observation_from_cg(self._cg_env, obs_name)
 
 
 class LlvmMcaEnv(MyEnv):
@@ -281,6 +276,21 @@ class LlvmMcaEnv(MyEnv):
             space = self._cg_env.observation.spaces[obs_name]
             bitcode = Path(self._filepath)
             return llvm.compute_observation(space, bitcode)
+
+
+def _get_observation_from_cg(env: CompilerEnv, obs_name: str) -> np.ndarray:
+    if obs_name == "IR2Vec":
+        return get_ir2vec(env.observation["Ir"])
+    elif obs_name == "InstCountNorm+AutophaseNorm":
+        autophase = env.observation["Autophase"]
+        return np.concatenate(
+            [
+                env.observation["InstCountNorm"],
+                autophase / autophase[-5],
+            ]
+        )
+    else:
+        return env.observation[obs_name]
 
 
 # def get_mca_result(source_path, optimization):
