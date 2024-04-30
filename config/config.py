@@ -10,6 +10,7 @@ COMPILER_GYM_PATH = "~/.local/share/compiler_gym"
 LLVM_BINS_PATH = os.path.join(COMPILER_GYM_PATH, "llvm-v0/bin")
 MODELS_DIR = "_models"
 TEST_BENCHMARKS_DIR = "data/test_benchmarks"
+MODELS_DIR_PROJECT = os.path.join(MODELS_DIR, WANDB_PROJECT_NAME)
 
 
 @dataclass_json
@@ -65,7 +66,7 @@ class TrainConfig:
     # train_val_test_split: bool = False
     # skipped_benchmarks: list = field(default_factory=lambda: [])
     compiler_gym_env: str = "llvm-v0"
-    observation_space: str = "InstCountNorm"
+    observation_space: str = "IR2Vec"
     # observation_space: list = field(
     #     default_factory=lambda: [
     #         # "IR2Vec",
@@ -81,7 +82,7 @@ class TrainConfig:
             # "prev-2",
         ]
     )
-    observation_size: int = 70
+    observation_size: int = 301
     # reward_space: str = "IrInstructionCountOz"
     # reward_space: str = "RuntimePointEstimateReward"
     # reward_space: str = "LlvmMca"
@@ -98,11 +99,13 @@ class TrainConfig:
     codesize_bins_number: int = 23
 
     def __post_init__(self):
-        self.actions = self.special_actions + self.actions
+        if self.special_actions[0] != self.actions[0]:
+            self.actions = self.special_actions + self.actions
 
-    def save(self, run_name: str):
-        models_dir = os.path.join(MODELS_DIR, WANDB_PROJECT_NAME)
-        if not os.path.exists(models_dir):
-            os.makedirs(models_dir)
-        with open(os.path.join(models_dir, f"{run_name}_config.json"), "w") as ouf:
-            ouf.write(self.to_json())
+    def save(self, run_name: str, replace=False):
+        if not os.path.exists(MODELS_DIR_PROJECT):
+            os.makedirs(MODELS_DIR_PROJECT)
+        file = os.path.join(MODELS_DIR_PROJECT, f"{run_name}_config.json")
+        if replace or not os.path.isfile(file):
+            with open(file, "w") as ouf:
+                ouf.write(self.to_json())

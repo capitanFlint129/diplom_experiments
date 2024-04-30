@@ -17,12 +17,15 @@ from utils import (
 
 
 def main():
+    print("RUN NAME: ", end="")
+    run_name = input()
     config = TrainConfig()
     assert config.actions[0] == "noop"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     run = wandb.init(
         project=WANDB_PROJECT_NAME,
         config=asdict(config),
+        name=run_name,
         # mode="disabled",
     )
     config.save(run.name)

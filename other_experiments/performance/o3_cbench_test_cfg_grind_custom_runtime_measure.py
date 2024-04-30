@@ -1,3 +1,4 @@
+import argparse
 import os
 from subprocess import TimeoutExpired
 
@@ -9,7 +10,6 @@ from compiler_gym import CompilerEnv
 from tabulate import tabulate
 from tqdm import tqdm
 
-from config.config import TrainConfig
 from env.cfg_grind import compile_and_get_instructions
 from runtime_eval.hyperfine_utils import save_whisker_plot
 from runtime_eval.jotai.eval import measure_execution_mean_and_std
@@ -17,15 +17,14 @@ from utils import (
     get_agent,
     get_model_path,
     optimize_with_model,
+    load_config,
 )
 
 # MODEL_ITERS = 25
 # RUNTIME_COUNT = 30
 BENCHMARKS_LIMIT = None
 CBENCH_EVAL_DIR = "cbench_eval_dir"
-RUN_NAME = "zesty-morning-52"
 BIN_NAME = "tmp_o3_cbench_test_cfg_grind_bin"
-EVAL_FILES_DIR = os.path.join(CBENCH_EVAL_DIR, RUN_NAME)
 
 # WORKAROUND_CBENCH_COMMAND_ARGS = None
 
@@ -50,7 +49,7 @@ def process_optimizator(
     prepare_command,
     sequence,
 ) -> tuple[float, float]:
-    bin_path = os.path.join(EVAL_FILES_DIR, BIN_NAME)
+    bin_path = os.path.join(CBENCH_EVAL_DIR, args.run_name, BIN_NAME)
     results[f"{optimizator_name}_inst"].append(
         compile_and_get_instructions(
             ir=env.observation["Ir"],
@@ -95,7 +94,7 @@ def print_df(df):
 def save_hyperfine_whisker_plots(
     hypefine_results: dict[str, dict[str, dict]], split_by_optimizator=True
 ):
-    plots_dir = os.path.join(EVAL_FILES_DIR, "whisker_plots")
+    plots_dir = os.path.join(CBENCH_EVAL_DIR, args.run_name, "whisker_plots")
     os.makedirs(plots_dir, exist_ok=True)
     if split_by_optimizator:
         benchmarks_names = list(
@@ -120,12 +119,12 @@ def save_hyperfine_whisker_plots(
                 result_filename=os.path.join(
                     plots_dir, f"{optimizator_name}_whisker_plot.svg"
                 ),
-                title=os.path.join(EVAL_FILES_DIR, optimizator_name),
+                title=os.path.join(CBENCH_EVAL_DIR, args.run_name, optimizator_name),
             )
 
 
 def main():
-    os.makedirs(EVAL_FILES_DIR, exist_ok=True)
+    os.makedirs(os.path.join(CBENCH_EVAL_DIR, args.run_name), exist_ok=True)
 
     env: CompilerEnv = gym.make("llvm-v0")
     benchmarks = list(env.datasets["benchmark://cbench-v1"].benchmarks())
@@ -151,13 +150,15 @@ def main():
         "o2_inst_imp": [],
     }
 
-    config = TrainConfig()
+    # config = TrainConfig()
+    config = load_config(args.run_name)
+    config.save(args.run_name, replace=False)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     agent = get_agent(
         config,
         device,
-        policy_net_path=get_model_path(RUN_NAME),
+        policy_net_path=get_model_path(args.run_name),
     )
 
     pd_results = pd.DataFrame(columns=list(results.keys()))
@@ -305,8 +306,12 @@ def main():
             print_df_last_row(pd_results)
             print_df_last_row(pd_results_std)
 
-    pd_results.to_csv(os.path.join(EVAL_FILES_DIR, "runtime_measure.csv"))
-    pd_results_std.to_csv(os.path.join(EVAL_FILES_DIR, "runtime_measure_std.csv"))
+    pd_results.to_csv(
+        os.path.join(CBENCH_EVAL_DIR, args.run_name, "runtime_measure.csv")
+    )
+    pd_results_std.to_csv(
+        os.path.join(CBENCH_EVAL_DIR, args.run_name, "runtime_measure_std.csv")
+    )
     save_hyperfine_whisker_plots(hypefine_results)
     print_df(pd_results)
     print_df(pd_results_std)
@@ -314,4 +319,13 @@ def main():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("run_name", help="run name")
+    parser.add_argument(
+        "--debug",
+        help="debug",
+        action="store_true",
+    )
+    args = parser.parse_args()
+
     main()

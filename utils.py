@@ -20,6 +20,7 @@ from config.config import (
     WANDB_PROJECT_NAME,
     TrainConfig,
     TEST_BENCHMARKS_DIR,
+    MODELS_DIR_PROJECT,
 )
 from dqn.dqn import DoubleDQNAgent, DQNAgent, LstmDQNAgent, SimpleDQNAgent, TwinDQNAgent
 from observation.utils import ObservationModifier
@@ -304,3 +305,9 @@ def get_ir2vec_from_file(filepath: str) -> np.ndarray:
         observation = np.loadtxt(result_file.name)
     observation = observation / np.linalg.norm(observation)
     return observation
+
+
+def load_config(run_name: str) -> TrainConfig:
+    with open(os.path.join(MODELS_DIR_PROJECT, f"{run_name}_config.json"), "r") as inf:
+        config = TrainConfig.from_json(inf.read())
+        return config
