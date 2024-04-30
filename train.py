@@ -25,7 +25,7 @@ def main():
         config=asdict(config),
         mode="disabled",
     )
-    config.save()
+    config.save(run.name)
     with make_env(config) as train_env:
         fix_seed(config.random_state)
         train_benchmarks, val_benchmarks, test_benchmarks = prepare_datasets(
