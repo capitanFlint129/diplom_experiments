@@ -115,12 +115,12 @@ class TrainConfig:
 
         if self.observation_space.startswith("IR2Vec"):
             self.observation_size = 300
+        elif self.observation_space == "InstCountNorm+AutophaseNorm":
+            self.observation_size = 125
         elif self.observation_space.startswith("InstCount"):
             self.observation_size = 69
         elif self.observation_space.startswith("Autophase"):
             self.observation_size = 56
-        elif self.observation_space == "InstCountNorm+AutophaseNorm":
-            self.observation_size = 125
 
         if "mca" in self.observation_modifiers:
             self.observation_size += 3
