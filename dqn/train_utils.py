@@ -65,7 +65,7 @@ class EpisodeData:
 class TrainHistory:
     logging_history_size: int
     rewards_history: list[float] = field(default_factory=lambda: [])
-    rewards_histogram: list[list[float]] = field(default_factory=lambda: [])
+    # rewards_histogram: list[list[float]] = field(default_factory=lambda: [])
     negative_rewards_history: list[float] = field(default_factory=lambda: [])
     best_val_mean: float = 0
 
@@ -84,32 +84,32 @@ class TrainHistory:
             log_size = self.logging_history_size
         return np.std(self.rewards_history[-log_size:])
 
-    def reward_hist_for_step(self, log_size: Optional[int] = None):
-        if log_size is None:
-            log_size = self.logging_history_size
-        data = [
-            [i, np.mean(step_data[-log_size:])]
-            for i, step_data in enumerate(self.rewards_histogram)
-        ]
-        table = wandb.Table(data=data, columns=["step", "reward"])
-        reward_hist = wandb.plot.scatter(table, "step", "reward")
-
-        data = [
-            [i, np.std(step_data[-log_size:])]
-            for i, step_data in enumerate(self.rewards_histogram)
-        ]
-        table = wandb.Table(data=data, columns=["step", "reward_std"])
-        reward_hist_std = wandb.plot.scatter(table, "step", "reward_std")
-        return reward_hist, reward_hist_std
+    # def reward_hist_for_step(self, log_size: Optional[int] = None):
+    #     if log_size is None:
+    #         log_size = self.logging_history_size
+    #     data = [
+    #         [i, np.mean(step_data[-log_size:])]
+    #         for i, step_data in enumerate(self.rewards_histogram)
+    #     ]
+    #     table = wandb.Table(data=data, columns=["step", "reward"])
+    #     reward_hist = wandb.plot.scatter(table, "step", "reward")
+    #
+    #     data = [
+    #         [i, np.std(step_data[-log_size:])]
+    #         for i, step_data in enumerate(self.rewards_histogram)
+    #     ]
+    #     table = wandb.Table(data=data, columns=["step", "reward_std"])
+    #     reward_hist_std = wandb.plot.scatter(table, "step", "reward_std")
+    #     return reward_hist, reward_hist_std
 
     def update(self, episode_data: EpisodeData) -> None:
         self.rewards_history.append(episode_data.total_reward)
         self.negative_rewards_history.append(episode_data.total_negative_reward)
-        if len(self.rewards_histogram) == 0:
-            self.rewards_histogram = [[reward] for reward in episode_data.rewards]
-        else:
-            for i, reward in enumerate(episode_data.rewards):
-                self.rewards_histogram[i].append(reward)
+        # if len(self.rewards_histogram) == 0:
+        #     self.rewards_histogram = [[reward] for reward in episode_data.rewards]
+        # else:
+        #     for i, reward in enumerate(episode_data.rewards):
+        #         self.rewards_histogram[i].append(reward)
 
 
 def get_binned_statistics(
