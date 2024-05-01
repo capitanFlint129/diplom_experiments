@@ -520,6 +520,7 @@ class LstmDQNAgent(DQNAgent):
         self._replay_buffer = ReplayBufferForLSTM(
             buffer_size=config.max_mem_size,
             observation_size=config.observation_size,
+            episode_length=config.episode_length,
         )
         self.epsilon = config.epsilon
         self._n_actions = n_actions

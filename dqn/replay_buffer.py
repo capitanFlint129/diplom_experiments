@@ -77,7 +77,8 @@ class ReplayBuffer:
 
 
 class ReplayBufferForLSTM:
-    def __init__(self, buffer_size: int, observation_size: int):
+    def __init__(self, buffer_size: int, observation_size: int, episode_length: int):
+        self._episode_length = episode_length
         self._max_buffer_size = buffer_size
         self._mem_counter = 0
         self._ready_data_size = 0
@@ -153,7 +154,7 @@ class ReplayBufferForLSTM:
             if end_index > self.episode_start_mem[end_index]:
                 start_index += self.get_cur_size()
             length = start_index - end_index + 1
-            assert 0 < length <= config.TrainConfig.episode_length, f"{length}"
+            assert 0 < length <= self._episode_length, f"{length}"
             lengths.append(length)
             max_len = max(length, max_len)
 
