@@ -67,7 +67,7 @@ def train(
         observation = observation_modifier.modify(
             base_observation,
             episode_data.remains,
-            custom_train_env,
+            env=custom_train_env,
         )
         # observation = base_observation
         prev_action = 0
@@ -190,7 +190,7 @@ def _prefill(
 
         base_observation = prefill_env.get_observation(config.observation_space)
         observation = observation_modifier.modify(
-            base_observation, config.episode_length, prefill_env
+            base_observation, config.episode_length, env=prefill_env
         )
         prev_action = 0
         if "noop" in config.special_actions:
@@ -207,7 +207,7 @@ def _prefill(
 
             base_observation = prefill_env.get_observation(config.observation_space)
             new_observation = observation_modifier.modify(
-                base_observation, remains, prefill_env
+                base_observation, remains, env=prefill_env
             )
             remains -= 1
             agent.store_transition(
@@ -392,7 +392,7 @@ def rollout(
         env, config.observation_modifiers, config.episode_length
     )
     observation = observation_modifier.modify(
-        base_observation, episode_data.remains, env
+        base_observation, episode_data.remains, env=env
     )
     # observation = base_observation
     best_reward = float("-inf")
@@ -461,7 +461,7 @@ def episode_step(
     reward = env.step(flags)
 
     base_observation = env.get_observation(config.observation_space)
-    observation = observation_modifier.modify(base_observation, remains_steps, env)
+    observation = observation_modifier.modify(base_observation, remains_steps, env=env)
     # observation = base_observation
     return StepResult(
         action=action,
