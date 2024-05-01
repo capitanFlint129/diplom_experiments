@@ -276,7 +276,9 @@ def _validation_during_train(
             f"Save model. New best mean: {validation_result.mean_reward},"
             f" previous best mean: {best_val_mean}"
         )
-        save_model(agent.get_policy_net_state_dict(), f"best_val_{run.name}", replace=True)
+        save_model(
+            agent.get_policy_net_state_dict(), f"best_val_{run.name}", replace=True
+        )
         return validation_result.mean_reward
     return best_val_mean
 
