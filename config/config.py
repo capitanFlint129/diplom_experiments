@@ -97,11 +97,11 @@ class TrainConfig:
     reward_space: str = "CfgInstructions"
     # reward_space: str = "MCA"
     observation_size: int = None
-    actions: list = field(default_factory=lambda: O23_SUBSEQ_CBENCH_MINS)
+    actions: list = field(default_factory=lambda: SUBSET)
     reward_scale: float = 1
     special_actions: list = field(
         default_factory=lambda: [
-            "noop",
+            # "noop",
         ]
     )
     # Experiment section (logging and reproduce)
@@ -110,7 +110,10 @@ class TrainConfig:
     codesize_bins_number: int = 23
 
     def __post_init__(self):
-        if self.special_actions[0] != self.actions[0]:
+        if self.task == "subset":
+            self.episode_length = len(self.actions_sequence)
+
+        if len(self.special_actions) > 0 and self.special_actions[0] != self.actions[0]:
             self.actions = self.special_actions + self.actions
 
         if self.observation_space == "IR2Vec+InstCountNorm+AutophaseNorm":

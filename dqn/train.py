@@ -16,7 +16,12 @@ from config.action_config import _O23_SUBSEQ_CBENCH_MINS_O3
 from config.config import TrainConfig
 from dqn.dqn import DQNAgent
 from dqn.train_utils import EpisodeData, StepResult, TrainHistory
-from env.performance_optimization import MyEnv, CfgGridEnv, CgLlvmMcaEnv
+from env.performance_optimization import (
+    MyEnv,
+    CfgGridEnv,
+    CgLlvmMcaEnv,
+    CfgGridSubsetEnv,
+)
 from observation.utils import ObservationModifier
 from utils import save_model, ValidationResult
 
@@ -155,12 +160,21 @@ def train(
 def _get_envs(
     config: TrainConfig, train_env: CompilerEnv, validation_env: CompilerEnv
 ) -> tuple[MyEnv, MyEnv]:
-    if config.reward_space == "MCA":
-        custom_train_env = CgLlvmMcaEnv(config, train_env)
-        custom_validation_env = CgLlvmMcaEnv(config, validation_env)
-    elif config.reward_space == "CfgInstructions":
-        custom_train_env = CfgGridEnv(config, train_env)
-        custom_validation_env = CfgGridEnv(config, validation_env)
+    if config.task == "subset":
+        if config.reward_space == "CfgInstructions":
+            custom_train_env = CfgGridSubsetEnv(config, train_env)
+            custom_validation_env = CfgGridSubsetEnv(config, validation_env)
+        else:
+            raise NotImplementedError()
+    elif config.task == "classic_phase_ordering":
+        if config.reward_space == "MCA":
+            custom_train_env = CgLlvmMcaEnv(config, train_env)
+            custom_validation_env = CgLlvmMcaEnv(config, validation_env)
+        elif config.reward_space == "CfgInstructions":
+            custom_train_env = CfgGridEnv(config, train_env)
+            custom_validation_env = CfgGridEnv(config, validation_env)
+        else:
+            raise NotImplementedError()
     else:
         raise Exception("unknown reward space")
     return custom_train_env, custom_validation_env
@@ -431,6 +445,8 @@ def rollout(
             forbidden_actions=None,
             eval_mode=True,
         )
+        if step_result.value <= 0:
+            episode_data.done = True
         episode_data.update_after_episode_step(
             step_result=step_result,
             loss_value=None,
