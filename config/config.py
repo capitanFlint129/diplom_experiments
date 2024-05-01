@@ -36,10 +36,10 @@ class TrainConfig:
     epsilon: float = 1.0  # The starting value for epsilon
     epsilon_end: float = 0.05  # The ending value for epsilon
     epsilon_dec: float = 3e-5  # The decrement value for epsilon
-    fc_dim: int = 128  # The dimension of a fully connected layer
-    lstm_hidden_size: int = 256  # The dimension of a fully connected layer
+    fc_dim: int = 256  # The dimension of a fully connected layer
+    lstm_hidden_size: int = 512  # The dimension of a fully connected layer
     # Learning
-    lr: float = 3e-5  # The learning rate
+    lr: float = 1e-4  # The learning rate
     tau: float = 0.99  # soft update coefficient
     batch_size: int = 256  # The batch size
     max_mem_size: int = 100000  # The maximum memory size
@@ -77,7 +77,7 @@ class TrainConfig:
     # train_val_test_split: bool = False
     # skipped_benchmarks: list = field(default_factory=lambda: [])
     compiler_gym_env: str = "llvm-v0"
-    observation_space: str = "IR2Vec"
+    observation_space: str = "IR2Vec+InstCountNorm+AutophaseNorm"
     # observation_space: list = field(
     #     default_factory=lambda: [
     #         # "IR2Vec",
@@ -113,7 +113,9 @@ class TrainConfig:
         if self.special_actions[0] != self.actions[0]:
             self.actions = self.special_actions + self.actions
 
-        if self.observation_space.startswith("IR2Vec"):
+        if self.observation_space == "IR2Vec+InstCountNorm+AutophaseNorm":
+            self.observation_size = 425
+        elif self.observation_space.startswith("IR2Vec"):
             self.observation_size = 300
         elif self.observation_space == "InstCountNorm+AutophaseNorm":
             self.observation_size = 125

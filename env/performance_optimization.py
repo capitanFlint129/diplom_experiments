@@ -286,6 +286,15 @@ class LlvmMcaEnv(MyEnv):
 def _get_observation_from_cg(env: CompilerEnv, obs_name: str) -> np.ndarray:
     if obs_name == "IR2Vec":
         return get_ir2vec(env.observation["Ir"])
+    elif obs_name == "IR2Vec+InstCountNorm+AutophaseNorm":
+        autophase = env.observation["Autophase"]
+        return np.concatenate(
+            [
+                get_ir2vec(env.observation["Ir"]),
+                env.observation["InstCountNorm"],
+                autophase / autophase[-5],
+            ]
+        )
     elif obs_name == "InstCountNorm+AutophaseNorm":
         autophase = env.observation["Autophase"]
         return np.concatenate(
