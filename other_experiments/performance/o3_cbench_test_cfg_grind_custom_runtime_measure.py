@@ -10,6 +10,7 @@ from compiler_gym import CompilerEnv
 from tabulate import tabulate
 from tqdm import tqdm
 
+from config.config import TrainConfig
 from env.cfg_grind import compile_and_get_instructions
 from runtime_eval.hyperfine_utils import save_whisker_plot
 from runtime_eval.jotai.eval import measure_execution_mean_and_std
@@ -17,7 +18,6 @@ from utils import (
     get_agent,
     get_model_path,
     optimize_with_model,
-    load_config,
 )
 
 # MODEL_ITERS = 25
@@ -151,7 +151,7 @@ def main():
     }
 
     # config = TrainConfig()
-    config = load_config(args.run_name)
+    config = TrainConfig.load_config(args.run_name)
     config.save(args.run_name, replace=False)
     episode_len = args.iters if args.iters > -1 else config.episode_length
 

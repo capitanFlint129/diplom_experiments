@@ -237,7 +237,7 @@ def optimize_with_model(
         None, config.observation_modifiers, config.episode_length
     )
     for i in range(iters):
-        base_observation = _get_obs(env, config.observation_space)
+        base_observation = get_observation_from_cg(env, config.observation_space)
         obs = observation_modifier.modify(
             base_observation, config.episode_length - i, ir=env.observation["Ir"]
         )
@@ -267,9 +267,35 @@ def optimize_with_model(
                 print(f"{config.actions[action]}({action}, {value})", end=" ")
         flags.append(config.actions[action])
         prev_obs = obs
+        if cur_flags[0] == "noop":
+            break
     if print_debug:
         print()
     return flags
+
+
+def get_observation_from_cg(env: CompilerEnv, obs_name: str) -> np.ndarray:
+    if obs_name == "IR2Vec":
+        return get_ir2vec(env.observation["Ir"])
+    elif obs_name == "IR2Vec+InstCountNorm+AutophaseNorm":
+        autophase = env.observation["Autophase"]
+        return np.concatenate(
+            [
+                get_ir2vec(env.observation["Ir"]),
+                env.observation["InstCountNorm"],
+                autophase / autophase[-5],
+            ]
+        )
+    elif obs_name == "InstCountNorm+AutophaseNorm":
+        autophase = env.observation["Autophase"]
+        return np.concatenate(
+            [
+                env.observation["InstCountNorm"],
+                autophase / autophase[-5],
+            ]
+        )
+    else:
+        return env.observation[obs_name]
 
 
 def _get_obs(env, obs_name):
@@ -312,9 +338,3 @@ def get_ir2vec_from_file(filepath: str) -> np.ndarray:
         observation = np.loadtxt(result_file.name)
     observation = observation / np.linalg.norm(observation)
     return observation
-
-
-def load_config(run_name: str) -> TrainConfig:
-    with open(os.path.join(MODELS_DIR_PROJECT, f"{run_name}_config.json"), "r") as inf:
-        config = TrainConfig.from_json(inf.read())
-        return config

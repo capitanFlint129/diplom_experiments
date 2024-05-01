@@ -1,5 +1,6 @@
 import argparse
 import os.path
+import random
 from multiprocessing import Pool
 from subprocess import TimeoutExpired
 
@@ -20,13 +21,18 @@ DATASET_URI = "benchmark://jotaibench-v0"
 parser = argparse.ArgumentParser()
 parser.add_argument("run_name", help="run name")
 parser.add_argument(
+    "--n",
+    type=int,
+    default=-1,
+)
+parser.add_argument(
     "--debug",
     help="debug",
     action="store_true",
 )
 args = parser.parse_args()
 
-config = TrainConfig()
+config = TrainConfig.load_config(args.run_name)
 
 
 def init_worker(function):
@@ -76,8 +82,13 @@ def main():
         benchmarks_names = inf.readlines()
         benchmarks_names = [name.strip() for name in benchmarks_names]
 
+    random.seed(129)
+    random.shuffle(benchmarks_names)
+
     if args.debug:
         benchmarks_names = benchmarks_names[:20]
+    elif args.n > -1:
+        benchmarks_names = benchmarks_names[: args.n]
 
     results = list(
         tqdm(
@@ -103,7 +114,8 @@ def main():
             "optimizations": optimizations,
         }
     )
-    result.to_csv(f"data/optimizations_{args.run_name}.csv")
+    os.makedirs(f"_runtime_eval/{args.run_name}", exist_ok=True)
+    result.to_csv(f"_runtime_eval/{args.run_name}/optimizations.csv")
 
 
 if __name__ == "__main__":

@@ -27,6 +27,8 @@ parser.add_argument(
 )
 args = parser.parse_args()
 
+RUN_DIR_PATH = f"_runtime_eval/{args.run_name}"
+
 
 def get_benchmark_source_path(benchmark_name):
     for path in JOTAI_SRC_PATH:
@@ -40,31 +42,35 @@ def process_benchmark(data: tuple[str, str]):
     p = multiprocessing.current_process()
     tmpfilename = f"{p.name}.o"
 
-    def _compile(linkopts):
+    def _compile(linkopts, model_sequence):
         compile_one_source_with_opt_sequence(
             source_path=source_path,
-            result_path=f"data/O0/{benchmark_name}",
+            result_path=f"{RUN_DIR_PATH}/O0/{benchmark_name}",
             sequence=[],
             linkopts=linkopts,
             tmpfilename=tmpfilename,
         )
         compile_one_source_with_opt_sequence(
             source_path=source_path,
-            result_path=f"data/O2/{benchmark_name}",
+            result_path=f"{RUN_DIR_PATH}/O2/{benchmark_name}",
             sequence=["-O2"],
             linkopts=linkopts,
             tmpfilename=tmpfilename,
         )
         compile_one_source_with_opt_sequence(
             source_path=source_path,
-            result_path=f"data/O3/{benchmark_name}",
+            result_path=f"{RUN_DIR_PATH}/O3/{benchmark_name}",
             sequence=["-O3"],
             linkopts=linkopts,
             tmpfilename=tmpfilename,
         )
+        if not isinstance(model_sequence, str):
+            model_sequence = ""
+            print(f"model_sequence is not str: {model_sequence}")
+
         compile_one_source_with_opt_sequence(
             source_path=source_path,
-            result_path=f"data/model/{benchmark_name}",
+            result_path=f"{RUN_DIR_PATH}/model/{benchmark_name}",
             sequence=model_sequence.split(),
             linkopts=linkopts,
             tmpfilename=tmpfilename,
@@ -73,23 +79,26 @@ def process_benchmark(data: tuple[str, str]):
     source_path = get_benchmark_source_path(benchmark_name)
 
     try:
-        _compile([])
+        _compile([], model_sequence)
     except Exception as e:
         print(f"Failed to compile {benchmark_name} try to use -lm: {e}")
         try:
-            _compile(["-lm"])
+            _compile(["-lm"], model_sequence)
         except Exception as e:
             print(f"Failed to compile {benchmark_name}: {e}")
 
 
 def main():
-    filename = f"data/optimizations_{args.run_name}.csv"
+    filename = f"{RUN_DIR_PATH}/optimizations.csv"
     print(filename)
-    os.makedirs("data/O0", exist_ok=True)
-    os.makedirs("data/O2", exist_ok=True)
-    os.makedirs("data/O3", exist_ok=True)
-    os.makedirs("data/model", exist_ok=True)
+    os.makedirs(f"{RUN_DIR_PATH}/O0", exist_ok=True)
+    os.makedirs(f"{RUN_DIR_PATH}/O2", exist_ok=True)
+    os.makedirs(f"{RUN_DIR_PATH}/O3", exist_ok=True)
+    os.makedirs(f"{RUN_DIR_PATH}/model", exist_ok=True)
     model_optimizations = pd.read_csv(filename)
+
+    # for el in zip(model_optimizations.benchmark, model_optimizations.optimizations):
+    #     process_benchmark(el)
 
     pool = multiprocessing.Pool()
     list(

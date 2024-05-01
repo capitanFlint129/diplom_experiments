@@ -146,3 +146,11 @@ class TrainConfig:
         if replace or not os.path.isfile(file):
             with open(file, "w") as ouf:
                 ouf.write(self.to_json())
+
+    @staticmethod
+    def load_config(run_name: str) -> "TrainConfig":
+        with open(
+            os.path.join(MODELS_DIR_PROJECT, f"{run_name}_config.json"), "r"
+        ) as inf:
+            config = TrainConfig.from_json(inf.read())
+            return config
