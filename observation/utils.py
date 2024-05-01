@@ -77,13 +77,12 @@ class ObservationModifier:
                     raise Exception(
                         "You need to specidy ir or env for mca observation modification"
                     )
-
         return observation
 
 
 def parse_mca_vec(mca_output) -> np.ndarray:
-    uops_per_cycle_line = mca_output.split("\n", maxsplit=9)[7]
-    ipc_line = mca_output.split("\n", maxsplit=9)[8]
+    uops_per_cycle_line = mca_output.split("\n", maxsplit=9)[6]
+    ipc_line = mca_output.split("\n", maxsplit=9)[7]
     block_rthroughput_line = mca_output.split("\n", maxsplit=9)[8]
     return np.array(
         [

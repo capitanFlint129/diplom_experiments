@@ -259,7 +259,12 @@ def optimize_with_model(
             env.step(env.action_space.flags.index(cur_flags[0]))
 
         if print_debug:
-            print(f"{config.actions[action]}({value})", end=" ")
+            if "mca" in config.observation_modifiers:
+                print(
+                    f"{config.actions[action]}({action}, {value}, {obs[:3]})", end=" "
+                )
+            else:
+                print(f"{config.actions[action]}({action}, {value})", end=" ")
         flags.append(config.actions[action])
         prev_obs = obs
     if print_debug:

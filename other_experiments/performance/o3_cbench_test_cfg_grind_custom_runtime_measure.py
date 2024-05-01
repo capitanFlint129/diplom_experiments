@@ -153,6 +153,8 @@ def main():
     # config = TrainConfig()
     config = load_config(args.run_name)
     config.save(args.run_name, replace=False)
+    episode_len = args.iters if args.iters > -1 else config.episode_length
+
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     agent = get_agent(
@@ -215,7 +217,7 @@ def main():
             new_env.reset()
             try:
                 optimize_with_model(
-                    config, agent, new_env, iters=config.episode_length, eval_mode=True
+                    config, agent, new_env, iters=episode_len, eval_mode=True
                 )
             except TimeoutExpired as e:
                 print(f"IR2vec timeout skip benchmark: {e}")
@@ -321,6 +323,11 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("run_name", help="run name")
+    parser.add_argument(
+        "--iters",
+        type=int,
+        default=-1,
+    )
     parser.add_argument(
         "--debug",
         help="debug",

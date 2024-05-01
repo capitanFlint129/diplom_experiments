@@ -349,16 +349,17 @@ def validate(
             times.append(timer.time)
             train_history.update(episode_data)
             if enable_logs:
-                actions_str = " ".join(
-                    [
-                        f"{' '.join(flags)}({round(reward, 7)})"
-                        for flags, reward in zip(
-                            episode_data.chosen_flags, episode_data.rewards
-                        )
-                    ]
-                )
+                # actions_str = " ".join(
+                #     [
+                #         f"{' '.join(flags)}({round(reward, 7)})"
+                #         for flags, reward in zip(
+                #             episode_data.chosen_flags, episode_data.rewards
+                #         )
+                #     ]
+                # )
                 print(
-                    f"{i} - {benchmark} - reward: {episode_data.total_reward} - time: {timer.time} - actions: {actions_str}"
+                    f"{i} - {benchmark} - reward: {episode_data.total_reward} - time: {timer.time}"
+                    # f"{i} - {benchmark} - reward: {episode_data.total_reward} - time: {timer.time} - actions: {actions_str}"
                 )
         except TimeoutExpired as e:
             print(f"Timeout skip benchmark {str(benchmark)}: {e}", file=sys.stderr)
@@ -382,7 +383,11 @@ def validate(
 
 @torch.no_grad()
 def rollout(
-    agent: DQNAgent, env: MyEnv, config: TrainConfig, use_actions_masking
+    agent: DQNAgent,
+    env: MyEnv,
+    config: TrainConfig,
+    use_actions_masking,
+    print_debug=True,
 ) -> EpisodeData:
     agent.episode_reset()
     episode_data = EpisodeData(remains=config.episode_length)
@@ -433,6 +438,19 @@ def rollout(
         if episode_data.total_reward > best_reward:
             best_reward = episode_data.total_reward
             best_sequence.append(step_result.flags)
+        if print_debug:
+            if "mca" in config.observation_modifiers:
+                print(
+                    f"{config.actions[step_result.action]}({step_result.action}, {step_result.value}, {observation[:3]})",
+                    end=" ",
+                )
+            else:
+                print(
+                    f"{config.actions[step_result.action]}({step_result.action}, {step_result.value})",
+                    end=" ",
+                )
+    if print_debug:
+        print()
     if config.eval_with_bestsequence:
         episode_data.total_reward = best_reward
         episode_data.chosen_flags = best_sequence

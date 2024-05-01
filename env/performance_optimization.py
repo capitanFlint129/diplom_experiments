@@ -38,6 +38,7 @@ class CfgGridEnv(MyEnv):
         self._executed_insts_o3 = None
         self._executed_insts_initial = None
         self._executed_insts_prev = None
+        self._executed_insts_baseline = None
         self._debug = debug
 
     def get_cur_ir(self) -> CompilerEnv:
@@ -55,6 +56,10 @@ class CfgGridEnv(MyEnv):
                     self._executed_insts_o3 = self._compile_and_get_instructions_seq(
                         sequence=[O3]
                     )
+
+                self._executed_insts_baseline = self._compile_and_get_instructions_seq(
+                    sequence=[O3]
+                )
 
                 # Initial
                 self._executed_insts_initial = self._compile_and_get_instructions()
@@ -84,9 +89,9 @@ class CfgGridEnv(MyEnv):
         else:
             self._cg_env.step(self._cg_env.action_space.flags.index(flags[0]))
         executed_insts = self._compile_and_get_instructions()
-        reward = (
-            self._executed_insts_prev - executed_insts
-        ) / self._executed_insts_initial
+        reward = (self._executed_insts_prev - executed_insts) / (
+            self._executed_insts_initial - self._executed_insts_baseline
+        )
         if self._debug:
             print(
                 f"reward: {reward} - executed_insts: {executed_insts} - executed_insts_prev: {self._executed_insts_prev} - executed_insts_initial: {self._executed_insts_initial}"
