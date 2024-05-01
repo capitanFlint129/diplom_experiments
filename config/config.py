@@ -77,7 +77,7 @@ class TrainConfig:
     # train_val_test_split: bool = False
     # skipped_benchmarks: list = field(default_factory=lambda: [])
     compiler_gym_env: str = "llvm-v0"
-    observation_space: str = "InstCountNorm+AutophaseNorm"
+    observation_space: str = "IR2Vec"
     # observation_space: list = field(
     #     default_factory=lambda: [
     #         # "IR2Vec",
