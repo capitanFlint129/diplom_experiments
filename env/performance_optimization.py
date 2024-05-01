@@ -90,7 +90,10 @@ class CfgGridEnv(MyEnv):
             self._cg_env.step(self._cg_env.action_space.flags.index(flags[0]))
         executed_insts = self._compile_and_get_instructions()
         reward = (self._executed_insts_prev - executed_insts) / (
-            max(self._executed_insts_initial - self._executed_insts_baseline, int(0.01 * self._executed_insts_initial))
+            max(
+                self._executed_insts_initial - self._executed_insts_baseline,
+                int(0.01 * self._executed_insts_initial),
+            )
         )
         if self._debug:
             print(
