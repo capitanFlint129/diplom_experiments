@@ -96,9 +96,13 @@ class CfgGridSubsetEnv(MyEnv):
                 print(
                     f"O3: {self._executed_insts_baseline} - O0: {self._executed_insts_initial} - diff {self._executed_insts_initial - self._executed_insts_baseline}"
                 )
-                print(
-                    f"prepare actions improve: {(self._executed_insts_initial - self._executed_insts_prev) / self._executed_insts_baseline}"
+                prepare_improve = (
+                    self._executed_insts_initial - self._executed_insts_prev
+                ) / max(
+                    self._executed_insts_initial - self._executed_insts_baseline,
+                    int(0.01 * self._executed_insts_initial),
                 )
+                print(f"prepare actions improve: {prepare_improve}")
                 return
             except ValueError as e:
                 print(e, file=sys.stderr)
