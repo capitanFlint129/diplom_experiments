@@ -21,6 +21,7 @@ from config.config import (
     TrainConfig,
     TEST_BENCHMARKS_DIR,
 )
+from config.action_config import O23_SUBSEQ_CBENCH_MINS_ANALYTICAL
 from dqn.dqn import DoubleDQNAgent, DQNAgent, LstmDQNAgent, SimpleDQNAgent, TwinDQNAgent
 from observation.utils import ObservationModifier
 
@@ -298,7 +299,10 @@ def optimize_with_model(
     eval_mode,
     iters=10,
     print_debug=True,
+    hack: bool = False,
 ) -> list[str]:
+    if print_debug:
+        print(f"Eval mode: {eval_mode} - hack: {hack}")
     flags = []
     prev_obs = np.zeros((config.observation_size,))
     agent.episode_reset()
@@ -318,6 +322,7 @@ def optimize_with_model(
             enable_epsilon_greedy=False,
             forbidden_actions=set(),
             eval_mode=eval_mode,
+            hack=hack,
         )
         if config.task == "subset":
             if config.actions[action] == "apply":

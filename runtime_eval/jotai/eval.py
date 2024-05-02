@@ -9,23 +9,8 @@ from tqdm import tqdm
 from env.cfg_grind import get_executed_instructions
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument("run_name", help="run name")
-# parser.add_argument(
-#     "--runs",
-#     type=int,
-#     default=-1,
-# )
-parser.add_argument(
-    "--debug",
-    help="debug",
-    action="store_true",
-)
-args = parser.parse_args()
-
 WARMUP = 0
 DATASET_URI = "benchmark://jotaibench-v0"
-RUN_DIR_PATH = f"_runtime_eval/{args.run_name}"
 MEASURE_EXECUTED_INSTRUCTIONS = True
 
 
@@ -53,6 +38,7 @@ def measure_execution_mean_and_std(
     prepare_command="",
     specific_name="",
     warmup=0,
+    runs=-1,
 ) -> tuple[float, float, dict]:
     # with Timer() as timer:
     #     proc = subprocess.run(
@@ -69,6 +55,8 @@ def measure_execution_mean_and_std(
         command = f"hyperfine --prepare '{prepare_command}' --warmup {warmup} '{bin_path} {execution_args}' --export-json {filename} --show-output"
     else:
         command = f"hyperfine --warmup {warmup} '{bin_path} {execution_args}' --export-json {filename} --show-output"
+    if runs > -1:
+        command += f" --runs {runs}"
     proc = subprocess.run(
         command,
         shell=True,
@@ -122,15 +110,21 @@ def main():
     # random.shuffle(benchmarks)
     for benchmark in tqdm(benchmarks):
         o3_runtimes_mean, o3_runtimes_std, _ = measure_execution_mean_and_std(
-            f"{RUN_DIR_PATH}/O3/{benchmark}", execution_args=execution_args, warmup=WARMUP
+            f"{RUN_DIR_PATH}/O3/{benchmark}",
+            execution_args=execution_args,
+            warmup=WARMUP,
         )
 
         o2_runtimes_mean, o2_runtimes_std, _ = measure_execution_mean_and_std(
-            f"{RUN_DIR_PATH}/O2/{benchmark}", execution_args=execution_args, warmup=WARMUP
+            f"{RUN_DIR_PATH}/O2/{benchmark}",
+            execution_args=execution_args,
+            warmup=WARMUP,
         )
 
         o0_runtimes_mean, o0_runtimes_std, _ = measure_execution_mean_and_std(
-            f"{RUN_DIR_PATH}/O0/{benchmark}", execution_args=execution_args, warmup=WARMUP
+            f"{RUN_DIR_PATH}/O0/{benchmark}",
+            execution_args=execution_args,
+            warmup=WARMUP,
         )
 
         model_runtimes_mean, model_runtimes_std, _ = measure_execution_mean_and_std(
@@ -200,6 +194,13 @@ if __name__ == "__main__":
         help="debug",
         action="store_true",
     )
+    # parser.add_argument(
+    #     "--runs",
+    #     type=int,
+    #     default=-1,
+    # )
     args = parser.parse_args()
+
+    RUN_DIR_PATH = f"_runtime_eval/{args.run_name}"
 
     main()

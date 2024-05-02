@@ -36,6 +36,7 @@ class DQNAgent(ABC):
         enable_epsilon_greedy: bool,
         forbidden_actions: set[int],
         eval_mode: bool,
+        hack: bool = False,
     ) -> tuple[int, float]:
         pass
 
@@ -122,6 +123,7 @@ class SimpleDQNAgent(DQNAgent):
         enable_epsilon_greedy: bool,
         forbidden_actions: set[int],
         eval_mode: bool,
+        hack: bool = False,
     ) -> tuple[int, float]:
         self.policy_net.eval()
         observation = observation.astype(np.float32)
@@ -314,6 +316,7 @@ class _TwinDQNSubAgent:
         enable_epsilon_greedy: bool,
         forbidden_actions: set[int],
         eval_mode: bool,
+        hack: bool = False,
     ) -> tuple[int, float]:
         observation = observation.astype(np.float32)
         actions_q = self.policy_net(
@@ -481,6 +484,7 @@ class TwinDQNAgent(DQNAgent):
         enable_epsilon_greedy: bool,
         forbidden_actions: set[int],
         eval_mode: bool,
+        hack: bool = False,
     ) -> tuple[int, float]:
         return self._cur_agent.choose_action(
             observation, enable_epsilon_greedy, forbidden_actions, eval_mode
@@ -569,6 +573,7 @@ class LstmDQNAgent(DQNAgent):
         enable_epsilon_greedy: bool,
         forbidden_actions: set[int],
         eval_mode: bool,
+        hack: bool = False,
     ) -> tuple[int, float]:
         observation = observation.astype(np.float32)
         actions_q, self.h_prev, self.c_prev = self.policy_net.forward_step(
@@ -581,11 +586,12 @@ class LstmDQNAgent(DQNAgent):
         assert len(self._config.actions) == actions_q.shape[-1]
         value = actions_q.max().item()
         if eval_mode:
-            # while (
-            #     torch.argmax(actions_q).item() in self._actions_taken
-            #     and actions_q.max() > 0
-            # ):
-            #     actions_q[torch.argmax(actions_q).item()] = 0.0
+            if hack:
+                while (
+                    torch.argmax(actions_q).item() in self._actions_taken
+                    and actions_q.max() > 0
+                ):
+                    actions_q[torch.argmax(actions_q).item()] = 0.0
             action = torch.argmax(actions_q).item()
             self._actions_taken.append(action)
             return action, value

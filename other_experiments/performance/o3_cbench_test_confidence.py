@@ -1,17 +1,20 @@
 import argparse
+import dataclasses
 import os
 from subprocess import TimeoutExpired
 
 import compiler_gym
 import gym
+import numpy as np
 import pandas as pd
 import torch
 from compiler_gym import CompilerEnv
+from scipy import stats
 from tabulate import tabulate
 from tqdm import tqdm
 
 from config.config import TrainConfig
-from env.cfg_grind import compile_and_get_instructions
+from env.cfg_grind import compile
 from runtime_eval.hyperfine_utils import save_whisker_plot
 from runtime_eval.jotai.eval import measure_execution_mean_and_std
 from utils import (
@@ -29,6 +32,13 @@ BIN_NAME = "tmp_o3_cbench_test_cfg_grind_bin"
 # WORKAROUND_CBENCH_COMMAND_ARGS = None
 
 
+@dataclasses.dataclass
+class OptimizatorData:
+    name: str
+    sequence: list
+    # env: CompilerEnv
+
+
 def apply_pass_sequence(env: CompilerEnv, pass_sequence):
     action_space_passes_set = set(env.action_space.flags)
     for pass_el in pass_sequence:
@@ -39,36 +49,58 @@ def apply_pass_sequence(env: CompilerEnv, pass_sequence):
             # print(reward)
 
 
-def process_optimizator(
-    optimizator_name,
-    env,
-    results: dict,
-    hypefine_results: dict,
+def compare_optimizators(
+    model_opt: OptimizatorData,
+    baseline_opt: OptimizatorData,
+    env: CompilerEnv,
     linkopts,
     benchmark_args,
     prepare_command,
-    sequence,
-) -> tuple[float, float]:
-    bin_path = os.path.join(CBENCH_EVAL_DIR, args.run_name, BIN_NAME)
-    results[f"{optimizator_name}_inst"].append(
-        compile_and_get_instructions(
-            ir=env.observation["Ir"],
-            sequence=sequence,
-            result_path=bin_path,
-            execution_args=benchmark_args,
-            linkopts=linkopts,
+    n=30,
+) -> list[float]:
+    model_bin = os.path.join(
+        CBENCH_EVAL_DIR, args.run_name, f"{BIN_NAME}-{model_opt.name}"
+    )
+    baseline_bin = os.path.join(
+        CBENCH_EVAL_DIR, args.run_name, f"{BIN_NAME}-{baseline_opt.name}"
+    )
+
+    compile(
+        ir=env.observation["Ir"],
+        sequence=model_opt.sequence,
+        result_path=model_bin,
+        linkopts=linkopts,
+    )
+
+    compile(
+        ir=env.observation["Ir"],
+        sequence=baseline_opt.sequence,
+        result_path=baseline_bin,
+        linkopts=linkopts,
+    )
+    speedups = []
+    for i in range(n):
+        model_runtime, _, _ = measure_execution_mean_and_std(
+            f"./{model_bin}",
+            benchmark_args,
+            prepare_command=prepare_command,
+            specific_name=model_opt.name,
+            runs=1,
+            warmup=0,
         )
-    )
-    mean, std, hyperfine_result = measure_execution_mean_and_std(
-        f"./{bin_path}",
-        benchmark_args,
-        prepare_command=prepare_command,
-        specific_name=optimizator_name,
-        warmup=10,
-    )
-    hypefine_results[optimizator_name][results["benchmark"][-1]] = hyperfine_result
-    results[f"{optimizator_name}_runtime"].append(mean)
-    return mean, std
+
+        baseline_runtime, _, _ = measure_execution_mean_and_std(
+            f"./{model_bin}",
+            benchmark_args,
+            prepare_command=prepare_command,
+            specific_name=model_opt.name,
+            runs=1,
+            warmup=0,
+        )
+        speedups.append(
+            (baseline_runtime - model_runtime) / max(np.median(baseline_runtime), 1e-12)
+        )
+    return speedups
 
 
 def print_df_last_row(df):
@@ -124,31 +156,12 @@ def save_hyperfine_whisker_plots(
 
 
 def main():
+    N = 300
     os.makedirs(os.path.join(CBENCH_EVAL_DIR, args.run_name), exist_ok=True)
 
     env: CompilerEnv = gym.make("llvm-v0")
     benchmarks = list(env.datasets["benchmark://cbench-v1"].benchmarks())
-    results = {
-        "benchmark": [],
-        #
-        "base_runtime": [],
-        "o3_runtime": [],
-        "o2_runtime": [],
-        "model_runtime": [],
-        #
-        "base_inst": [],
-        "o3_inst": [],
-        "o2_inst": [],
-        "model_inst": [],
-        #
-        "base_speedup": [],
-        "o3_speedup": [],
-        "o2_speedup": [],
-        #
-        "base_inst_imp": [],
-        "o3_inst_imp": [],
-        "o2_inst_imp": [],
-    }
+    results = {}
 
     # config = TrainConfig()
     config = TrainConfig.load_config(args.run_name)
@@ -163,17 +176,6 @@ def main():
         policy_net_path=get_model_path(args.run_name),
     )
 
-    pd_results = pd.DataFrame(columns=list(results.keys()))
-    pd_results_std = pd.DataFrame(
-        columns=[
-            "benchmark",
-            "base_runtime",
-            "o3_runtime",
-            "o2_runtime",
-            "model_runtime",
-        ]
-    )
-
     math_benchs = {
         "qsort",
         "stringsearch",
@@ -186,12 +188,6 @@ def main():
 
     skipped_benchmarks = {
         "bzip2",
-    }
-    hypefine_results = {
-        "base": {},
-        "o3": {},
-        "o2": {},
-        "model": {},
     }
 
     for benchmark in tqdm(benchmarks[:BENCHMARKS_LIMIT]):
@@ -224,106 +220,34 @@ def main():
                     eval_mode=not args.disable_eval_mode,
                     hack=args.hack,
                 )
+                flags = [f for f in flags if f != "noop"]
             except TimeoutExpired as e:
                 print(f"IR2vec timeout skip benchmark: {e}")
             except Exception as e:
                 print(f"Exception. Skip benchmark: {e}")
                 continue
 
-            results["benchmark"].append(benchmark_name)
-
             new_env.reset()
-            model_mean, model_std = process_optimizator(
-                "model",
+            speedups = compare_optimizators(
+                OptimizatorData("model", flags),
+                OptimizatorData("o3", ["-O3"]),
                 new_env,
-                results,
-                hypefine_results,
                 linkopts,
                 benchmark_args,
                 prepare_command,
-                sequence=flags,
+                n=N,
+            )
+            results[benchmark_name] = speedups
+            print(
+                f"{benchmark_name}: {np.mean(speedups)} - {stats.norm.interval(0.95, loc=np.mean(speedups), scale=np.std(speedups) / np.sqrt(N))}"
             )
 
-            new_env.reset()
-            base_mean, base_std = process_optimizator(
-                "base",
-                new_env,
-                results,
-                hypefine_results,
-                linkopts,
-                benchmark_args,
-                prepare_command,
-                sequence=[],
-            )
-
-            new_env.reset()
-            o3_mean, o3_std = process_optimizator(
-                "o3",
-                new_env,
-                results,
-                hypefine_results,
-                linkopts,
-                benchmark_args,
-                prepare_command,
-                sequence=["-O3"],
-            )
-
-            new_env.reset()
-            o2_mean, o2_std = process_optimizator(
-                "o2",
-                new_env,
-                results,
-                hypefine_results,
-                linkopts,
-                benchmark_args,
-                prepare_command,
-                sequence=["-O2"],
-            )
-
-            base_speedup = (base_mean - model_mean) / base_mean
-            o3_speedup = (o3_mean - model_mean) / base_mean
-            o2_speedup = (o2_mean - model_mean) / base_mean
-
-            base_inst_imp = (
-                results["base_inst"][-1] - results["model_inst"][-1]
-            ) / results["base_inst"][-1]
-            o3_inst_imp = (
-                results["o3_inst"][-1] - results["model_inst"][-1]
-            ) / results["base_inst"][-1]
-            o2_inst_imp = (
-                results["o2_inst"][-1] - results["model_inst"][-1]
-            ) / results["base_inst"][-1]
-
-            results["base_speedup"].append(base_speedup)
-            results["o3_speedup"].append(o3_speedup)
-            results["o2_speedup"].append(o2_speedup)
-
-            results["base_inst_imp"].append(base_inst_imp)
-            results["o3_inst_imp"].append(o3_inst_imp)
-            results["o2_inst_imp"].append(o2_inst_imp)
-
-            pd_results.loc[len(pd_results)] = [results[key][-1] for key in results]
-            pd_results_std.loc[len(pd_results_std)] = [
-                benchmark_name,
-                base_std,
-                o3_std,
-                o2_std,
-                model_std,
-            ]
-
-            print_df_last_row(pd_results)
-            print_df_last_row(pd_results_std)
-
-    pd_results.to_csv(
-        os.path.join(CBENCH_EVAL_DIR, args.run_name, "runtime_measure.csv")
+    df = pd.DataFrame(data=results)
+    df.to_csv(f"{args.run_name}_speedup_with_confidence.csv")
+    all_speedups = np.concatenate(list(results.values()))
+    print(
+        f"all: {np.mean(all_speedups)} - {stats.norm.interval(0.95, loc=np.mean(all_speedups), scale=np.std(all_speedups) / np.sqrt(len(all_speedups)))}"
     )
-    pd_results_std.to_csv(
-        os.path.join(CBENCH_EVAL_DIR, args.run_name, "runtime_measure_std.csv")
-    )
-    save_hyperfine_whisker_plots(hypefine_results)
-    print_df(pd_results)
-    print_df(pd_results_std)
-    print(pd_results.drop(columns=["benchmark"]).mean())
 
 
 if __name__ == "__main__":

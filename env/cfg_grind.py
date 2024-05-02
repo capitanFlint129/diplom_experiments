@@ -90,6 +90,24 @@ def compile_and_get_instructions(
     return get_executed_instructions(result_path, execution_args)
 
 
+def compile(ir: str, sequence: list[str], result_path: str, linkopts):
+    try:
+        compile_ll_with_opt_sequence(
+            ir,
+            result_path=result_path,
+            sequence=sequence,
+            linkopts=linkopts,
+        )
+    except Exception as e:
+        print(f"Compilation failed, recompile with -lm: {e}")
+        compile_ll_with_opt_sequence(
+            ir,
+            result_path=result_path,
+            sequence=sequence,
+            linkopts=linkopts + ["-lm"],
+        )
+
+
 def compile_and_get_instructions_no_sequence(
     ir: str, result_path: str, execution_args: str, linkopts
 ) -> int:
