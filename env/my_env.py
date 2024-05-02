@@ -10,7 +10,7 @@ class MyEnv(ABC):
         pass
 
     @abstractmethod
-    def reset(self, benchmark=None) -> None:
+    def reset(self, benchmark=None, val=False) -> None:
         pass
 
     @abstractmethod

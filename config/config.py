@@ -31,11 +31,14 @@ OPT_BIN = os.path.join(LLVM_BINS, "opt")
 class TrainConfig:
     # Algorithm section
     algorithm: str = "LstmDQN"
-    task: str = "classic_phase_ordering"
-    # task: str = "subset"
+    # task: str = "classic_phase_ordering"
+    task: str = "subset"
     actions_sequence: list[str] = field(
-        default_factory=lambda: O3_SUBSET_SEQUENCE
+        default_factory=lambda: O23_SUBSET_SEQUENCE_V2
     )  # for subset task only
+    prepare_actions: list[str] = field(
+        default_factory=lambda: O23_SUBSET_SEQUENCE_V2_PREPARE_ACTIONS
+    )
     enable_dueling_dqn: bool = False
     gamma: float = 0.9
     epsilon: float = 1.0  # The starting value for epsilon
@@ -102,7 +105,7 @@ class TrainConfig:
     reward_space: str = "CfgInstructions"
     # reward_space: str = "MCA"
     observation_size: int = None
-    actions: list = field(default_factory=lambda: O23_SUBSEQ_CBENCH_MINS_CRAZY)
+    actions: list = field(default_factory=lambda: SUBSET)
     reward_scale: float = 1
     special_actions: list = field(
         default_factory=lambda: [

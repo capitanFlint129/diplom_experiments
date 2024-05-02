@@ -36,6 +36,7 @@ class CfgGridSubsetEnv(MyEnv):
         assert (
             len(config.actions_sequence) == config.episode_length
         ), f"Actions: {len(config.actions_sequence)}, episode length: {config.episode_length}"
+        self._prepare_actions = config.prepare_actions.split()
         self._cg_env = env
         self._tmp_dir = f"_cfg_grind_env_tmp"
         os.makedirs(self._tmp_dir, exist_ok=True)
@@ -55,7 +56,7 @@ class CfgGridSubsetEnv(MyEnv):
     def get_cur_ir(self) -> CompilerEnv:
         return self._cg_env.observation["Ir"]
 
-    def reset(self, benchmark=None):
+    def reset(self, benchmark=None, val=False):
         self._cur_seq = []
         self._cur_index = 0
         attempts = 100
@@ -73,16 +74,31 @@ class CfgGridSubsetEnv(MyEnv):
                 self._executed_insts_baseline = self._compile_and_get_instructions_seq(
                     sequence=[O3]
                 )
-
                 # Initial
                 self._executed_insts_initial = self._compile_and_get_instructions_seq(
                     self._cur_seq
                 )
-                if self._debug:
-                    print(
-                        f"O3: {self._executed_insts_o3} - O0: {self._executed_insts_initial}"
+
+                self._cg_env.multistep(
+                    [
+                        self._cg_env.action_space.flags.index(f)
+                        for f in self._prepare_actions
+                    ]
+                )
+
+                if val:
+                    self._executed_insts_prev = self._executed_insts_initial
+                else:
+                    self._executed_insts_prev = self._compile_and_get_instructions_seq(
+                        self._cur_seq
                     )
-                self._executed_insts_prev = self._executed_insts_initial
+                # if self._debug:
+                print(
+                    f"O3: {self._executed_insts_baseline} - O0: {self._executed_insts_initial} - diff {self._executed_insts_initial - self._executed_insts_baseline}"
+                )
+                print(
+                    f"prepare actions improve: {(self._executed_insts_initial - self._executed_insts_prev) / self._executed_insts_baseline}"
+                )
                 return
             except ValueError as e:
                 print(e, file=sys.stderr)

@@ -79,6 +79,8 @@ def train(
         prev_action = 0
         if "noop" in config.special_actions:
             prev_action = config.actions.index("noop")
+        elif config.task == "subset":
+            prev_action = config.actions.index("skip")
         try:
             while (
                 not episode_data.done
@@ -367,7 +369,7 @@ def validate(
     rewards = []
     train_history = TrainHistory(logging_history_size=config.logging_history_size)
     for i, benchmark in enumerate(val_benchmarks):
-        env.reset(benchmark=benchmark)
+        env.reset(benchmark=benchmark, val=True)
         # codesize.append(env._cg_env.observation["IrInstructionCount"])
         try:
             with Timer() as timer:
