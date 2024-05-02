@@ -1,3 +1,4 @@
+import argparse
 from dataclasses import asdict
 
 # noinspection PyUnresolvedReferences
@@ -28,8 +29,7 @@ def main():
         )
         + 1
     )
-    print("RUN NAME: ", end="")
-    run_name = f"{input().strip()}-{num_id}"
+    run_name = f"{args.run_name}-{num_id}"
     config = TrainConfig()
     # assert config.actions[0] == "noop"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -82,4 +82,8 @@ def main():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("run_name", help="run name")
+    args = parser.parse_args()
+
     main()
