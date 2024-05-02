@@ -93,7 +93,12 @@ class CfgGridSubsetEnv(MyEnv):
     def step(self, action: list[str]):
         action = action[0]
         if action == "apply":
-            self._cg_env.multistep(self._actions_sequence[self._cur_index].split())
+            self._cg_env.multistep(
+                [
+                    self._cg_env.action_space.flags.index(f)
+                    for f in self._actions_sequence[self._cur_index].split()
+                ]
+            )
             self._cur_index += 1
         elif action == "skip":
             self._cur_index += 1
