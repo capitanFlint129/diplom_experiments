@@ -20,7 +20,6 @@ from config.config import (
     WANDB_PROJECT_NAME,
     TrainConfig,
     TEST_BENCHMARKS_DIR,
-    MODELS_DIR_PROJECT,
 )
 from dqn.dqn import DoubleDQNAgent, DQNAgent, LstmDQNAgent, SimpleDQNAgent, TwinDQNAgent
 from observation.utils import ObservationModifier
@@ -221,6 +220,77 @@ def _load_dataset(env, dataset_name):
         return env.datasets[dataset_name]
 
 
+# def optimize_with_model_raw(
+#     config: TrainConfig,
+#     agent: DQNAgent,
+#     ir: str,
+#     eval_mode,
+#     iters=10,
+#     print_debug=True,
+# ) -> list[str]:
+#     flags = []
+#     prev_obs = np.zeros((config.observation_size,))
+#     agent.episode_reset()
+#
+#     observation_modifier = ObservationModifier(
+#         None, config.observation_modifiers, config.episode_length
+#     )
+#
+#     with tempfile.NamedTemporaryFile("rw", delete=False) as ll_file:
+#         ll_file.write(ir)
+#
+#     for i in range(iters):
+#         base_observation = get_observation_from_cg(env, config.observation_space)
+#         obs = observation_modifier.modify(
+#             base_observation, config.episode_length - i, ir=env.observation["Ir"]
+#         )
+#         # assert np.any(prev_obs != obs)
+#         action, value = 0, 1
+#         # agent.choose_action(
+#         # obs,
+#         # enable_epsilon_greedy=False,
+#         # forbidden_actions=set(),
+#         # eval_mode=eval_mode,
+#         # ))
+#
+#         if config.task == "subset":
+#             if config.actions[action] == "apply":
+#                 cur_flags = config.actions_sequence[i].split()
+#             elif config.actions[action] == "skip":
+#                 cur_flags = []
+#             else:
+#                 raise Exception("Unknown subset action")
+#         else:
+#             if value <= 0:
+#                 break
+#             cur_flags = config.actions[action].split()
+#         if len(cur_flags) == 0:
+#             pass
+#         elif len(cur_flags) > 0 and cur_flags[0] == "noop":
+#             pass
+#         elif len(cur_flags) > 1:
+#             env.multistep([env.action_space.flags.index(f) for f in cur_flags])
+#         else:
+#             env.step(env.action_space.flags.index(cur_flags[0]))
+#
+#         if print_debug:
+#             if "mca" in config.observation_modifiers:
+#                 print(
+#                     f"{config.actions[action]}({action}, {value}, {obs[:3]})",
+#                     end=" ",
+#                 )
+#             else:
+#                 print(f"{config.actions[action]}({action}, {value})", end=" ")
+#         flags.append(config.actions[action])
+#         prev_obs = obs
+#         if len(cur_flags) > 0 and cur_flags[0] == "noop":
+#             break
+#
+#     if print_debug:
+#         print()
+#     return flags
+
+
 def optimize_with_model(
     config: TrainConfig,
     agent: DQNAgent,
@@ -242,16 +312,27 @@ def optimize_with_model(
             base_observation, config.episode_length - i, ir=env.observation["Ir"]
         )
         # assert np.any(prev_obs != obs)
+        # action, value = 0, 1
         action, value = agent.choose_action(
             obs,
             enable_epsilon_greedy=False,
             forbidden_actions=set(),
             eval_mode=eval_mode,
         )
-        if value <= 0:
-            break
-        cur_flags = config.actions[action].split()
-        if cur_flags[0] == "noop":
+        if config.task == "subset":
+            if config.actions[action] == "apply":
+                cur_flags = config.actions_sequence[i].split()
+            elif config.actions[action] == "skip":
+                cur_flags = []
+            else:
+                raise Exception("Unknown subset action")
+        else:
+            if value <= 0:
+                break
+            cur_flags = config.actions[action].split()
+        if len(cur_flags) == 0:
+            pass
+        elif len(cur_flags) > 0 and cur_flags[0] == "noop":
             pass
         elif len(cur_flags) > 1:
             env.multistep([env.action_space.flags.index(f) for f in cur_flags])
@@ -267,7 +348,7 @@ def optimize_with_model(
                 print(f"{config.actions[action]}({action}, {value})", end=" ")
         flags.append(config.actions[action])
         prev_obs = obs
-        if cur_flags[0] == "noop":
+        if len(cur_flags) > 0 and cur_flags[0] == "noop":
             break
     if print_debug:
         print()
@@ -296,6 +377,30 @@ def get_observation_from_cg(env: CompilerEnv, obs_name: str) -> np.ndarray:
         )
     else:
         return env.observation[obs_name]
+
+
+# def get_observation_from_ll(filepath, obs_name: str) -> np.ndarray:
+#     if obs_name == "IR2Vec":
+#         return get_ir2vec(env.observation["Ir"])
+#     elif obs_name == "IR2Vec+InstCountNorm+AutophaseNorm":
+#         autophase = env.observation["Autophase"]
+#         return np.concatenate(
+#             [
+#                 get_ir2vec(env.observation["Ir"]),
+#                 env.observation["InstCountNorm"],
+#                 autophase / autophase[-5],
+#             ]
+#         )
+#     elif obs_name == "InstCountNorm+AutophaseNorm":
+#         autophase = env.observation["Autophase"]
+#         return np.concatenate(
+#             [
+#                 env.observation["InstCountNorm"],
+#                 autophase / autophase[-5],
+#             ]
+#         )
+#     else:
+#         return env.observation[obs_name]
 
 
 def _get_obs(env, obs_name):

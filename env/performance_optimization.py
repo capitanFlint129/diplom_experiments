@@ -93,7 +93,7 @@ class CfgGridSubsetEnv(MyEnv):
     def step(self, action: list[str]):
         action = action[0]
         if action == "apply":
-            self._cur_seq += self._actions_sequence[self._cur_index].split()
+            self._cg_env.multistep(self._actions_sequence[self._cur_index].split())
             self._cur_index += 1
         elif action == "skip":
             self._cur_index += 1
@@ -104,7 +104,7 @@ class CfgGridSubsetEnv(MyEnv):
             return 0
         else:
             raise Exception("O3 subset env: unknown action")
-        executed_insts = self._compile_and_get_instructions_seq(self._cur_seq)
+        executed_insts = self._compile_and_get_instructions()
         reward = (self._executed_insts_prev - executed_insts) / (
             max(
                 self._executed_insts_initial - self._executed_insts_baseline,
@@ -128,6 +128,22 @@ class CfgGridSubsetEnv(MyEnv):
             result_path=self._bin_filepath,
             execution_args="0",
             linkopts=[],
+        )
+
+    def _compile_and_get_instructions(self) -> int:
+        attempts = 10
+        for i in range(attempts):
+            try:
+                return compile_and_get_instructions_no_sequence(
+                    ir=self._cg_env.observation["Ir"],
+                    result_path=self._bin_filepath,
+                    execution_args="0",
+                    linkopts=[],
+                )
+            except Exception as e:
+                print(f"compile_and_get_instructions_no_sequence failed: {e}")
+        raise Exception(
+            f"compile_and_get_instructions_no_sequence failed after {attempts} attempts"
         )
 
 
