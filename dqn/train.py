@@ -1,3 +1,4 @@
+import json
 import os
 import sys
 from subprocess import TimeoutExpired
@@ -95,7 +96,7 @@ def train(
                     enable_epsilon_greedy=True,
                     eval_mode=False,
                 )
-                loss_value = agent.learn()
+                loss_value = [agent.learn(), agent.learn()]
                 episode_data.update_after_episode_step(
                     step_result=step_result,
                     loss_value=loss_value,
@@ -141,6 +142,20 @@ def train(
             episode_i % config.validation_interval == 0
             or episode_i == config.episodes - 1
         ) and enable_validation:
+            cache_dir = "_replay_buffer_cache"
+            # data_file = os.path.join(cache_dir, f"{run.name}")
+            data_file = os.path.join(cache_dir, "buffer_cache")
+            os.makedirs(cache_dir, exist_ok=True)
+            with open(os.path.join(cache_dir, "meta.json"), "w") as ouf:
+                ouf.write(
+                    json.dumps(
+                        {
+                            "mem_counter": agent._replay_buffer._mem_counter,
+                            "ready_data_size": agent._replay_buffer._ready_data_size,
+                        }
+                    )
+                )
+            agent._replay_buffer.save_to_npz(data_file)
             train_history.best_val_mean = _validation_during_train(
                 run=run,
                 episode_i=episode_i,

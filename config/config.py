@@ -31,8 +31,8 @@ OPT_BIN = os.path.join(LLVM_BINS, "opt")
 class TrainConfig:
     # Algorithm section
     algorithm: str = "LstmDQN"
-    # task: str = "classic_phase_ordering"
-    task: str = "subset"
+    task: str = "classic_phase_ordering"
+    # task: str = "subset"
     actions_sequence: list[str] = field(
         default_factory=lambda: O3_SUBSET_SEQUENCE
     )  # for subset task only
@@ -41,17 +41,17 @@ class TrainConfig:
     epsilon: float = 1.0  # The starting value for epsilon
     epsilon_end: float = 0.05  # The ending value for epsilon
     epsilon_dec: float = 3e-5  # The decrement value for epsilon
-    fc_dim: int = 128  # The dimension of a fully connected layer
-    lstm_hidden_size: int = 256  # The dimension of a fully connected layer
+    fc_dim: int = 256  # The dimension of a fully connected layer
+    lstm_hidden_size: int = 512  # The dimension of a fully connected layer
     # Learning
     lr: float = 1e-4  # The learning rate
     tau: float = 0.99  # soft update coefficient
-    batch_size: int = 256  # The batch size
+    batch_size: int = 128  # The batch size
     max_mem_size: int = 100000  # The maximum memory size
     prefill: int = 0
     episodes: int = 30000  # The number of episodes used to learn
     validation_interval: int = 500  # The number of episodes used to learn
-    episode_length: int = 0  # The (MAX) number of transformation passes per episode
+    episode_length: int = 10  # The (MAX) number of transformation passes per episode
     patience: int = 5  # The (MAX) number of times to apply a series of transformations without observable change
     val_patience: int = 5
     eval_with_forbidden_actions: bool = True
@@ -102,7 +102,7 @@ class TrainConfig:
     reward_space: str = "CfgInstructions"
     # reward_space: str = "MCA"
     observation_size: int = None
-    actions: list = field(default_factory=lambda: SUBSET)
+    actions: list = field(default_factory=lambda: O23_SUBSEQ_CBENCH_MINS_CRAZY)
     reward_scale: float = 1
     special_actions: list = field(
         default_factory=lambda: [

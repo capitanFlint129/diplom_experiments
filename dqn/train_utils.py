@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Any
+from typing import Optional, Any, Union
 
 import wandb
 import numpy as np
@@ -38,7 +38,7 @@ class EpisodeData:
     def update_after_episode_step(
         self,
         step_result: StepResult,
-        loss_value: Optional[float],
+        loss_value: Optional[Union[float, list[float]]],
     ) -> None:
         self.chosen_flags.append(step_result.flags)
         self.actions_count += 1
@@ -57,7 +57,10 @@ class EpisodeData:
             self.forbidden_actions = set()
 
         if loss_value is not None:
-            self.losses.append(loss_value)
+            if isinstance(loss_value, list):
+                self.losses.extend(loss_value)
+            else:
+                self.losses.append(loss_value)
         self.values.append(step_result.value)
 
 
