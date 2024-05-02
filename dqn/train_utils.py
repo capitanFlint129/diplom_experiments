@@ -58,6 +58,7 @@ class EpisodeData:
 
         if loss_value is not None:
             if isinstance(loss_value, list):
+                loss_value = [el for el in loss_value if el is not None]
                 self.losses.extend(loss_value)
             else:
                 self.losses.append(loss_value)
