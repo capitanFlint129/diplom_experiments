@@ -189,7 +189,7 @@ class CfgGridEnv(MyEnv):
     def get_cur_ir(self) -> CompilerEnv:
         return self._cg_env.observation["Ir"]
 
-    def reset(self, benchmark=None):
+    def reset(self, benchmark=None, val=False):
         attempts = 100
         self._opts = []
         for i in range(attempts):
@@ -286,7 +286,7 @@ class CgLlvmMcaEnv(MyEnv):
     def get_cur_ir(self) -> CompilerEnv:
         return self._cg_env.observation["Ir"]
 
-    def reset(self, benchmark=None):
+    def reset(self, benchmark=None, val=False):
         attempts = 100
         self._opts = []
         for i in range(attempts):
@@ -347,7 +347,7 @@ class LlvmMcaEnv(MyEnv):
     def get_cur_ir(self) -> CompilerEnv:
         return self._cg_env.observation["Ir"]
 
-    def reset(self, benchmark=None):
+    def reset(self, benchmark=None, val=False):
         attempts = 100
         self._opts = []
         for i in range(attempts):
