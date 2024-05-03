@@ -456,10 +456,10 @@ O2_SEQ_NO_ANALITICAL = [
 O23_ACTIONS_V2 = [
     "-ee-instrument -simplifycfg -sroa -early-cse -lower-expect",
     "-forceattrs -inferattrs -callsite-splitting -ipsccp -called-value-propagation -attributor -globalopt -mem2reg -deadargelim -instcombine -simplifycfg -prune-eh -inline -functionattrs",
-    "-argpromotion",
-    "-sroa -early-cse-memssa -speculative-execution -jump-threading -correlated-propagation -simplifycfg",
-    "-aggressive-instcombine",
-    "-instcombine -libcalls-shrinkwrap -pgo-memop-opt -tailcallelim -simplifycfg",
+    "-forceattrs -inferattrs -ipsccp -called-value-propagation -attributor -globalopt -mem2reg -deadargelim -instcombine -simplifycfg -prune-eh -inline -functionattrs",
+    "-argpromotion -sroa -early-cse-memssa -speculative-execution -jump-threading -correlated-propagation -simplifycfg",
+    "-sroa -early-cse-memssa -speculative-execution -jump-threading -correlated-propagation -simplifycfg -aggressive-instcombine -libcalls-shrinkwrap -pgo-memop-opt -tailcallelim -simplifycfg",
+    "-sroa -early-cse-memssa -speculative-execution -jump-threading -correlated-propagation -simplifycfg -instcombine -libcalls-shrinkwrap -pgo-memop-opt -tailcallelim -simplifycfg",
     "-reassociate -loop-simplify -lcssa -loop-rotate -licm -loop-unswitch -simplifycfg -instcombine -loop-simplify -lcssa -indvars -loop-idiom -loop-deletion -loop-unroll",
     "-mldst-motion -gvn -memcpyopt -sccp -bdce -instcombine -jump-threading -correlated-propagation -dse -loop-simplify -lcssa -licm -adce -simplifycfg -instcombine -barrier -elim-avail-extern -rpo-functionattrs -globalopt -globaldce -float2int -lower-constant-intrinsics",
     "-loop-simplify -lcssa -loop-rotate -loop-distribute -loop-vectorize -loop-simplify -loop-load-elim -instcombine -simplifycfg -slp-vectorizer -instcombine -loop-simplify -lcssa -loop-unroll -instcombine -loop-simplify -lcssa -licm -alignment-from-assumptions",
@@ -467,6 +467,21 @@ O23_ACTIONS_V2 = [
     # " ".join(O3_SEQ_NO_ANALITICAL),
     # " ".join(O2_SEQ_NO_ANALITICAL),
 ]
+
+# O23_ACTIONS_V2 = [
+#     "-ee-instrument -simplifycfg -sroa -early-cse -lower-expect",
+#     "-forceattrs -inferattrs -callsite-splitting -ipsccp -called-value-propagation -attributor -globalopt -mem2reg -deadargelim -instcombine -simplifycfg -prune-eh -inline -functionattrs",
+#     "-argpromotion",
+#     "-sroa -early-cse-memssa -speculative-execution -jump-threading -correlated-propagation -simplifycfg",
+#     "-aggressive-instcombine",
+#     "-instcombine -libcalls-shrinkwrap -pgo-memop-opt -tailcallelim -simplifycfg",
+#     "-reassociate -loop-simplify -lcssa -loop-rotate -licm -loop-unswitch -simplifycfg -instcombine -loop-simplify -lcssa -indvars -loop-idiom -loop-deletion -loop-unroll",
+#     "-mldst-motion -gvn -memcpyopt -sccp -bdce -instcombine -jump-threading -correlated-propagation -dse -loop-simplify -lcssa -licm -adce -simplifycfg -instcombine -barrier -elim-avail-extern -rpo-functionattrs -globalopt -globaldce -float2int -lower-constant-intrinsics",
+#     "-loop-simplify -lcssa -loop-rotate -loop-distribute -loop-vectorize -loop-simplify -loop-load-elim -instcombine -simplifycfg -slp-vectorizer -instcombine -loop-simplify -lcssa -loop-unroll -instcombine -loop-simplify -lcssa -licm -alignment-from-assumptions",
+#     "-strip-dead-prototypes -globaldce -constmerge -loop-simplify -lcssa -loop-sink -instsimplify -div-rem-pairs -simplifycfg",
+#     # " ".join(O3_SEQ_NO_ANALITICAL),
+#     # " ".join(O2_SEQ_NO_ANALITICAL),
+# ]
 
 
 # [
