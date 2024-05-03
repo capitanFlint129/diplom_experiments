@@ -259,7 +259,7 @@ def _prefill(
     action_seq = [len(config.special_actions) + el for el in _O23_SUBSEQ_CBENCH_MINS_O3]
     # o3_seq = [el for el in O3_SEQ if el in cfg_prefill_env._cg_env.action_space.flags]
     rewards = []
-    for i in tqdm(range(config.prefill)):
+    for _ in tqdm(range(config.prefill)):
         prefill_env.reset()
         agent.episode_reset()
 

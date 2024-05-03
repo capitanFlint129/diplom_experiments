@@ -22,7 +22,9 @@ OZ = "-Oz"
 
 
 class RuntimeEnv(MyEnv):
-    def __init__(self, config: TrainConfig, env: CompilerEnv, debug=False):
+    def __init__(
+        self, config: TrainConfig, env: CompilerEnv, debug=False, runs=10, val_runs=50
+    ):
         self._cg_env = env
         self._tmp_dir = f"_cfg_grind_env_tmp"
         os.makedirs(self._tmp_dir, exist_ok=True)
@@ -37,6 +39,9 @@ class RuntimeEnv(MyEnv):
         self._runtime_baseline = None
 
         self._debug = debug
+        self._cur_runs = runs
+        self._runs = runs
+        self._val_runs = val_runs
 
     def gather_data(self) -> tuple[float, float, float, float]:
         return (
@@ -50,6 +55,7 @@ class RuntimeEnv(MyEnv):
         return self._cg_env.observation["Ir"]
 
     def reset(self, benchmark=None, val=False):
+        self._cur_runs = self._val_runs if val else self._runs
         attempts = 100
         for i in range(attempts):
             self._cg_env.reset(benchmark=benchmark)
@@ -109,6 +115,7 @@ class RuntimeEnv(MyEnv):
         )
         runtime = _measure_runtime(
             self._bin_filepath,
+            runs=self._cur_runs,
             execution_args="0",
         )
         return runtime
@@ -122,6 +129,7 @@ class RuntimeEnv(MyEnv):
         )
         runtime = _measure_runtime(
             self._bin_filepath,
+            runs=self._cur_runs,
             execution_args="0",
         )
         return runtime
@@ -129,11 +137,12 @@ class RuntimeEnv(MyEnv):
 
 def _measure_runtime(
     bin_path,
+    runs,
     execution_args: str = "",
     warmup=0,
 ) -> float:
     filename = f"_runtime_env_hyperfine_result.json"
-    command = f"hyperfine --warmup {warmup} '{bin_path} {execution_args}' --export-json {filename} --show-output"
+    command = f"hyperfine --warmup {warmup} --runs {runs} '{bin_path} {execution_args}' --export-json {filename} --show-output"
     proc = subprocess.run(
         command,
         shell=True,
