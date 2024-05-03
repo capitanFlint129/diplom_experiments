@@ -101,7 +101,7 @@ def compile_ll(source_path, result_path, linkopts):
     proc = subprocess.run(
         [
             LLC_BIN,
-            # "-O=3",
+            "-O=3",
             "-filetype=obj",
             source_path,
             "-o",
