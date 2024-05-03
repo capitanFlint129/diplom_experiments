@@ -68,6 +68,7 @@ def train(
     enable_validation_logs: bool = False,
 ) -> None:
     validation_env = train_env.fork()
+    runtime_validation_env = train_env.fork()
     prefill_env = RandomOrderBenchmarks(
         train_env.fork(),
         benchmarks=train_benchmarks,
@@ -79,8 +80,11 @@ def train(
         benchmarks=train_benchmarks,
         rng=np.random.default_rng(config.random_state),
     )
-    custom_train_env, custom_validation_env = _get_envs(
-        config, train_env=train_env, validation_env=validation_env
+    custom_train_env, custom_validation_env, custom_runtime_validation_env = _get_envs(
+        config,
+        train_env=train_env,
+        validation_env=validation_env,
+        runtime_validation_env=runtime_validation_env,
     )
     train_history = TrainHistory(logging_history_size=config.logging_history_size)
 
@@ -209,6 +213,7 @@ def train(
                 best_val_mean=train_history.best_val_mean,
                 agent=agent,
                 env=custom_validation_env,
+                runtime_env=custom_runtime_validation_env,
                 config=config,
                 val_benchmarks=val_benchmarks,
                 enable_logs=enable_validation_logs,
@@ -217,18 +222,24 @@ def train(
         state_dict=agent.get_policy_net_state_dict(), model_name=run.name, replace=False
     )
     validation_env.close()
+    runtime_validation_env.close()
 
 
 def _get_envs(
-    config: TrainConfig, train_env: CompilerEnv, validation_env: CompilerEnv
-) -> tuple[MyEnv, MyEnv]:
+    config: TrainConfig,
+    train_env: CompilerEnv,
+    validation_env: CompilerEnv,
+    runtime_validation_env: CompilerEnv,
+) -> tuple[MyEnv, MyEnv, MyEnv]:
     if config.task == "subset":
         if config.reward_space == "CfgInstructions":
             custom_train_env = CfgGridSubsetEnv(config, train_env)
             custom_validation_env = CfgGridSubsetEnv(config, validation_env)
+            custom_runtime_validation_env = None
         else:
             raise NotImplementedError()
     elif config.task == "classic_phase_ordering":
+        custom_runtime_validation_env = RuntimeEnv(config, runtime_validation_env)
         if config.reward_space == "MCA":
             custom_train_env = CgLlvmMcaEnv(config, train_env)
             custom_validation_env = CgLlvmMcaEnv(config, validation_env)
@@ -242,7 +253,7 @@ def _get_envs(
             raise NotImplementedError()
     else:
         raise Exception("unknown reward space")
-    return custom_train_env, custom_validation_env
+    return custom_train_env, custom_validation_env, custom_runtime_validation_env
 
 
 def _prefill(
@@ -339,6 +350,7 @@ def _validation_during_train(
     best_val_mean: float,
     agent: DQNAgent,
     env: MyEnv,
+    runtime_env: MyEnv,
     config: TrainConfig,
     val_benchmarks: list,
     enable_logs: bool = False,
@@ -346,6 +358,7 @@ def _validation_during_train(
     validation_result = validate(
         agent=agent,
         env=env,
+        runtime_env=runtime_env,
         config=config,
         val_benchmarks=val_benchmarks,
         enable_logs=enable_logs,
@@ -354,6 +367,7 @@ def _validation_during_train(
     log_data = {}
     log_data["val_geomean_reward"] = validation_result.geomean_reward
     log_data["val_mean_reward"] = validation_result.mean_reward
+    log_data["val_runtime_mean_reward"] = validation_result.mean_runtime_reward
     # log_data["val_reward_for_step"] = validation_result.step_reward_hist
     # log_data["val_reward_for_step_std"] = validation_result.step_reward_hist_std
     run.log(
@@ -418,6 +432,7 @@ def _log_episode_results(
 def validate(
     agent,
     env: MyEnv,
+    runtime_env: MyEnv,
     config: TrainConfig,
     val_benchmarks: list,
     use_actions_masking: bool,
@@ -426,16 +441,25 @@ def validate(
     times = []
     # codesize = []
     rewards = []
+    runtime_rewards = []
     train_history = TrainHistory(logging_history_size=config.logging_history_size)
     for i, benchmark in enumerate(val_benchmarks):
         # codesize.append(env._cg_env.observation["IrInstructionCount"])
         try:
             env.reset(benchmark=benchmark, val=True)
+            runtime_env.reset(benchmark=benchmark, val=True)
             with Timer() as timer:
                 episode_data = rollout(
                     agent, env, config, use_actions_masking=use_actions_masking
                 )
+                runtime_episode_data = rollout(
+                    agent,
+                    runtime_env,
+                    config,
+                    use_actions_masking=use_actions_masking,
+                )
             rewards.append(episode_data.total_reward)
+            runtime_rewards.append(runtime_episode_data.total_reward)
             times.append(timer.time)
             train_history.update(episode_data)
             if enable_logs:
@@ -448,7 +472,7 @@ def validate(
                 #     ]
                 # )
                 print(
-                    f"{i} - {benchmark} - reward: {episode_data.total_reward} - time: {timer.time}"
+                    f"{i} - {benchmark} - reward: {episode_data.total_reward} - runtime_reward: {runtime_episode_data.total_reward} - time: {timer.time}"
                     # f"{i} - {benchmark} - reward: {episode_data.total_reward} - time: {timer.time} - actions: {actions_str}"
                 )
         except TimeoutExpired as e:
@@ -466,6 +490,7 @@ def validate(
         geomean_reward=geomean_reward,
         mean_reward=mean_reward,
         mean_walltime=mean_walltime,
+        mean_runtime_reward=arithmetic_mean(runtime_rewards),
         # step_reward_hist=step_reward_hist,
         # step_reward_hist_std=step_reward_hist_std,
     )

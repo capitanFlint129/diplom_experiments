@@ -12,7 +12,11 @@ from env.performance_optimization.llvm import (
     clang_compile_to_ir,
     clang_compile_to_ir_o0,
 )
-from observation.utils import get_rblock_throughput_bc, get_rblock_throughput_ir
+from observation.utils import (
+    get_rblock_throughput_bc,
+    get_rblock_throughput_ir,
+    get_rblock_throughput_ir_with_seq,
+)
 from utils import get_observation_from_cg, get_ir2vec
 
 O0 = "-O0"
@@ -28,6 +32,8 @@ class CgLlvmMcaEnv(MyEnv):
         self._config = config
         self._debug = debug
         self._rblock_throughput_prev = None
+        self._rblock_throughput_baseline = None
+        self._rblock_throughput_o2 = None
 
     def get_cur_ir(self) -> CompilerEnv:
         return self._cg_env.observation["Ir"]
@@ -38,9 +44,19 @@ class CgLlvmMcaEnv(MyEnv):
         for i in range(attempts):
             try:
                 self._cg_env.reset(benchmark=benchmark)
+                self._rblock_throughput_baseline = get_rblock_throughput_ir_with_seq(
+                    self._cg_env.observation["Ir"],
+                    sequence=["-O3"],
+                )
+                self._rblock_throughput_o2 = get_rblock_throughput_ir_with_seq(
+                    self._cg_env.observation["Ir"],
+                    sequence=["-O2"],
+                )
+
                 self._rblock_throughput_initial = get_rblock_throughput_ir(
                     self._cg_env.observation["Ir"]
                 )
+
                 self._rblock_throughput_prev = self._rblock_throughput_initial
                 return
             except ValueError as e:
@@ -64,9 +80,10 @@ class CgLlvmMcaEnv(MyEnv):
             self._cg_env.step(self._cg_env.action_space.flags.index(flags[0]))
 
         rblock_throughput = get_rblock_throughput_ir(self._cg_env.observation["Ir"])
-        reward = (
-            self._rblock_throughput_prev - rblock_throughput
-        ) / self._rblock_throughput_initial
+        reward = (self._rblock_throughput_prev - rblock_throughput) / max(
+            self._rblock_throughput_initial - self._rblock_throughput_baseline,
+            0.01 * self._rblock_throughput_initial,
+        )
         if self._debug:
             print(
                 f"reward: {reward} - throughput: {rblock_throughput} - throughput_prev: {self._rblock_throughput_prev} - throughput_initial: {self._rblock_throughput_initial}"
@@ -76,6 +93,14 @@ class CgLlvmMcaEnv(MyEnv):
 
     def get_observation(self, obs_name):
         return get_observation_from_cg(self._cg_env, obs_name)
+
+    def gather_data(self) -> tuple[float, float, float, float]:
+        return (
+            self._rblock_throughput_initial,
+            self._rblock_throughput_o2,
+            self._rblock_throughput_baseline,
+            self._rblock_throughput_prev,
+        )
 
 
 class LlvmMcaEnv(MyEnv):

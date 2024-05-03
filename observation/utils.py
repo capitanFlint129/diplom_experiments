@@ -7,7 +7,7 @@ from typing import Optional
 import ir2vec
 import numpy as np
 
-from config.config import TrainConfig, RAW_IR_OBSERVATION_NAME, LLC_BIN
+from config.config import TrainConfig, RAW_IR_OBSERVATION_NAME, LLC_BIN, OPT_BIN
 from env.my_env import MyEnv
 
 
@@ -128,6 +128,27 @@ def get_rblock_throughput_bc(bc_path):
 
 def get_rblock_throughput_ir(ir):
     return parse_rblock_throughput(get_mca_result_from_ir_str(ir))
+
+
+def get_rblock_throughput_ir_with_seq(ir, sequence):
+    proc = subprocess.run(
+        " | ".join(
+            [
+                f"{OPT_BIN} {' '.join(sequence)} -S -o -",
+                f"{LLC_BIN} -o -",
+                "llvm-mca",
+            ]
+        ),
+        input=ir,
+        shell=True,
+        capture_output=True,
+        encoding="utf-8",
+    )
+    if proc.returncode != 0:
+        print(proc.stderr)
+        raise Exception(f"Compilation failed {proc.stderr}")
+
+    return parse_rblock_throughput(proc.stdout)
 
 
 def get_mca_vec_ir(ir: str) -> np.ndarray:

@@ -39,6 +39,7 @@ class ValidationResult:
     geomean_reward: float
     mean_reward: float
     mean_walltime: float
+    mean_runtime_reward: float = None
     step_reward_hist: wandb.Histogram = None
     step_reward_hist_std: wandb.Histogram = None
 

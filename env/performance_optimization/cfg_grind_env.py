@@ -176,6 +176,7 @@ class CfgGridEnv(MyEnv):
         self._executed_insts_initial = None
         self._executed_insts_prev = None
         self._executed_insts_baseline = None
+        self._executed_insts_o2 = None
         self._debug = debug
 
     def get_cur_ir(self) -> CompilerEnv:
@@ -197,6 +198,9 @@ class CfgGridEnv(MyEnv):
                 self._executed_insts_baseline = self._compile_and_get_instructions_seq(
                     sequence=[O3]
                 )
+                self._executed_insts_o2 = (
+                    self._executed_insts_baseline
+                ) = self._compile_and_get_instructions_seq(sequence=[O2])
 
                 # Initial
                 self._executed_insts_initial = self._compile_and_get_instructions()
@@ -241,6 +245,14 @@ class CfgGridEnv(MyEnv):
 
     def get_observation(self, obs_name):
         return get_observation_from_cg(self._cg_env, obs_name)
+
+    def gather_data(self) -> tuple[float, float, float, float]:
+        return (
+            self._executed_insts_initial,
+            self._executed_insts_o2,
+            self._executed_insts_baseline,
+            self._executed_insts_prev,
+        )
 
     def _compile_and_get_instructions(self) -> int:
         attempts = 10
