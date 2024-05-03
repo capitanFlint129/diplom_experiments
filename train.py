@@ -33,12 +33,20 @@ def main():
     config = TrainConfig()
     # assert config.actions[0] == "noop"
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    run = wandb.init(
-        project=WANDB_PROJECT_NAME,
-        config=asdict(config),
-        name=run_name,
-        # mode="disabled",
-    )
+    if args.test:
+        run = wandb.init(
+            project=WANDB_PROJECT_NAME,
+            config=asdict(config),
+            name="test",
+            mode="disabled",
+        )
+    else:
+        run = wandb.init(
+            project=WANDB_PROJECT_NAME,
+            config=asdict(config),
+            name=run_name,
+            # mode="disabled",
+        )
     config.save(run.name)
     with make_env(config) as train_env:
         fix_seed(config.random_state)
@@ -84,6 +92,11 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("run_name", help="run name")
+    parser.add_argument(
+        "--test",
+        help="test",
+        action="store_true",
+    )
     args = parser.parse_args()
 
     main()

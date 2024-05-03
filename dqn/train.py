@@ -18,11 +18,43 @@ from config.config import TrainConfig
 from dqn.dqn import DQNAgent
 from dqn.train_utils import EpisodeData, StepResult, TrainHistory
 from env.my_env import MyEnv
-from env.performance_optimization.mca_env import CgLlvmMcaEnv
 from env.performance_optimization.cfg_grind_env import CfgGridEnv, CfgGridSubsetEnv
+from env.performance_optimization.mca_env import CgLlvmMcaEnv
 from env.performance_optimization.runtime_env import RuntimeEnv
 from observation.utils import ObservationModifier
 from utils import save_model, ValidationResult
+
+
+class Dataset:
+    def __init__(self, name):
+        self._name = name
+        self._x = []
+        self._y = []
+
+    def add_x(self, x: np.ndarray):
+        self._x.append(x)
+
+    def add_y(self, y: np.ndarray):
+        self._y.append(y)
+
+    def add_example(self, x: np.ndarray, y: np.ndarray):
+        self._x.append(x)
+        self._y.append(y)
+
+    def save(self):
+        os.makedirs("_dataset", exist_ok=True)
+        np.savez_compressed(
+            f"_dataset/{self._name}",
+            a=np.stack(self._x),
+            b=np.stack(self._y),
+        )
+
+    def load(self):
+        loaded = np.load(f"_dataset/{self._name}.npz")
+        self._x = loaded["a"]
+        self._x = np.split(self._x, self._x.shape[0])
+        self._y = loaded["b"]
+        self._y = np.split(self._y, self._y.shape[0])
 
 
 def train(
@@ -61,6 +93,8 @@ def train(
         _prefill(cfg_prefill_env, config, agent, observation_modifier)
         prefill_env.close()
 
+    dataset = Dataset(name=run.name)
+
     for episode_i in range(config.episodes):
         custom_train_env.reset()
         agent.episode_reset()
@@ -73,6 +107,7 @@ def train(
             episode_data.remains,
             env=custom_train_env,
         )
+        x_data = observation.copy()
         # observation = base_observation
         prev_action = 0
         if "noop" in config.special_actions:
@@ -127,6 +162,13 @@ def train(
         except Exception as e:
             print(f"train step failed skip it: {e}")
 
+        y_data = custom_train_env.gather_data()
+        if None not in y_data:
+            dataset.add_example(
+                x_data,
+                np.array(y_data),
+            )
+
         agent.episode_done()
         train_history.update(episode_data)
 
@@ -142,6 +184,7 @@ def train(
             episode_i % config.validation_interval == 0
             or episode_i == config.episodes - 1
         ) and enable_validation:
+            dataset.save()
             cache_dir = "_replay_buffer_cache"
             # data_file = os.path.join(cache_dir, f"{run.name}")
             data_file = os.path.join(cache_dir, "buffer_cache")

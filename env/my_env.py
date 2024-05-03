@@ -23,3 +23,7 @@ class MyEnv(ABC):
     @abstractmethod
     def get_observation(self, obs_name: str) -> np.ndarray:
         pass
+
+    @abstractmethod
+    def gather_data(self) -> tuple[float, float, float, float]:
+        pass

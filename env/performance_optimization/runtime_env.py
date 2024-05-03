@@ -30,12 +30,21 @@ class RuntimeEnv(MyEnv):
         self._bin_filepath = os.path.join(self._tmp_dir, self._filename)
         self._config = config
         self._runtime_o3 = None
+        self._runtime_o2 = None
 
         self._runtime_initial = None
         self._runtime_prev = None
         self._runtime_baseline = None
 
         self._debug = debug
+
+    def gather_data(self) -> tuple[float, float, float, float]:
+        return (
+            self._runtime_initial,
+            self._runtime_o2,
+            self._runtime_baseline,
+            self._runtime_prev,
+        )
 
     def get_cur_ir(self) -> CompilerEnv:
         return self._cg_env.observation["Ir"]
@@ -45,6 +54,7 @@ class RuntimeEnv(MyEnv):
         for i in range(attempts):
             self._cg_env.reset(benchmark=benchmark)
             # O3
+            self._runtime_o2 = self._compile_and_get_runtime_seq(sequence=[O2])
             if self._debug:
                 self._runtime_o3 = self._compile_and_get_runtime_seq(sequence=[O3])
             self._runtime_baseline = self._compile_and_get_runtime_seq(sequence=[O3])
