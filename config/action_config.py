@@ -464,8 +464,8 @@ O23_ACTIONS_V2 = [
     "-mldst-motion -gvn -memcpyopt -sccp -bdce -instcombine -jump-threading -correlated-propagation -dse -loop-simplify -lcssa -licm -adce -simplifycfg -instcombine -barrier -elim-avail-extern -rpo-functionattrs -globalopt -globaldce -float2int -lower-constant-intrinsics",
     "-loop-simplify -lcssa -loop-rotate -loop-distribute -loop-vectorize -loop-simplify -loop-load-elim -instcombine -simplifycfg -slp-vectorizer -instcombine -loop-simplify -lcssa -loop-unroll -instcombine -loop-simplify -lcssa -licm -alignment-from-assumptions",
     "-strip-dead-prototypes -globaldce -constmerge -loop-simplify -lcssa -loop-sink -instsimplify -div-rem-pairs -simplifycfg",
-    " ".join(O3_SEQ_NO_ANALITICAL),
-    " ".join(O2_SEQ_NO_ANALITICAL),
+    # " ".join(O3_SEQ_NO_ANALITICAL),
+    # " ".join(O2_SEQ_NO_ANALITICAL),
 ]
 
 

@@ -1,8 +1,8 @@
 import json
 import os
 import subprocess
-import sys
 
+import numpy as np
 from compiler_gym import CompilerEnv
 
 from config.config import TrainConfig
@@ -43,27 +43,19 @@ class RuntimeEnv(MyEnv):
     def reset(self, benchmark=None, val=False):
         attempts = 100
         for i in range(attempts):
-            try:
-                self._cg_env.reset(benchmark=benchmark)
-
-                # O3
-                if self._debug:
-                    self._runtime_o3 = self._compile_and_get_runtime_seq(sequence=[O3])
-
-                self._runtime_baseline = self._compile_and_get_runtime_seq(
-                    sequence=[O3]
-                )
-
-                # Initial
-                self._runtime_initial = self._compile_and_get_runtime()
-                if self._debug:
-                    print(f"O3: {self._runtime_o3} - O0: {self._runtime_initial}")
-                self._runtime_prev = self._runtime_initial
-                return
-            except ValueError as e:
-                print(e, file=sys.stderr)
-            except Exception as e:
-                print(e, file=sys.stderr)
+            self._cg_env.reset(benchmark=benchmark)
+            # O3
+            if self._debug:
+                self._runtime_o3 = self._compile_and_get_runtime_seq(sequence=[O3])
+            self._runtime_baseline = self._compile_and_get_runtime_seq(sequence=[O3])
+            # Initial
+            self._runtime_initial = self._compile_and_get_runtime()
+            if self._runtime_initial < 1e-6 or self._runtime_baseline < 1e-6:
+                raise Exception("Runtime of benchmark too small")
+            if self._debug:
+                print(f"O3: {self._runtime_o3} - O0: {self._runtime_initial}")
+            self._runtime_prev = self._runtime_initial
+            return
         raise Exception(f"Failed to reset after {attempts} attempts")
 
     def step(self, flags):
@@ -80,16 +72,18 @@ class RuntimeEnv(MyEnv):
         else:
             self._cg_env.step(self._cg_env.action_space.flags.index(flags[0]))
         runtime = self._compile_and_get_runtime()
-        reward = (self._runtime_prev - runtime) / (
+        reward = (self._runtime_prev - runtime) / max(
             max(
                 self._runtime_initial - self._runtime_baseline,
-                int(0.01 * self._runtime_initial),
-            )
+                0.01 * self._runtime_initial,
+            ),
+            1e-12,
         )
         if self._debug:
             print(
                 f"reward: {reward} - runtime: {runtime} - runtime_prev: {self._runtime_prev} - runtime_initial: {self._runtime_initial}"
             )
+        reward = np.clip(reward, -3, 3)
         self._runtime_prev = runtime
         return reward
 
@@ -109,14 +103,18 @@ class RuntimeEnv(MyEnv):
         )
         return runtime
 
-    def _compile_and_get_runtime_seq(self, sequence) -> int:
-        return compile_and_get_instructions(
+    def _compile_and_get_runtime_seq(self, sequence) -> float:
+        compile_lm_safely(
             ir=self._cg_env.observation["Ir"],
             sequence=sequence,
             result_path=self._bin_filepath,
-            execution_args="0",
             linkopts=[],
         )
+        runtime = _measure_runtime(
+            self._bin_filepath,
+            execution_args="0",
+        )
+        return runtime
 
 
 def _measure_runtime(
