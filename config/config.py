@@ -100,7 +100,8 @@ class TrainConfig:
             # "prev-2",
         ]
     )
-    reward_space: str = "CfgInstructions"
+    reward_space: str = "Runtime"
+    # reward_space: str = "CfgInstructions"
     # reward_space: str = "MCA"
     observation_size: int = None
     actions: list = field(default_factory=lambda: O23_ACTIONS_V2)
