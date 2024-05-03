@@ -8,7 +8,7 @@ from tabulate import tabulate
 from tqdm import tqdm
 
 from config.config import TrainConfig
-from env.cfg_grind import compile_and_get_instructions
+from env.performance_optimization.cfg_grind import compile_and_get_instructions
 from utils import (
     get_agent,
     get_model_path,

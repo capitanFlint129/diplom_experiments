@@ -14,7 +14,7 @@ from tabulate import tabulate
 from tqdm import tqdm
 
 from config.config import TrainConfig
-from env.cfg_grind import compile
+from env.performance_optimization.llvm import compile_lm_safely
 from runtime_eval.hyperfine_utils import save_whisker_plot
 from runtime_eval.jotai.eval import measure_execution_mean_and_std
 from utils import (
@@ -65,14 +65,14 @@ def compare_optimizators(
         CBENCH_EVAL_DIR, args.run_name, f"{BIN_NAME}-{baseline_opt.name}"
     )
 
-    compile(
+    compile_lm_safely(
         ir=env.observation["Ir"],
         sequence=model_opt.sequence,
         result_path=model_bin,
         linkopts=linkopts,
     )
 
-    compile(
+    compile_lm_safely(
         ir=env.observation["Ir"],
         sequence=baseline_opt.sequence,
         result_path=baseline_bin,

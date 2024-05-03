@@ -131,6 +131,24 @@ def compile_ll(source_path, result_path, linkopts):
         raise Exception(f"Compilation failed {proc.stderr}")
 
 
+def compile_lm_safely(ir: str, sequence: list[str], result_path: str, linkopts):
+    try:
+        compile_ll_with_opt_sequence(
+            ir,
+            result_path=result_path,
+            sequence=sequence,
+            linkopts=linkopts,
+        )
+    except Exception as e:
+        print(f"Compilation failed, recompile with -lm: {e}")
+        compile_ll_with_opt_sequence(
+            ir,
+            result_path=result_path,
+            sequence=sequence,
+            linkopts=linkopts + ["-lm"],
+        )
+
+
 def clang_compile_to_ir(
     source: str, level: str, result_path: str = "-"
 ) -> Optional[str]:

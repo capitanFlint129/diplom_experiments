@@ -2,7 +2,10 @@ import json
 import os.path
 import subprocess
 
-from env.llvm import compile_ll_with_opt_sequence, compile_ll
+from env.performance_optimization.llvm import (
+    compile_ll,
+    compile_lm_safely,
+)
 
 CFG_GRIND_ASMMAP_BIN = "cfggrind_asmmap"
 CFG_GRIND_INFO_BIN = "cfggrind_info"
@@ -72,40 +75,8 @@ def get_executed_instructions(bin_path: str, execution_args: str) -> int:
 def compile_and_get_instructions(
     ir: str, sequence: list[str], result_path: str, execution_args: str, linkopts
 ) -> int:
-    try:
-        compile_ll_with_opt_sequence(
-            ir,
-            result_path=result_path,
-            sequence=sequence,
-            linkopts=linkopts,
-        )
-    except Exception as e:
-        print(f"Compilation failed, recompile with -lm: {e}")
-        compile_ll_with_opt_sequence(
-            ir,
-            result_path=result_path,
-            sequence=sequence,
-            linkopts=linkopts + ["-lm"],
-        )
+    compile_lm_safely(ir, sequence, result_path, linkopts)
     return get_executed_instructions(result_path, execution_args)
-
-
-def compile(ir: str, sequence: list[str], result_path: str, linkopts):
-    try:
-        compile_ll_with_opt_sequence(
-            ir,
-            result_path=result_path,
-            sequence=sequence,
-            linkopts=linkopts,
-        )
-    except Exception as e:
-        print(f"Compilation failed, recompile with -lm: {e}")
-        compile_ll_with_opt_sequence(
-            ir,
-            result_path=result_path,
-            sequence=sequence,
-            linkopts=linkopts + ["-lm"],
-        )
 
 
 def compile_and_get_instructions_no_sequence(

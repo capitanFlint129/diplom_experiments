@@ -7,7 +7,7 @@ from tabulate import tabulate
 from tqdm import tqdm
 
 from config.config import TrainConfig
-from env.cfg_grind import compile_and_get_instructions
+from env.performance_optimization.cfg_grind import compile_and_get_instructions
 from runtime_eval.jotai.eval import measure_execution_mean_and_std
 from utils import (
     get_agent,

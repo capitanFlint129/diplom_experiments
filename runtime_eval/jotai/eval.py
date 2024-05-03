@@ -6,7 +6,7 @@ import subprocess
 import pandas as pd
 from tqdm import tqdm
 
-from env.cfg_grind import get_executed_instructions
+from env.performance_optimization.cfg_grind import get_executed_instructions
 
 
 WARMUP = 0

@@ -5,7 +5,7 @@ import os.path
 import pandas as pd
 from tqdm import tqdm
 
-from env.llvm import compile_one_source_with_opt_sequence
+from env.performance_optimization.llvm import compile_one_source_with_opt_sequence
 
 BASELINE_SEQUENCES = {
     "O3": ["-O3"],

@@ -5,7 +5,7 @@ import os
 import pandas as pd
 from tqdm import tqdm
 
-from env.cfg_grind import get_executed_instructions
+from env.performance_optimization.cfg_grind import get_executed_instructions
 
 DATASET_URI = "benchmark://jotaibench-v0"
 RESULT_DIR = "_eval_results"
