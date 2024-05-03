@@ -2,6 +2,7 @@ import argparse
 import dataclasses
 import os
 from subprocess import TimeoutExpired
+import random
 
 import compiler_gym
 import gym
@@ -80,25 +81,43 @@ def compare_optimizators(
     )
     speedups = []
     for i in range(n):
-        model_runtime, _, _ = measure_execution_mean_and_std(
-            f"./{model_bin}",
-            benchmark_args,
-            prepare_command=prepare_command,
-            specific_name=model_opt.name,
-            runs=1,
-            warmup=0,
-        )
+        if random.randint(0, 1):
+            model_runtime, _, _ = measure_execution_mean_and_std(
+                f"./{model_bin}",
+                benchmark_args,
+                prepare_command=prepare_command,
+                specific_name=model_opt.name,
+                runs=1,
+                warmup=0,
+            )
+            baseline_runtime, _, _ = measure_execution_mean_and_std(
+                f"./{baseline_bin}",
+                benchmark_args,
+                prepare_command=prepare_command,
+                specific_name=baseline_opt.name,
+                runs=1,
+                warmup=0,
+            )
+        else:
+            baseline_runtime, _, _ = measure_execution_mean_and_std(
+                f"./{baseline_bin}",
+                benchmark_args,
+                prepare_command=prepare_command,
+                specific_name=baseline_opt.name,
+                runs=1,
+                warmup=0,
+            )
+            model_runtime, _, _ = measure_execution_mean_and_std(
+                f"./{model_bin}",
+                benchmark_args,
+                prepare_command=prepare_command,
+                specific_name=model_opt.name,
+                runs=1,
+                warmup=0,
+            )
 
-        baseline_runtime, _, _ = measure_execution_mean_and_std(
-            f"./{model_bin}",
-            benchmark_args,
-            prepare_command=prepare_command,
-            specific_name=model_opt.name,
-            runs=1,
-            warmup=0,
-        )
         speedups.append(
-            (baseline_runtime - model_runtime) / max(np.median(baseline_runtime), 1e-12)
+            (baseline_runtime - model_runtime) / max(baseline_runtime, 1e-12)
         )
     return speedups
 
@@ -156,7 +175,8 @@ def save_hyperfine_whisker_plots(
 
 
 def main():
-    N = 300
+    N = 100 if args.n == -1 else args.n
+    print(f"Runs for each benchmark: {N}")
     os.makedirs(os.path.join(CBENCH_EVAL_DIR, args.run_name), exist_ok=True)
 
     env: CompilerEnv = gym.make("llvm-v0")
@@ -235,6 +255,8 @@ def main():
             speedups = compare_optimizators(
                 OptimizatorData("model", flags),
                 OptimizatorData("o3", ["-O3"]),
+                # OptimizatorData("o3", ["-O3"]),
+                # OptimizatorData("o0", []),
                 new_env,
                 linkopts,
                 benchmark_args,
@@ -273,6 +295,14 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--iters",
+        type=int,
+        # nargs=1,
+        # action="store",
+        # choices=range(0, 100),
+        default=-1,
+    )
+    parser.add_argument(
+        "--n",
         type=int,
         # nargs=1,
         # action="store",

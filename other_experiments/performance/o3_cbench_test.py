@@ -8,7 +8,7 @@ from tabulate import tabulate
 from tqdm import tqdm
 
 from config.config import TrainConfig
-from env.performance_optimization import get_rblock_throughput_ir
+from env.performance_optimization.mca_env import get_rblock_throughput_ir
 from utils import (
     get_agent,
     get_model_path,
@@ -16,7 +16,8 @@ from utils import (
 )
 
 MODEL_ITERS = 10
-RUNTIME_COUNT = 30
+RUNTIME_COUNT = 1
+RUN_NAME = "zesty-morning-52"
 
 
 def apply_pass_sequence(env: CompilerEnv, pass_sequence):
@@ -65,13 +66,15 @@ def main():
         "o3_thr_imp": [],
     }
 
-    config = TrainConfig()
+    # config = TrainConfig()
+    # config.save(RUN_NAME)
+    config = TrainConfig.load_config(RUN_NAME)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     agent = get_agent(
         config,
         device,
-        policy_net_path=get_model_path("zesty-morning-52"),
+        policy_net_path=get_model_path(RUN_NAME),
     )
 
     pd_results = pd.DataFrame(columns=list(results.keys()))
@@ -129,9 +132,11 @@ def main():
             o3_speedup = get_speedup(o3_runtimes, model_runtimes)
 
             base_rblock_throughput_imp = (
-                results["base_thr"][-1] / results["model_thr"][-1]
-            )
-            o3_rblock_throughput_imp = results["o3_thr"][-1] / results["model_thr"][-1]
+                results["base_thr"][-1] - results["model_thr"][-1]
+            ) / results["base_thr"][-1]
+            o3_rblock_throughput_imp = (
+                results["o3_thr"][-1] - results["model_thr"][-1]
+            ) / results["base_thr"][-1]
 
             results["base_speedup"].append(base_speedup)
             results["o3_speedup"].append(o3_speedup)
@@ -149,7 +154,7 @@ def main():
                 )
             )
 
-    pd_results.to_csv("o3_cbench_test_results.csv")
+    pd_results.to_csv(f"{RUN_NAME}_o3_cbench_test_results.csv")
     print(
         tabulate(
             pd_results,
