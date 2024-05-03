@@ -37,7 +37,7 @@ def compile_one_source_with_opt_sequence(
             " | ".join(
                 [
                     f"{CLANG_BIN} {O0} --target=x86_64 -Xclang -disable-O0-optnone -S -emit-llvm -x c -o - {source_path}",
-                    f"llc -filetype=obj -o {tmpfilename}",
+                    f"{LLC_BIN} -filetype=obj -o {tmpfilename}",
                 ]
             ),
             shell=True,
@@ -48,8 +48,8 @@ def compile_one_source_with_opt_sequence(
             " | ".join(
                 [
                     f"{CLANG_BIN} {O0} --target=x86_64 -Xclang -disable-O0-optnone -S -emit-llvm -x c -o - {source_path}",
-                    f"opt {' '.join(sequence)} -S -o -",
-                    f"llc -filetype=obj -o {tmpfilename}",
+                    f"{OPT_BIN} {' '.join(sequence)} -S -o -",
+                    f"{LLC_BIN} -filetype=obj -o {tmpfilename}",
                 ]
             ),
             shell=True,
@@ -83,8 +83,8 @@ def compile_ll_with_opt_sequence(ir, result_path, sequence, linkopts):
     proc = subprocess.run(
         " | ".join(
             [
-                f"opt {' '.join(sequence)} -S -o {result_path}.ll",
-                # f"llc -filetype=obj -o tmp.o -lm",
+                f"{OPT_BIN} {' '.join(sequence)} -S -o {result_path}.ll",
+                # f"{LLC_BIN} -filetype=obj -o tmp.o -lm",
             ]
         ),
         input=ir.encode(),
@@ -100,7 +100,7 @@ def compile_ll_with_opt_sequence(ir, result_path, sequence, linkopts):
 def compile_ll(source_path, result_path, linkopts):
     proc = subprocess.run(
         [
-            "llc",
+            LLC_BIN,
             # "-O=3",
             "-filetype=obj",
             source_path,

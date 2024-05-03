@@ -220,7 +220,11 @@ def main():
                     eval_mode=not args.disable_eval_mode,
                     hack=args.hack,
                 )
-                flags = [f for f in flags if f != "noop"]
+                tmp = []
+                for seq in flags:
+                    if seq != "noop":
+                        tmp += [f"-{f}" for f in seq.split()]
+                flags = tmp
             except TimeoutExpired as e:
                 print(f"IR2vec timeout skip benchmark: {e}")
             except Exception as e:
