@@ -96,7 +96,11 @@ def train(
     dataset = Dataset(name=run.name)
 
     for episode_i in range(config.episodes):
-        custom_train_env.reset()
+        try:
+            custom_train_env.reset()
+        except Exception as e:
+            print(f"train step failed skip it: {e}")
+            continue
         agent.episode_reset()
         episode_data = EpisodeData(remains=config.episode_length)
 
@@ -260,7 +264,11 @@ def _prefill(
     # o3_seq = [el for el in O3_SEQ if el in cfg_prefill_env._cg_env.action_space.flags]
     rewards = []
     for _ in tqdm(range(config.prefill)):
-        prefill_env.reset()
+        try:
+            prefill_env.reset()
+        except Exception as e:
+            print(f"train step failed skip it: {e}")
+            continue
         agent.episode_reset()
 
         base_observation = prefill_env.get_observation(config.observation_space)
@@ -273,45 +281,52 @@ def _prefill(
         remains = config.episode_length
         # choosen_flags = []
         reward_sum = 0
-        for action in action_seq:
-            # choosen_flags.append(config.actions[action])
-            flags = config.actions[action]
-            flags = flags.split()
-            reward = prefill_env.step(flags)
-            reward_sum += reward
+        try:
+            for action in action_seq:
+                # choosen_flags.append(config.actions[action])
+                flags = config.actions[action]
+                flags = flags.split()
+                reward = prefill_env.step(flags)
+                reward_sum += reward
 
-            base_observation = prefill_env.get_observation(config.observation_space)
-            new_observation = observation_modifier.modify(
-                base_observation, remains, env=prefill_env
-            )
-            remains -= 1
-            agent.store_transition(
-                action,
-                observation=observation,
-                reward=reward,
-                new_observation=new_observation,
-                done=False,
-                prev_action=prev_action,
-            )
-            prev_action = action
-            observation = new_observation
+                base_observation = prefill_env.get_observation(config.observation_space)
+                new_observation = observation_modifier.modify(
+                    base_observation, remains, env=prefill_env
+                )
+                remains -= 1
+                agent.store_transition(
+                    action,
+                    observation=observation,
+                    reward=reward,
+                    new_observation=new_observation,
+                    done=False,
+                    prev_action=prev_action,
+                )
+                prev_action = action
+                observation = new_observation
 
-        # tmp_choosen_flags = []
-        # for el in choosen_flags:
-        #     tmp_choosen_flags.extend(el.split())
-        # assert tmp_choosen_flags == o3_seq
-        action = config.actions.index("noop")
-        while remains > 0:
-            agent.store_transition(
-                action,
-                observation=observation,
-                reward=0,
-                new_observation=observation,
-                done=remains < 2,
-                prev_action=prev_action,
-            )
-            prev_action = action
-            remains -= 1
+            # tmp_choosen_flags = []
+            # for el in choosen_flags:
+            #     tmp_choosen_flags.extend(el.split())
+            # assert tmp_choosen_flags == o3_seq
+            action = config.actions.index("noop")
+            while remains > 0:
+                agent.store_transition(
+                    action,
+                    observation=observation,
+                    reward=0,
+                    new_observation=observation,
+                    done=remains < 2,
+                    prev_action=prev_action,
+                )
+                prev_action = action
+                remains -= 1
+        except SessionNotFound as e:
+            print(f"Warning! SessionNotFound error occured {e}", file=sys.stderr)
+        except TimeoutExpired as e:
+            print(f"Timeout: {e}", file=sys.stderr)
+        except Exception as e:
+            print(f"prefill step failed skip it: {e}")
         agent.episode_done()
         rewards.append(reward_sum)
         print(np.mean(rewards))
@@ -413,9 +428,9 @@ def validate(
     rewards = []
     train_history = TrainHistory(logging_history_size=config.logging_history_size)
     for i, benchmark in enumerate(val_benchmarks):
-        env.reset(benchmark=benchmark, val=True)
         # codesize.append(env._cg_env.observation["IrInstructionCount"])
         try:
+            env.reset(benchmark=benchmark, val=True)
             with Timer() as timer:
                 episode_data = rollout(
                     agent, env, config, use_actions_masking=use_actions_masking
