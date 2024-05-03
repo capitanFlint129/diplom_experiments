@@ -1,3 +1,5 @@
+import argparse
+
 import compiler_gym
 import gym
 import numpy as np
@@ -17,7 +19,6 @@ from utils import (
 
 MODEL_ITERS = 10
 RUNTIME_COUNT = 1
-RUN_NAME = "zesty-morning-52"
 
 
 def apply_pass_sequence(env: CompilerEnv, pass_sequence):
@@ -67,19 +68,25 @@ def main():
     }
 
     # config = TrainConfig()
-    # config.save(RUN_NAME)
-    config = TrainConfig.load_config(RUN_NAME)
+    # config.save(args.run_name)
+    config = TrainConfig.load_config(args.run_name)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     agent = get_agent(
         config,
         device,
-        policy_net_path=get_model_path(RUN_NAME),
+        policy_net_path=get_model_path(args.run_name),
     )
 
     pd_results = pd.DataFrame(columns=list(results.keys()))
 
+    skipped_benchmarks = {
+        "bzip2",
+    }
     for benchmark in tqdm(benchmarks):
+        benchmark_name = str(benchmark).rsplit("/", maxsplit=1)[-1]
+        if benchmark_name in skipped_benchmarks:
+            continue
         with compiler_gym.make("llvm-v0", benchmark=benchmark) as new_env:
             # try:
             # env.reset(benchmark=benchmark)
@@ -94,7 +101,7 @@ def main():
                 print(f"Benchmark {benchmark} not runnable, skip it")
                 continue
 
-            results["benchmark"].append(str(benchmark).rsplit("/", maxsplit=1)[-1])
+            results["benchmark"].append(benchmark_name)
 
             new_env.runtime_observation_count = RUNTIME_COUNT
             new_env.runtime_warmup_count = 0
@@ -154,7 +161,7 @@ def main():
                 )
             )
 
-    pd_results.to_csv(f"{RUN_NAME}_o3_cbench_test_results.csv")
+    pd_results.to_csv(f"{args.run_name}_o3_cbench_test_results.csv")
     print(
         tabulate(
             pd_results,
@@ -166,4 +173,8 @@ def main():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("run_name", help="run name")
+    args = parser.parse_args()
+
     main()

@@ -95,16 +95,16 @@ class TrainConfig:
         default_factory=lambda: [
             # "start-IR2Vec",
             # "remains-counter",
-            # "mca",
+            "mca",
             "remains-counter-normalized",
             # "prev-2",
         ]
     )
-    reward_space: str = "Runtime"
-    # reward_space: str = "CfgInstructions"
+    # reward_space: str = "Runtime"
+    reward_space: str = "CfgInstructions"
     # reward_space: str = "MCA"
     observation_size: int = None
-    actions: list = field(default_factory=lambda: O23_ACTIONS_V2)
+    actions: list = field(default_factory=lambda: O23_SUBSEQ_CBENCH_MINS)
     reward_scale: float = 1
     special_actions: list = field(
         default_factory=lambda: [
