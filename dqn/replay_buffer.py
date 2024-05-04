@@ -207,6 +207,8 @@ class ReplayBufferForLSTM:
         self.end_index = self._mem_counter % self._max_buffer_size
 
     def episode_done(self):
+        if self._mem_counter == 0:
+            return
         begin_index = (self._mem_counter - 1) % self._max_buffer_size
         memory_filled = min(self._mem_counter, self._max_buffer_size)
         indexes = _get_range_for_cyclic(begin_index, self.end_index, memory_filled)

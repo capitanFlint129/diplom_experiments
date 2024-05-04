@@ -243,15 +243,33 @@ class CfgGridEnv(MyEnv):
         self._executed_insts_prev = executed_insts
         return reward
 
+    def step_ignore_reward(self, flags):
+        if flags[0] == "noop":
+            if self._debug:
+                print(
+                    f"reward: {0} - executed_insts: {self._executed_insts_prev} - executed_insts_prev: {self._executed_insts_prev} - executed_insts_initial: {self._executed_insts_initial}"
+                )
+            return 0
+        if len(flags) > 1:
+            self._cg_env.multistep(
+                [self._cg_env.action_space.flags.index(f) for f in flags]
+            )
+        else:
+            self._cg_env.step(self._cg_env.action_space.flags.index(flags[0]))
+        return 0
+
     def get_observation(self, obs_name):
         return get_observation_from_cg(self._cg_env, obs_name)
 
-    def gather_data(self) -> tuple[float, float, float, float]:
+    def gather_data(self, without_train=False) -> tuple[float, float, float, float]:
+        model_result = self._executed_insts_prev
+        if without_train:
+            model_result = self._compile_and_get_instructions()
         return (
             self._executed_insts_initial,
             self._executed_insts_o2,
             self._executed_insts_baseline,
-            self._executed_insts_prev,
+            model_result,
         )
 
     def _compile_and_get_instructions(self) -> int:

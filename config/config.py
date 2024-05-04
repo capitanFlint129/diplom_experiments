@@ -156,3 +156,9 @@ class TrainConfig:
         ) as inf:
             config = TrainConfig.from_json(inf.read())
             return config
+
+    @staticmethod
+    def load_config_from_path(path: str) -> "TrainConfig":
+        with open(path, "r") as inf:
+            config = TrainConfig.from_json(inf.read())
+            return config

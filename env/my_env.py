@@ -17,6 +17,12 @@ class MyEnv(ABC):
     def step(self, action: Union[int, str, list[int], list[str]]) -> float:
         pass
 
+    @abstractmethod
+    def step_ignore_reward(
+        self, action: Union[int, str, list[int], list[str]]
+    ) -> float:
+        pass
+
     # def multistep(self):
     #     pass
 
@@ -25,5 +31,5 @@ class MyEnv(ABC):
         pass
 
     @abstractmethod
-    def gather_data(self) -> tuple[float, float, float, float]:
+    def gather_data(self, without_train=False) -> tuple[float, float, float, float]:
         pass

@@ -18,22 +18,6 @@ from utils import make_env
 
 DATASET_URI = "benchmark://jotaibench-v0"
 
-parser = argparse.ArgumentParser()
-parser.add_argument("run_name", help="run name")
-parser.add_argument(
-    "--n",
-    type=int,
-    default=-1,
-)
-parser.add_argument(
-    "--debug",
-    help="debug",
-    action="store_true",
-)
-args = parser.parse_args()
-
-config = TrainConfig.load_config(args.run_name)
-
 
 def init_worker(function):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -119,6 +103,21 @@ def main():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("run_name", help="run name")
+    parser.add_argument(
+        "--n",
+        type=int,
+        default=-1,
+    )
+    parser.add_argument(
+        "--debug",
+        help="debug",
+        action="store_true",
+    )
+    args = parser.parse_args()
+    config = TrainConfig.load_config(args.run_name)
+
     main()
 
 

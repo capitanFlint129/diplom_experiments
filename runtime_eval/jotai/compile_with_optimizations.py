@@ -18,18 +18,6 @@ JOTAI_SRC_PATH = [
     "/home/flint/diplom/jotai-benchmarks/benchmarks/anghaMath",
 ]
 
-parser = argparse.ArgumentParser()
-parser.add_argument("run_name", help="run name")
-parser.add_argument(
-    "--debug",
-    help="debug",
-    action="store_true",
-)
-args = parser.parse_args()
-
-RUN_DIR_PATH = f"_runtime_eval/{args.run_name}"
-
-
 def get_benchmark_source_path(benchmark_name):
     for path in JOTAI_SRC_PATH:
         source_path = os.path.join(path, f"{benchmark_name}.c")
@@ -114,4 +102,15 @@ def main():
 
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("run_name", help="run name")
+    parser.add_argument(
+        "--debug",
+        help="debug",
+        action="store_true",
+    )
+    args = parser.parse_args()
+    
+    RUN_DIR_PATH = f"_runtime_eval/{args.run_name}"
+    
     main()

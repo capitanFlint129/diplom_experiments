@@ -268,9 +268,10 @@ def main():
                 f"{benchmark_name}: {np.mean(speedups)} - {stats.norm.interval(0.95, loc=np.mean(speedups), scale=np.std(speedups) / np.sqrt(N))}"
             )
 
+    all_speedups = np.concatenate(list(results.values()))
+    results["all"] = all_speedups
     df = pd.DataFrame(data=results)
     df.to_csv(f"{args.run_name}_speedup_with_confidence.csv")
-    all_speedups = np.concatenate(list(results.values()))
     print(
         f"all: {np.mean(all_speedups)} - {stats.norm.interval(0.95, loc=np.mean(all_speedups), scale=np.std(all_speedups) / np.sqrt(len(all_speedups)))}"
     )
