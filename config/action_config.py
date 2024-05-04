@@ -37,6 +37,48 @@ POSET_RL_ODG = [
     "-simplifycfg -sroa -early-cse-memssa -speculative-execution -jump-threading -correlated-propagation",
 ]
 
+
+POSET_RL_ODG_O3 = [
+    "-instcombine -barrier -elim-avail-extern -rpo-functionattrs -globalopt -globaldce -constmerge",
+    "-instcombine -barrier -elim-avail-extern -rpo-functionattrs -globalopt -globaldce -float2int -lower-constant-intrinsics",
+    "-instcombine -barrier -elim-avail-extern -rpo-functionattrs -globalopt -mem2reg -deadargelim",
+    "-instcombine -jump-threading -correlated-propagation -dse",
+    "-instcombine -jump-threading -correlated-propagation",
+    "-instcombine",
+    "-instcombine -libcalls-shrinkwrap -pgo-memop-opt -tailcallelim",
+    "-loop-simplify -lcssa -indvars -loop-idiom -loop-deletion -loop-unroll",
+    "-loop-simplify -lcssa -indvars -loop-idiom -loop-deletion -loop-unroll -mldst-motion -gvn -memcpyopt -sccp -bdce",
+    "-loop-simplify -lcssa -licm -adce",
+    "-loop-simplify -lcssa -licm -alignment-from-assumptions -strip-dead-prototypes -globaldce -constmerge",
+    "-loop-simplify -lcssa -licm -alignment-from-assumptions -strip-dead-prototypes -globaldce -float2int -lower-constant-intrinsics",
+    "-loop-simplify -lcssa -licm -loop-unswitch",
+    "-loop-simplify -lcssa -loop-rotate -licm -adce",
+    "-loop-simplify -lcssa -loop-rotate -licm -alignment-from-assumptions -strip-dead-prototypes -globaldce -constmerge",
+    "-loop-simplify -lcssa -loop-rotate -licm -alignment-from-assumptions -strip-dead-prototypes -globaldce -float2int -lower-constant-intrinsics",
+    "-loop-simplify -lcssa -loop-rotate -licm -loop-unswitch",
+    "-loop-simplify -lcssa -loop-rotate -loop-distribute -loop-vectorize",
+    "-loop-simplify -lcssa -loop-sink -instsimplify -div-rem-pairs -simplifycfg",
+    "-loop-simplify -lcssa -loop-unroll",
+    "-loop-simplify -lcssa -loop-unroll -mldst-motion -gvn -memcpyopt -sccp -bdce",
+    "-loop-simplify -loop-load-elim",
+    "-simplifycfg",
+    "-simplifycfg -aggressive-instcombine",
+    "-simplifycfg -slp-vectorizer",
+    "-simplifycfg -prune-eh -inline -functionattrs -argpromotion -sroa -early-cse -lower-expect -forceattrs -inferattrs -callsite-splitting -ipsccp -called-value-propagation -attributor -globalopt -globaldce -constmerge -barrier",
+    "-simplifycfg -prune-eh -inline -functionattrs -argpromotion -sroa -early-cse -lower-expect -forceattrs -inferattrs -callsite-splitting -ipsccp -called-value-propagation -attributor -globalopt -globaldce -float2int -lower-constant-intrinsics -barrier",
+    "-simplifycfg -prune-eh -inline -functionattrs -argpromotion -sroa -early-cse -lower-expect -forceattrs -inferattrs -callsite-splitting -ipsccp -called-value-propagation -attributor -globalopt -mem2reg -deadargelim -barrier",
+    "-simplifycfg -prune-eh -inline -functionattrs -argpromotion -sroa -early-cse-memssa -speculative-execution -jump-threading -correlated-propagation -dse -barrier",
+    "-simplifycfg -prune-eh -inline -functionattrs -argpromotion -sroa -early-cse-memssa -speculative-execution -jump-threading -correlated-propagation -barrier",
+    "-simplifycfg -reassociate",
+    "-simplifycfg -sroa -early-cse -lower-expect -forceattrs -inferattrs -callsite-splitting -ipsccp -called-value-propagation -attributor -globalopt -globaldce -constmerge",
+    "-simplifycfg -sroa -early-cse -lower-expect -forceattrs -inferattrs -callsite-splitting -ipsccp -called-value-propagation -attributor -globalopt -globaldce -float2int -lower-constant-intrinsics",
+    "-simplifycfg -sroa -early-cse -lower-expect -forceattrs -inferattrs -callsite-splitting -ipsccp -called-value-propagation -attributor -globalopt -mem2reg -deadargelim",
+    "-simplifycfg -sroa -early-cse-memssa -speculative-execution -jump-threading -correlated-propagation -dse",
+    "-simplifycfg -sroa -early-cse-memssa -speculative-execution -jump-threading -correlated-propagation",
+]
+
+
+
 POSET_RL_MANUAL = [
     "-ee-instrument -simplifycfg -sroa -early-cse -lower-expect -forceattrs -inferattrs -mem2reg",
     "-ipsccp -called-value-propagation -attributor -globalopt",
