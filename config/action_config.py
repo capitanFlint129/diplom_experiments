@@ -78,7 +78,6 @@ POSET_RL_ODG_O3 = [
 ]
 
 
-
 POSET_RL_MANUAL = [
     "-ee-instrument -simplifycfg -sroa -early-cse -lower-expect -forceattrs -inferattrs -mem2reg",
     "-ipsccp -called-value-propagation -attributor -globalopt",
