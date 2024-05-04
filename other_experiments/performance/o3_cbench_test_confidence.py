@@ -60,10 +60,10 @@ def compare_optimizators(
     n=30,
 ) -> list[float]:
     model_bin = os.path.join(
-        CBENCH_EVAL_DIR, args.run_name, f"{BIN_NAME}-{model_opt.name}"
+        CBENCH_EVAL_DIR, args.run_name, f"{args.run_name}-{model_opt.name}"
     )
     baseline_bin = os.path.join(
-        CBENCH_EVAL_DIR, args.run_name, f"{BIN_NAME}-{baseline_opt.name}"
+        CBENCH_EVAL_DIR, args.run_name, f"{args.run_name}-{baseline_opt.name}"
     )
 
     compile_lm_safely(
@@ -86,7 +86,7 @@ def compare_optimizators(
                 f"./{model_bin}",
                 benchmark_args,
                 prepare_command=prepare_command,
-                specific_name=model_opt.name,
+                specific_name=f"{args.run_name}_{model_opt.name}",
                 runs=1,
                 warmup=0,
             )
@@ -94,7 +94,7 @@ def compare_optimizators(
                 f"./{baseline_bin}",
                 benchmark_args,
                 prepare_command=prepare_command,
-                specific_name=baseline_opt.name,
+                specific_name=f"{args.run_name}_{baseline_opt.name}",
                 runs=1,
                 warmup=0,
             )
@@ -103,7 +103,7 @@ def compare_optimizators(
                 f"./{baseline_bin}",
                 benchmark_args,
                 prepare_command=prepare_command,
-                specific_name=baseline_opt.name,
+                specific_name=f"{args.run_name}_{baseline_opt.name}",
                 runs=1,
                 warmup=0,
             )
@@ -111,7 +111,7 @@ def compare_optimizators(
                 f"./{model_bin}",
                 benchmark_args,
                 prepare_command=prepare_command,
-                specific_name=model_opt.name,
+                specific_name=f"{args.run_name}_{model_opt.name}",
                 runs=1,
                 warmup=0,
             )
@@ -193,7 +193,7 @@ def main():
     agent = get_agent(
         config,
         device,
-        policy_net_path=get_model_path(args.run_name),
+        policy_net_path=get_model_path(args.run_name if not args.best_val else f"best_val_{args.run_name}"),
     )
 
     math_benchs = {
@@ -291,6 +291,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--debug",
         help="debug",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--best_val",
+        help="best_val",
         action="store_true",
     )
     parser.add_argument(
