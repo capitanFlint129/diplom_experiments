@@ -5,7 +5,7 @@ import subprocess
 import numpy as np
 from compiler_gym import CompilerEnv
 
-from config.config import TrainConfig, RUNS_NUMBER
+from config.config import TrainConfig, RUNS_NUMBER, O3_RUNTIMES, O0_RUNTIMES
 from env.my_env import MyEnv
 from env.performance_optimization.cfg_grind import (
     compile_and_get_instructions,
@@ -26,7 +26,7 @@ OZ = "-Oz"
 
 class RuntimeEnv(MyEnv):
     def __init__(
-        self, config: TrainConfig, env: CompilerEnv, debug=False, runs=25, val_runs=50
+        self, config: TrainConfig, env: CompilerEnv, debug=False, runs=10, val_runs=50
     ):
         self._cg_env = env
         self._tmp_dir = f"_cfg_grind_env_tmp"
@@ -45,6 +45,7 @@ class RuntimeEnv(MyEnv):
         self._cur_runs = runs
         self._runs = runs
         self._val_runs = val_runs
+        self._cur_bench_name = None
 
     def gather_data(self, without_train=False) -> tuple[float, float, float, float]:
         model_result = self._runtime_prev
@@ -52,7 +53,7 @@ class RuntimeEnv(MyEnv):
             model_result = self._compile_and_get_runtime_seq([])
         return (
             self._runtime_initial,
-            self._runtime_o2,
+            self._runtime_baseline,
             self._runtime_baseline,
             model_result,
         )
@@ -65,13 +66,16 @@ class RuntimeEnv(MyEnv):
         attempts = 100
         for i in range(attempts):
             self._cg_env.reset(benchmark=benchmark)
+            self._cur_bench_name = (
+                str(self._cg_env.benchmark).split("/")[-1].split(".")[0]
+            )
             # O3
-            self._runtime_o2 = self._compile_and_get_runtime_seq(sequence=[O2])
-            if self._debug:
-                self._runtime_o3 = self._compile_and_get_runtime_seq(sequence=[O3])
-            self._runtime_baseline = self._compile_and_get_runtime_seq(sequence=[O3])
+            # self._runtime_o2 = self._compile_and_get_runtime_seq(sequence=[O2])
+            # if self._debug:
+            #     self._runtime_o3 = self._compile_and_get_runtime_seq(sequence=[O3])
+            self._runtime_baseline = O3_RUNTIMES[self._cur_bench_name]
             # Initial
-            self._runtime_initial = self._compile_and_get_runtime_seq([])
+            self._runtime_initial = O0_RUNTIMES[self._cur_bench_name]
             if self._runtime_initial < 1e-6 or self._runtime_baseline < 1e-6:
                 raise Exception("Runtime of benchmark too small")
             if self._debug:
@@ -137,9 +141,7 @@ class RuntimeEnv(MyEnv):
         )
         runtime = _measure_runtime(
             self._bin_filepath,
-            runs=RUNS_NUMBER.get(
-                str(self._cg_env.benchmark).split("/")[-1].split(".")[0], 10
-            ),
+            runs=RUNS_NUMBER.get(self._cur_bench_name, self._runs),
             execution_args="0",
         )
         return runtime

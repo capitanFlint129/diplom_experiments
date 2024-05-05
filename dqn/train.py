@@ -432,12 +432,15 @@ def validate(
                 episode_data = rollout(
                     agent, env, config, use_actions_masking=use_actions_masking
                 )
-                runtime_episode_data = rollout(
-                    agent,
-                    runtime_env,
-                    config,
-                    use_actions_masking=use_actions_masking,
-                )
+                if config.reward_space == "Runtime":
+                    runtime_episode_data = episode_data
+                else:
+                    runtime_episode_data = rollout(
+                        agent,
+                        runtime_env,
+                        config,
+                        use_actions_masking=use_actions_masking,
+                    )
             rewards.append(episode_data.total_reward)
             runtime_rewards.append(runtime_episode_data.total_reward)
             times.append(timer.time)
