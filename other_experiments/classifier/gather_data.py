@@ -16,9 +16,7 @@ from config.config import TrainConfig
 from dqn.dqn import DQNAgent
 from dqn.train_utils import EpisodeData, StepResult
 from env.my_env import MyEnv
-from env.performance_optimization.cfg_grind_env import CfgGridSubsetEnv, CfgGridEnv
-from env.performance_optimization.mca_env import CgLlvmMcaEnv
-from env.performance_optimization.runtime_env import RuntimeEnv
+from env.performance_optimization.cfg_grind_env import CfgGridEnv
 from observation.utils import ObservationModifier
 from other_experiments.classifier.dataset import Dataset
 from utils import (
@@ -34,23 +32,24 @@ def _get_envs(
     config: TrainConfig,
     train_env: CompilerEnv,
 ) -> MyEnv:
-    if config.task == "subset":
-        if config.reward_space == "CfgInstructions":
-            custom_train_env = CfgGridSubsetEnv(config, train_env)
-        else:
-            raise NotImplementedError()
-    elif config.task == "classic_phase_ordering":
-        if config.reward_space == "MCA":
-            custom_train_env = CgLlvmMcaEnv(config, train_env)
-        elif config.reward_space == "CfgInstructions":
-            custom_train_env = CfgGridEnv(config, train_env)
-        elif config.reward_space == "Runtime":
-            custom_train_env = RuntimeEnv(config, train_env)
-        else:
-            raise NotImplementedError()
-    else:
-        raise Exception("unknown reward space")
-    return custom_train_env
+    # if config.task == "subset":
+    #     if config.reward_space == "CfgInstructions":
+    #         custom_train_env = CfgGridSubsetEnv(config, train_env)
+    #     else:
+    #         raise NotImplementedError()
+    # elif config.task == "classic_phase_ordering":
+    #     if config.reward_space == "MCA":
+    #         custom_train_env = CgLlvmMcaEnv(config, train_env)
+    #     elif config.reward_space == "CfgInstructions":
+    #         custom_train_env = CfgGridEnv(config, train_env)
+    #     elif config.reward_space == "Runtime":
+    #         custom_train_env = RuntimeEnv(config, train_env)
+    #     else:
+    #         raise NotImplementedError()
+    # else:
+    #     raise Exception("unknown reward space")
+    # return custom_train_env
+    return CfgGridEnv(config, train_env)
 
 
 def _episode_step(
@@ -172,7 +171,6 @@ def gather_data(
         if episode_i % 100 == 0:
             dataset.save()
     dataset.save()
-    
 
 
 def main():
