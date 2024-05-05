@@ -103,6 +103,21 @@ class RuntimeEnv(MyEnv):
         self._runtime_prev = runtime
         return reward
 
+    def step_ignore_reward(self, flags):
+        if flags[0] == "noop":
+            if self._debug:
+                print(
+                    f"reward: {0} - executed_insts: {self._executed_insts_prev} - executed_insts_prev: {self._executed_insts_prev} - executed_insts_initial: {self._executed_insts_initial}"
+                )
+            return 0
+        if len(flags) > 1:
+            self._cg_env.multistep(
+                [self._cg_env.action_space.flags.index(f) for f in flags]
+            )
+        else:
+            self._cg_env.step(self._cg_env.action_space.flags.index(flags[0]))
+        return 0
+
     def get_observation(self, obs_name):
         return get_observation_from_cg(self._cg_env, obs_name)
 

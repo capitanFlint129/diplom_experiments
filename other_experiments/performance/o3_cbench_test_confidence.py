@@ -1,8 +1,8 @@
 import argparse
 import dataclasses
 import os
-from subprocess import TimeoutExpired
 import random
+from subprocess import TimeoutExpired
 
 import compiler_gym
 import gym
@@ -193,7 +193,9 @@ def main():
     agent = get_agent(
         config,
         device,
-        policy_net_path=get_model_path(args.run_name if not args.best_val else f"best_val_{args.run_name}"),
+        policy_net_path=get_model_path(
+            args.run_name if not args.best_val else f"best_val_{args.run_name}"
+        ),
     )
 
     math_benchs = {
@@ -206,9 +208,7 @@ def main():
         "tiffmedian",
     }
 
-    skipped_benchmarks = {
-        "bzip2",
-    }
+    skipped_benchmarks = {"bzip2", "adpcm", "ghostscript", "ispell", "lame", "rijndael"}
 
     for benchmark in tqdm(benchmarks[:BENCHMARKS_LIMIT]):
         benchmark_name = str(benchmark).rsplit("/", maxsplit=1)[-1]
@@ -269,7 +269,6 @@ def main():
             )
 
     all_speedups = np.concatenate(list(results.values()))
-    results["all"] = all_speedups
     df = pd.DataFrame(data=results)
     df.to_csv(f"{args.run_name}_speedup_with_confidence.csv")
     print(
@@ -302,17 +301,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--iters",
         type=int,
-        # nargs=1,
-        # action="store",
-        # choices=range(0, 100),
         default=-1,
     )
     parser.add_argument(
         "--n",
         type=int,
-        # nargs=1,
-        # action="store",
-        # choices=range(0, 100),
         default=-1,
     )
     parser.add_argument("run_name", help="run name")
