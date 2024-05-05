@@ -79,6 +79,66 @@ def compile_one_source_with_opt_sequence(
         )
 
 
+def linkopts_safe_compile(compile, linkopts: list[list[str]]):
+    for opts in linkopts:
+        try:
+            compile(opts)
+            return
+        except Exception:
+            print(f"Failed to compile with {opts} try to use next linkopts")
+    raise Exception(f"failed to compile with {linkopts}")
+
+
+def compile_bc_source_with_opt_sequence(
+    source_path: str,
+    result_path: str,
+    sequence: list[str],
+    linkopts: list[str],
+    tmpfilename: str = "tmp.o",
+):
+    if len(sequence) == 0:
+        proc = subprocess.run(
+            f"{LLC_BIN} -filetype=obj -o {tmpfilename} {source_path}",
+            shell=True,
+            capture_output=True,
+        )
+    else:
+        proc = subprocess.run(
+            " | ".join(
+                [
+                    f"{OPT_BIN} {' '.join(sequence)} -S -o - {source_path}",
+                    f"{LLC_BIN} -O=3 -filetype=obj -o {tmpfilename}",
+                ]
+            ),
+            shell=True,
+            capture_output=True,
+        )
+
+    if proc.returncode != 0:
+        # print(proc.stderr)
+        raise Exception(f"\nCompilation failed - {' '.join(sequence)}:\n {proc.stderr}")
+    proc = subprocess.run(
+        [
+            CLANG_BIN,
+            tmpfilename,
+        ]
+        + linkopts
+        + [
+            # "-nostartfiles",
+            # "-shared",
+            "-no-pie",
+            "-o",
+            result_path,
+        ],
+        capture_output=True,
+    )
+    if proc.returncode != 0:
+        # print(proc.stderr)
+        raise Exception(
+            f"\nCompilation failed {CLANG_BIN} - {' '.join(sequence)}:\n{proc.stderr}"
+        )
+
+
 def compile_ll_with_opt_sequence(ir, result_path, sequence, linkopts):
     proc = subprocess.run(
         " | ".join(
@@ -95,6 +155,18 @@ def compile_ll_with_opt_sequence(ir, result_path, sequence, linkopts):
         print(proc.stderr)
         raise Exception(f"Compilation failed {proc.stderr}")
     compile_ll(f"{result_path}.ll", result_path, linkopts=linkopts)
+
+
+# def compile_bc_source_with_opt_sequence(source_path, result_path, sequence, linkopts):
+#     proc = subprocess.run(
+#         f"{OPT_BIN} {' '.join(sequence)} -S -o {result_path}.ll {source_path}",
+#         shell=True,
+#         capture_output=True,
+#     )
+#     if proc.returncode != 0:
+#         print(proc.stderr)
+#         raise Exception(f"Compilation failed {proc.stderr}")
+#     compile_ll(f"{result_path}.ll", result_path, linkopts=linkopts)
 
 
 def compile_ll(source_path, result_path, linkopts):
