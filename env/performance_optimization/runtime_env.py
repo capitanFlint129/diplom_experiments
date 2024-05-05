@@ -5,13 +5,16 @@ import subprocess
 import numpy as np
 from compiler_gym import CompilerEnv
 
-from config.config import TrainConfig
+from config.config import TrainConfig, RUNS_NUMBER
 from env.my_env import MyEnv
 from env.performance_optimization.cfg_grind import (
     compile_and_get_instructions,
     compile_and_get_instructions_no_sequence,
 )
-from env.performance_optimization.llvm import compile_lm_safely
+from env.performance_optimization.llvm import (
+    linkopts_safe_compile,
+    compile_ll_with_opt_sequence,
+)
 from utils import get_observation_from_cg
 
 O0 = "-O0"
@@ -43,12 +46,15 @@ class RuntimeEnv(MyEnv):
         self._runs = runs
         self._val_runs = val_runs
 
-    def gather_data(self) -> tuple[float, float, float, float]:
+    def gather_data(self, without_train=False) -> tuple[float, float, float, float]:
+        model_result = self._runtime_prev
+        if without_train:
+            model_result = self._compile_and_get_runtime_seq([])
         return (
             self._runtime_initial,
             self._runtime_o2,
             self._runtime_baseline,
-            self._runtime_prev,
+            model_result,
         )
 
     def get_cur_ir(self) -> CompilerEnv:
@@ -65,7 +71,7 @@ class RuntimeEnv(MyEnv):
                 self._runtime_o3 = self._compile_and_get_runtime_seq(sequence=[O3])
             self._runtime_baseline = self._compile_and_get_runtime_seq(sequence=[O3])
             # Initial
-            self._runtime_initial = self._compile_and_get_runtime()
+            self._runtime_initial = self._compile_and_get_runtime_seq([])
             if self._runtime_initial < 1e-6 or self._runtime_baseline < 1e-6:
                 raise Exception("Runtime of benchmark too small")
             if self._debug:
@@ -87,7 +93,7 @@ class RuntimeEnv(MyEnv):
             )
         else:
             self._cg_env.step(self._cg_env.action_space.flags.index(flags[0]))
-        runtime = self._compile_and_get_runtime()
+        runtime = self._compile_and_get_runtime_seq([])
         reward = (self._runtime_prev - runtime) / max(
             max(
                 self._runtime_initial - self._runtime_baseline,
@@ -105,10 +111,6 @@ class RuntimeEnv(MyEnv):
 
     def step_ignore_reward(self, flags):
         if flags[0] == "noop":
-            if self._debug:
-                print(
-                    f"reward: {0} - executed_insts: {self._executed_insts_prev} - executed_insts_prev: {self._executed_insts_prev} - executed_insts_initial: {self._executed_insts_initial}"
-                )
             return 0
         if len(flags) > 1:
             self._cg_env.multistep(
@@ -121,30 +123,23 @@ class RuntimeEnv(MyEnv):
     def get_observation(self, obs_name):
         return get_observation_from_cg(self._cg_env, obs_name)
 
-    def _compile_and_get_runtime(self) -> float:
-        compile_lm_safely(
-            ir=self._cg_env.observation["Ir"],
-            sequence=[],
-            result_path=self._bin_filepath,
-            linkopts=[],
-        )
-        runtime = _measure_runtime(
-            self._bin_filepath,
-            runs=self._cur_runs,
-            execution_args="0",
-        )
-        return runtime
-
     def _compile_and_get_runtime_seq(self, sequence) -> float:
-        compile_lm_safely(
-            ir=self._cg_env.observation["Ir"],
-            sequence=sequence,
-            result_path=self._bin_filepath,
-            linkopts=[],
+        def _compile(linkopts):
+            compile_ll_with_opt_sequence(
+                ir=self._cg_env.observation["Ir"],
+                sequence=sequence,
+                result_path=self._bin_filepath,
+                linkopts=linkopts,
+            )
+
+        linkopts_safe_compile(
+            _compile, [[], ["-lm"], ["-lstdc++"], ["-lm", "-lstdc++"]]
         )
         runtime = _measure_runtime(
             self._bin_filepath,
-            runs=self._cur_runs,
+            runs=RUNS_NUMBER.get(
+                str(self._cg_env.benchmark).split("/")[-1].split(".")[0], 10
+            ),
             execution_args="0",
         )
         return runtime

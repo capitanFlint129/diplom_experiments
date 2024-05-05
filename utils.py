@@ -11,7 +11,7 @@ import numpy as np
 import plotly.graph_objects as go
 import torch
 from compiler_gym.datasets import FilesDataset
-from compiler_gym.envs import CompilerEnv
+from compiler_gym.envs import CompilerEnv, LlvmEnv
 from sklearn.model_selection import train_test_split
 
 import wandb
@@ -20,8 +20,8 @@ from config.config import (
     WANDB_PROJECT_NAME,
     TrainConfig,
     TEST_BENCHMARKS_DIR,
+    LLVM_TEST_SUITE_DATASET_PATH,
 )
-from config.action_config import O23_SUBSEQ_CBENCH_MINS_ANALYTICAL
 from dqn.dqn import DoubleDQNAgent, DQNAgent, LstmDQNAgent, SimpleDQNAgent, TwinDQNAgent
 from observation.utils import ObservationModifier
 
@@ -116,14 +116,25 @@ def fix_seed(seed: int) -> None:
 
 def prepare_datasets(
     run_name,
-    env,
+    env: LlvmEnv,
     random_state: int,
     config: TrainConfig,
 ) -> tuple[list, list, list]:
+    if config.dataset == "llvm_test_suite_benchmarks":
+        files = os.listdir(LLVM_TEST_SUITE_DATASET_PATH)
+        benchmarks = [
+            env.make_benchmark(os.path.join(LLVM_TEST_SUITE_DATASET_PATH, f))
+            for f in files
+        ]
+        train, val = train_test_split(
+            benchmarks, test_size=config.val_size, random_state=random_state
+        )
+        return list(train), list(val), []
+
     # train_dataset_name = "benchmark://anghabench-v1"
-    dataset_name = "benchmark://jotaibench-v0"
+    dataset_name = config.dataset
     # dataset_size = 7000
-    test_dataset_name = "benchmark://cbench-v1"
+    # test_dataset_name = "benchmark://cbench-v1"
     benchmarks = list(env.datasets[dataset_name].benchmarks())
     # benchmarks = list(
     #     itertools.islice(env.datasets[dataset_name].benchmarks(), dataset_size)
@@ -141,7 +152,9 @@ def prepare_datasets(
                 [str(benchmark).rsplit("/", maxsplit=1)[-1] for benchmark in test]
             )
         )
-    train, val = train_test_split(benchmarks, test_size=config.val_size, random_state=random_state)
+    train, val = train_test_split(
+        benchmarks, test_size=config.val_size, random_state=random_state
+    )
     test = env.datasets[test_dataset_name]
     # train = env.datasets[test_dataset_name]
     # val = env.datasets[test_dataset_name]
