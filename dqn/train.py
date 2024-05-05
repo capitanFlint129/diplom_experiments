@@ -108,7 +108,7 @@ def train(
                     enable_epsilon_greedy=True,
                     eval_mode=False,
                 )
-                loss_value = [agent.learn(), agent.learn()]
+                loss_value = agent.learn()
                 episode_data.update_after_episode_step(
                     step_result=step_result,
                     loss_value=loss_value,

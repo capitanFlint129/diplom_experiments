@@ -210,7 +210,6 @@ O23_SUBSEQ_CBENCH_MINS = [
 ]
 
 O23_SUBSEQ_CBENCH_MINS_ANALYTICAL = [
-    "noop",
     "-ee-instrument -simplifycfg -sroa",
     "-tti -tbaa -scoped-noalias -assumption-cache-tracker -targetlibinfo -verify -ee-instrument -simplifycfg -domtree -sroa",
     "-early-cse -lower-expect -targetlibinfo -tti -tbaa -scoped-noalias -assumption-cache-tracker -profile-summary-info -forceattrs -inferattrs -domtree -callsite-splitting -ipsccp -called-value-propagation -attributor -globalopt -domtree -mem2reg -deadargelim -domtree -basicaa -aa -loops -lazy-branch-prob -lazy-block-freq -opt-remark-emitter -instcombine",

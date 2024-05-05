@@ -54,6 +54,7 @@ def main():
             run.name,
             train_env,
             random_state=config.random_state,
+            config=config,
         )
         agent = get_agent(config, device, policy_net_path=None)
         train(

@@ -118,6 +118,7 @@ def prepare_datasets(
     run_name,
     env,
     random_state: int,
+    config: TrainConfig,
 ) -> tuple[list, list, list]:
     # train_dataset_name = "benchmark://anghabench-v1"
     dataset_name = "benchmark://jotaibench-v0"
@@ -140,7 +141,7 @@ def prepare_datasets(
                 [str(benchmark).rsplit("/", maxsplit=1)[-1] for benchmark in test]
             )
         )
-    train, val = train_test_split(benchmarks, test_size=0.01, random_state=random_state)
+    train, val = train_test_split(benchmarks, test_size=config.val_size, random_state=random_state)
     test = env.datasets[test_dataset_name]
     # train = env.datasets[test_dataset_name]
     # val = env.datasets[test_dataset_name]
