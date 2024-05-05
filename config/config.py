@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass, field
+from typing import Union
 
 from dataclasses_json import dataclass_json
 
@@ -100,7 +101,7 @@ class TrainConfig:
             # "prev-2",
         ]
     )
-    val_size: int = 300
+    val_size: Union[int, float] = 0.2
     reward_space: str = "Runtime"
     # reward_space: str = "CfgInstructions"
     # reward_space: str = "MCA"

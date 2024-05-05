@@ -167,14 +167,23 @@ def train(
             data_file = os.path.join(cache_dir, "buffer_cache")
             os.makedirs(cache_dir, exist_ok=True)
             with open(os.path.join(cache_dir, "meta.json"), "w") as ouf:
-                ouf.write(
-                    json.dumps(
-                        {
-                            "mem_counter": agent._replay_buffer._mem_counter,
-                            "ready_data_size": agent._replay_buffer._ready_data_size,
-                        }
+                if config.algorithm.startswith("Lstm"):
+                    ouf.write(
+                        json.dumps(
+                            {
+                                "mem_counter": agent._replay_buffer._mem_counter,
+                                "ready_data_size": agent._replay_buffer._ready_data_size,
+                            }
+                        )
                     )
-                )
+                else:
+                    ouf.write(
+                        json.dumps(
+                            {
+                                "mem_counter": agent._replay_buffer._mem_counter,
+                            }
+                        )
+                    )
             agent._replay_buffer.save_to_npz(data_file)
             train_history.best_val_mean = _validation_during_train(
                 run=run,

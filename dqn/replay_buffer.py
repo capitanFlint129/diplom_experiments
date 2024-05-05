@@ -40,6 +40,16 @@ class ReplayBuffer:
 
     def from_npz_loaded(self, loaded, prefill_size):
         raise NotImplementedError()
+    
+    def save_to_npz(self, prefill_file):
+        np.savez_compressed(
+            prefill_file,
+            a=self.state_mem,
+            b=self.new_state_mem,
+            c=self.action_mem,
+            d=self.reward_mem,
+            e=self.terminal_mem,
+        )
 
     def store_transition(
         self,
