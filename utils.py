@@ -126,6 +126,8 @@ def prepare_datasets(
             env.make_benchmark(os.path.join(LLVM_TEST_SUITE_DATASET_PATH, f))
             for f in files
         ]
+        benchmarks = [b for b in benchmarks if str(b).split("/")[-1].split(".")[0] not in config.skipped_benchmarks]
+        print(f"benchmarks number: {len(benchmarks)}")
         train, val = train_test_split(
             benchmarks, test_size=config.val_size, random_state=random_state
         )

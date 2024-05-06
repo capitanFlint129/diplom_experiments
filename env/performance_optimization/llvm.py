@@ -85,7 +85,8 @@ def linkopts_safe_compile(compile, linkopts: list[list[str]]):
             compile(opts)
             return
         except Exception:
-            print(f"Failed to compile with {opts} try to use next linkopts")
+            # print(f"Failed to compile with {opts} try to use next linkopts")
+            pass
     raise Exception(f"failed to compile with {linkopts}")
 
 
@@ -152,7 +153,7 @@ def compile_ll_with_opt_sequence(ir, result_path, sequence, linkopts):
         capture_output=True,
     )
     if proc.returncode != 0:
-        print(proc.stderr)
+        # print(proc.stderr)
         raise Exception(f"Compilation failed {proc.stderr}")
     compile_ll(f"{result_path}.ll", result_path, linkopts=linkopts)
 
@@ -182,7 +183,7 @@ def compile_ll(source_path, result_path, linkopts):
         capture_output=True,
     )
     if proc.returncode != 0:
-        print(proc.stderr)
+        # print(proc.stderr)
         raise Exception(f"llc: Compilation failed {proc.stderr}")
     proc = subprocess.run(
         # clang hello-world.o -o hello-world
@@ -199,7 +200,7 @@ def compile_ll(source_path, result_path, linkopts):
         capture_output=True,
     )
     if proc.returncode != 0:
-        print(proc.stderr)
+        # print(proc.stderr)
         raise Exception(f"Compilation failed {proc.stderr}")
 
 

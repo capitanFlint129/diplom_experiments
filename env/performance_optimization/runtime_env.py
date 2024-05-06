@@ -26,7 +26,7 @@ OZ = "-Oz"
 
 class RuntimeEnv(MyEnv):
     def __init__(
-        self, config: TrainConfig, env: CompilerEnv, debug=False, runs=10, val_runs=50
+        self, config: TrainConfig, env: CompilerEnv, debug=False, runs=5, val_runs=5
     ):
         self._cg_env = env
         self._tmp_dir = f"_cfg_grind_env_tmp"
