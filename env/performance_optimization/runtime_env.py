@@ -26,7 +26,7 @@ OZ = "-Oz"
 
 class RuntimeEnv(MyEnv):
     def __init__(
-        self, config: TrainConfig, env: CompilerEnv, debug=False, runs=5, val_runs=5
+        self, config: TrainConfig, env: CompilerEnv, debug=False, runs=5, val_runs=5, llvm_test_suite_env=False
     ):
         self._cg_env = env
         self._tmp_dir = f"_cfg_grind_env_tmp"
@@ -46,6 +46,9 @@ class RuntimeEnv(MyEnv):
         self._runs = runs
         self._val_runs = val_runs
         self._cur_bench_name = None
+        self.o3_runtimes = {}
+        self.o0_runtimes = {}
+        self._llvm_test_suite_env = llvm_test_suite_env
 
     def gather_data(self, without_train=False) -> tuple[float, float, float, float]:
         model_result = self._runtime_prev
@@ -73,9 +76,18 @@ class RuntimeEnv(MyEnv):
             # self._runtime_o2 = self._compile_and_get_runtime_seq(sequence=[O2])
             # if self._debug:
             #     self._runtime_o3 = self._compile_and_get_runtime_seq(sequence=[O3])
-            self._runtime_baseline = O3_RUNTIMES[self._cur_bench_name]
-            # Initial
-            self._runtime_initial = O0_RUNTIMES[self._cur_bench_name]
+            if self._llvm_test_suite_env:
+                if self._cur_bench_name not in self.o3_runtimes:
+                    self.o3_runtimes[self._cur_bench_name] = self._compile_and_get_runtime_seq(sequence=[O3])
+                if self._cur_bench_name not in self.o0_runtimes:
+                    self.o0_runtimes[self._cur_bench_name] = self._compile_and_get_runtime_seq(sequence=[])
+                self._runtime_baseline = self.o3_runtimes[self._cur_bench_name]
+                # Initial
+                self._runtime_initial = self.o0_runtimes[self._cur_bench_name]
+            else:
+                self._runtime_baseline = self._compile_and_get_runtime_seq(sequence=[O3])
+                # Initial
+                self._runtime_initial = self._compile_and_get_runtime_seq(sequence=[])
             if self._runtime_initial < 1e-6 or self._runtime_baseline < 1e-6:
                 raise Exception("Runtime of benchmark too small")
             if self._debug:

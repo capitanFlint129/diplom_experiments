@@ -43,6 +43,10 @@ def train(
         benchmarks=train_benchmarks,
         rng=np.random.default_rng(config.random_state + 100),
     )
+    # RESUME:
+    # from dqn.replay_buffer import ReplayBufferForLSTM
+    # loaded = np.load("/home/flint/diplom/diplom_experiments/_FOR_RESUME_replay_buffer_cache/buffer_cache.npz")
+    # agent._replay_buffer.from_npz_loaded(loaded, 15010)
 
     train_env = RandomOrderBenchmarks(
         train_env,
@@ -68,7 +72,7 @@ def train(
 
     dataset = Dataset(name=run.name)
 
-    for episode_i in range(config.episodes):
+    for episode_i in range(1569, config.episodes):
         try:
             custom_train_env.reset()
         except Exception as e:
@@ -157,10 +161,7 @@ def train(
             train_history=train_history,
             episode_data=episode_data,
         )
-        if (
-            episode_i % config.validation_interval == 0
-            or episode_i == config.episodes - 1
-        ) and enable_validation:
+        if episode_i % 100 == 0:
             dataset.save()
             cache_dir = "_replay_buffer_cache"
             # data_file = os.path.join(cache_dir, f"{run.name}")
@@ -185,6 +186,14 @@ def train(
                         )
                     )
             agent._replay_buffer.save_to_npz(data_file)
+            save_model(
+               state_dict=agent.get_policy_net_state_dict(), model_name=f"{episode_i}_{run.name}", replace=True
+            )
+
+        if (
+            episode_i % config.validation_interval == 0
+            or episode_i == config.episodes - 1
+        ) and enable_validation:
             train_history.best_val_mean = _validation_during_train(
                 run=run,
                 episode_i=episode_i,

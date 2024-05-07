@@ -41,11 +41,11 @@ def main():
             mode="disabled",
         )
     else:
+        # RESUME set id="2siu0z6r", resume="must"
         run = wandb.init(
             project=WANDB_PROJECT_NAME,
             config=asdict(config),
             name=run_name,
-            # mode="disabled",
         )
     config.save(run.name)
     with make_env(config) as train_env:
@@ -56,6 +56,7 @@ def main():
             random_state=config.random_state,
             config=config,
         )
+        # RESUME set direct path to model
         agent = get_agent(config, device, policy_net_path=None)
         train(
             run,

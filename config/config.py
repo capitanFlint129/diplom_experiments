@@ -41,6 +41,7 @@ class TrainConfig:
     prepare_actions: list[str] = field(default_factory=lambda: [])
     enable_dueling_dqn: bool = False
     gamma: float = 0.9
+    # RESUME set epsilon
     epsilon: float = 1.0  # The starting value for epsilon
     epsilon_end: float = 0.05  # The ending value for epsilon
     epsilon_dec: float = 3e-5  # The decrement value for epsilon
@@ -113,7 +114,7 @@ class TrainConfig:
     # reward_space: str = "CfgInstructions"
     # reward_space: str = "MCA"
     observation_size: int = None
-    actions: list = field(default_factory=lambda: POSET_RL_ODG_O3)
+    actions: list = field(default_factory=lambda: O23_SUBSEQ_CBENCH_MINS)
     reward_scale: float = 1
     special_actions: list = field(
         default_factory=lambda: [
