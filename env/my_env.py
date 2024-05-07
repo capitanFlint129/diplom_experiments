@@ -37,3 +37,7 @@ class MyEnv(ABC):
     @abstractmethod
     def gather_data(self, without_train=False) -> tuple[float, float, float, float]:
         pass
+
+    @abstractmethod
+    def get_final_reward(self) -> float:
+        pass

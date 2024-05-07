@@ -268,6 +268,15 @@ class CfgGridEnv(MyEnv):
         else:
             self._cg_env.step(self._cg_env.action_space.flags.index(flags[0]))
         return 0
+    
+    def get_final_reward(self) -> float:
+        model_result = self._compile_and_get_instructions()
+        return (self._executed_insts_initial - model_result) / (
+            max(
+                self._executed_insts_initial - self._executed_insts_baseline,
+                1,
+            )
+        )
 
     def get_observation(self, obs_name):
         return get_observation_from_cg(self._cg_env, obs_name)

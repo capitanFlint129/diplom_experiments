@@ -59,17 +59,6 @@ class RuntimeEnv(MyEnv):
     def is_runtime(self) -> bool:
         return True
 
-    def gather_data(self, without_train=False) -> tuple[float, float, float, float]:
-        model_result = self._runtime_prev
-        if without_train:
-            model_result = self._compile_and_get_runtime_seq([])
-        return (
-            self._runtime_initial,
-            self._runtime_baseline,
-            self._runtime_baseline,
-            model_result,
-        )
-
     def get_cur_ir(self) -> CompilerEnv:
         return self._cg_env.observation["Ir"]
 
@@ -150,6 +139,26 @@ class RuntimeEnv(MyEnv):
         else:
             self._cg_env.step(self._cg_env.action_space.flags.index(flags[0]))
         return 0
+
+    def get_final_reward(self) -> float:
+        model_result = self._compile_and_get_runtime_seq([])
+        return (self._runtime_initial - model_result) / (
+            max(
+                self._runtime_initial - self._runtime_baseline,
+                1e-12,
+            )
+        )
+
+    def gather_data(self, without_train=False) -> tuple[float, float, float, float]:
+        model_result = self._runtime_prev
+        if without_train:
+            model_result = self._compile_and_get_runtime_seq([])
+        return (
+            self._runtime_initial,
+            self._runtime_baseline,
+            self._runtime_baseline,
+            model_result,
+        )
 
     def get_observation(self, obs_name):
         return get_observation_from_cg(self._cg_env, obs_name)

@@ -547,6 +547,7 @@ def rollout(
             enable_epsilon_greedy=False,
             forbidden_actions=None,
             eval_mode=True,
+            ignore_reward=True,
         )
         if step_result.value <= 0:
             episode_data.done = True
@@ -568,6 +569,7 @@ def rollout(
                     f"{config.actions[step_result.action]}({step_result.action}, {step_result.value})",
                     end=" ",
                 )
+    episode_data.total_reward = env.get_final_reward()
     if print_debug:
         print()
     if config.eval_with_bestsequence:
@@ -586,6 +588,7 @@ def episode_step(
     forbidden_actions: Optional[set[int]],
     enable_epsilon_greedy: bool,
     eval_mode: bool,
+    ignore_reward=False,
 ) -> StepResult:
     action, value = agent.choose_action(
         observation,
@@ -595,7 +598,10 @@ def episode_step(
     )
     flags = config.actions[action]
     flags = flags.split()
-    reward = env.step(flags)
+    if ignore_reward:
+        reward = env.step_ignore_reward(flags)
+    else:
+        reward = env.step(flags)
 
     base_observation = env.get_observation(config.observation_space)
     observation = observation_modifier.modify(base_observation, remains_steps, env=env)
