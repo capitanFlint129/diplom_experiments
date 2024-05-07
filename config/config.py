@@ -65,10 +65,10 @@ class TrainConfig:
     replace_period: int = 500
 
     # General section
-    dataset: str = "llvm_test_suite_benchmarks"
+    dataset: str = "benchmark://jotaibench-v0"
+    # dataset: str = "llvm_test_suite_benchmarks"
     jotai_improve_threshold_insts: int = 500
     llvm_test_suite_runtime_validation: bool = True
-    # dataset: str = "benchmark://jotaibench-v0"
     # datasets: list = field(
     #     default_factory=lambda: [
     #         # "benchmark://cbench-v1",
@@ -113,9 +113,9 @@ class TrainConfig:
             # "prev-2",
         ]
     )
-    val_size: Union[int, float] = 0.2
-    reward_space: str = "Runtime"
-    # reward_space: str = "CfgInstructions"
+    val_size: Union[int, float] = 0.01
+    # reward_space: str = "Runtime"
+    reward_space: str = "CfgInstructions"
     # reward_space: str = "MCA"
     observation_size: int = None
     actions: list = field(default_factory=lambda: POSET_RL_ODG_O3)

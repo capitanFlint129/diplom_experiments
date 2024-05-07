@@ -135,9 +135,14 @@ def prepare_datasets(
             if str(b).split("/")[-1].split(".")[0] not in config.skipped_benchmarks
         ]
         print(f"benchmarks number: {len(benchmarks)}")
-        train_llvm, val_llvm = train_test_split(
-            benchmarks, test_size=config.val_size, random_state=random_state
-        )
+        if config.dataset == "llvm_test_suite_benchmarks":
+            train_llvm, val_llvm = train_test_split(
+                benchmarks, test_size=config.val_size, random_state=random_state
+            )
+        else:
+            train_llvm, val_llvm = train_test_split(
+                benchmarks, test_size=0.2, random_state=random_state
+            )
         if config.dataset == "llvm_test_suite_benchmarks":
             return list(train_llvm), list(val_llvm), []
 
