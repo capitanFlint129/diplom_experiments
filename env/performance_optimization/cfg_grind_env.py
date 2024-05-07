@@ -45,6 +45,9 @@ class CfgGridSubsetEnv(MyEnv):
         # self._initial_ir = str(self._cg_env.observation["Ir"])
         self._cur_seq = []
 
+    def is_runtime(self) -> bool:
+        return False
+
     def get_cur_ir(self) -> CompilerEnv:
         return self._cg_env.observation["Ir"]
 
@@ -95,7 +98,7 @@ class CfgGridSubsetEnv(MyEnv):
                     int(0.01 * self._executed_insts_initial),
                 )
                 print(f"prepare actions improve: {prepare_improve}")
-                return
+                return True
             except ValueError as e:
                 print(e, file=sys.stderr)
             except Exception as e:
@@ -179,6 +182,9 @@ class CfgGridEnv(MyEnv):
         self._executed_insts_o2 = None
         self._debug = debug
 
+    def is_runtime(self) -> bool:
+        return False
+
     def get_cur_ir(self) -> CompilerEnv:
         return self._cg_env.observation["Ir"]
 
@@ -204,12 +210,17 @@ class CfgGridEnv(MyEnv):
 
                 # Initial
                 self._executed_insts_initial = self._compile_and_get_instructions()
+                if (
+                    self._executed_insts_initial - self._executed_insts_baseline
+                    < self._config.jotai_improve_threshold_insts
+                ):
+                    return False
                 if self._debug:
                     print(
                         f"O3: {self._executed_insts_o3} - O0: {self._executed_insts_initial}"
                     )
                 self._executed_insts_prev = self._executed_insts_initial
-                return
+                return True
             except ValueError as e:
                 print(e, file=sys.stderr)
             except Exception as e:

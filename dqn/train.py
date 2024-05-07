@@ -4,7 +4,6 @@ import sys
 from subprocess import TimeoutExpired
 from typing import Optional
 
-from other_experiments.classifier.dataset import Dataset
 import numpy as np
 import torch
 from compiler_gym.envs import CompilerEnv
@@ -23,6 +22,7 @@ from env.performance_optimization.cfg_grind_env import CfgGridEnv, CfgGridSubset
 from env.performance_optimization.mca_env import CgLlvmMcaEnv
 from env.performance_optimization.runtime_env import RuntimeEnv
 from observation.utils import ObservationModifier
+from other_experiments.classifier.dataset import Dataset
 from utils import save_model, ValidationResult
 
 
@@ -72,9 +72,13 @@ def train(
 
     dataset = Dataset(name=run.name)
 
-    for episode_i in range(1569, config.episodes):
+    # RESUME set episode_i
+    for episode_i in range(config.episodes):
         try:
-            custom_train_env.reset()
+            while True:
+                reset_res = custom_train_env.reset()
+                if reset_res:
+                    break
         except Exception as e:
             print(f"train step failed skip it: {e}")
             continue
@@ -187,7 +191,9 @@ def train(
                     )
             agent._replay_buffer.save_to_npz(data_file)
             save_model(
-               state_dict=agent.get_policy_net_state_dict(), model_name=f"{episode_i}_{run.name}", replace=True
+                state_dict=agent.get_policy_net_state_dict(),
+                model_name=f"{episode_i}_{run.name}",
+                replace=True,
             )
 
         if (
@@ -238,6 +244,10 @@ def _get_envs(
             custom_validation_env = RuntimeEnv(config, validation_env)
         else:
             raise NotImplementedError()
+        if config.llvm_test_suite_runtime_validation:
+            custom_validation_env = RuntimeEnv(
+                config, validation_env, llvm_test_suite_env=True
+            )
     else:
         raise Exception("unknown reward space")
     return custom_train_env, custom_validation_env, custom_runtime_validation_env
@@ -441,7 +451,7 @@ def validate(
                 episode_data = rollout(
                     agent, env, config, use_actions_masking=use_actions_masking
                 )
-                if config.reward_space == "Runtime":
+                if env.is_runtime():
                     runtime_episode_data = episode_data
                 else:
                     runtime_episode_data = rollout(

@@ -10,6 +10,10 @@ class MyEnv(ABC):
         pass
 
     @abstractmethod
+    def is_runtime(self) -> bool:
+        pass
+
+    @abstractmethod
     def reset(self, benchmark=None, val=False) -> None:
         pass
 

@@ -120,18 +120,26 @@ def prepare_datasets(
     random_state: int,
     config: TrainConfig,
 ) -> tuple[list, list, list]:
-    if config.dataset == "llvm_test_suite_benchmarks":
+    if (
+        config.dataset == "llvm_test_suite_benchmarks"
+        or config.llvm_test_suite_runtime_validation
+    ):
         files = os.listdir(LLVM_TEST_SUITE_DATASET_PATH)
         benchmarks = [
             env.make_benchmark(os.path.join(LLVM_TEST_SUITE_DATASET_PATH, f))
             for f in files
         ]
-        benchmarks = [b for b in benchmarks if str(b).split("/")[-1].split(".")[0] not in config.skipped_benchmarks]
+        benchmarks = [
+            b
+            for b in benchmarks
+            if str(b).split("/")[-1].split(".")[0] not in config.skipped_benchmarks
+        ]
         print(f"benchmarks number: {len(benchmarks)}")
-        train, val = train_test_split(
+        train_llvm, val_llvm = train_test_split(
             benchmarks, test_size=config.val_size, random_state=random_state
         )
-        return list(train), list(val), []
+        if config.dataset == "llvm_test_suite_benchmarks":
+            return list(train_llvm), list(val_llvm), []
 
     # train_dataset_name = "benchmark://anghabench-v1"
     dataset_name = config.dataset
@@ -157,10 +165,12 @@ def prepare_datasets(
     train, val = train_test_split(
         benchmarks, test_size=config.val_size, random_state=random_state
     )
-    test = env.datasets[test_dataset_name]
+    # test = env.datasets[test_dataset_name]
     # train = env.datasets[test_dataset_name]
     # val = env.datasets[test_dataset_name]
-    return list(train), list(val), list(test)
+    if config.llvm_test_suite_runtime_validation:
+        return list(train), list(val_llvm), []
+    return list(train), list(val), []
 
 
 def get_last_model_wandb_naming(models_dir: str) -> str:

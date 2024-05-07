@@ -35,6 +35,9 @@ class CgLlvmMcaEnv(MyEnv):
         self._rblock_throughput_baseline = None
         self._rblock_throughput_o2 = None
 
+    def is_runtime(self) -> bool:
+        return False
+
     def get_cur_ir(self) -> CompilerEnv:
         return self._cg_env.observation["Ir"]
 
@@ -58,7 +61,7 @@ class CgLlvmMcaEnv(MyEnv):
                 )
 
                 self._rblock_throughput_prev = self._rblock_throughput_initial
-                return
+                return True
             except ValueError as e:
                 print(e, file=sys.stderr)
             except Exception as e:
@@ -94,12 +97,15 @@ class CgLlvmMcaEnv(MyEnv):
     def get_observation(self, obs_name):
         return get_observation_from_cg(self._cg_env, obs_name)
 
-    def gather_data(self) -> tuple[float, float, float, float]:
+    def gather_data(self, without_train=False) -> tuple[float, float, float, float]:
+        model_result = self._rblock_throughput_prev
+        if without_train:
+            model_result = self._compile_and_get_instructions()
         return (
             self._rblock_throughput_initial,
             self._rblock_throughput_o2,
             self._rblock_throughput_baseline,
-            self._rblock_throughput_prev,
+            model_result,
         )
 
 
@@ -114,6 +120,9 @@ class LlvmMcaEnv(MyEnv):
         self._filepath_o3 = os.path.join(self._tmp_dir, self._filename_o3)
         self._config = config
         self._opts = []
+
+    def is_runtime(self) -> bool:
+        return False
 
     def get_cur_ir(self) -> CompilerEnv:
         return self._cg_env.observation["Ir"]
@@ -146,7 +155,7 @@ class LlvmMcaEnv(MyEnv):
                         self._filepath
                     )
                     # print(f"O3 - {o3_rb} | O0 - {self._rblock_throughput_initial}")
-                    return
+                    return True
             except ValueError as e:
                 print(e, file=sys.stderr)
             except Exception as e:
