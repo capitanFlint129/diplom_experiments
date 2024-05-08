@@ -190,7 +190,7 @@ def _measure_runtime(
     warmup=0,
 ) -> float:
     filename = f"_runtime_env_hyperfine_result.json"
-    command = f"hyperfine --warmup {warmup} --runs {runs} '{bin_path}' --export-json {filename} --show-output"
+    command = f"hyperfine --warmup {warmup} --runs {runs} '{bin_path} {execution_args}' --export-json {filename} --show-output"
     proc = subprocess.run(
         command,
         shell=True,
