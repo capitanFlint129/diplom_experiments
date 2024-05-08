@@ -68,7 +68,7 @@ class TrainConfig:
     dataset: str = "benchmark://jotaibench-v0"
     # dataset: str = "llvm_test_suite_benchmarks"
     jotai_improve_threshold_insts: int = 500
-    llvm_test_suite_runtime_validation: bool = True
+    llvm_test_suite_runtime_validation: bool = False
     # datasets: list = field(
     #     default_factory=lambda: [
     #         # "benchmark://cbench-v1",
@@ -96,7 +96,8 @@ class TrainConfig:
         ]
     )
     compiler_gym_env: str = "llvm-v0"
-    observation_space: str = "IR2Vec+InstCountNorm+AutophaseNorm"
+    observation_space: str = "AutophaseNorm"
+    # observation_space: str = "IR2Vec+InstCountNorm+AutophaseNorm"
     # observation_space: list = field(
     #     default_factory=lambda: [
     #         # "IR2Vec",
@@ -118,7 +119,7 @@ class TrainConfig:
     reward_space: str = "CfgInstructions"
     # reward_space: str = "MCA"
     observation_size: int = None
-    actions: list = field(default_factory=lambda: POSET_RL_ODG_O3)
+    actions: list = field(default_factory=lambda: O23_SUBSEQ_POSET_LIKE)
     reward_scale: float = 1
     special_actions: list = field(
         default_factory=lambda: [

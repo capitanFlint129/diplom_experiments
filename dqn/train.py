@@ -245,7 +245,7 @@ def _get_envs(
         else:
             raise NotImplementedError()
         if config.llvm_test_suite_runtime_validation:
-            custom_validation_env = RuntimeEnv(
+            custom_runtime_validation_env = RuntimeEnv(
                 config, validation_env, llvm_test_suite_env=True
             )
     else:
