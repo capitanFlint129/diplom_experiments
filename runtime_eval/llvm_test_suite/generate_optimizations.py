@@ -20,15 +20,6 @@ from utils import (
 
 
 def _find_bc_files(directory: str) -> list:
-    """
-    Recursively traverses a directory and its subdirectories, and returns a list of all files with the .bc extension.
-
-    Args:
-        directory (str): The path to the directory to traverse.
-
-    Returns:
-        list: A list of file paths for all .bc files found in the directory and its subdirectories.
-    """
     bc_files = []
     for root, _, files in os.walk(directory):
         for file in files:
@@ -50,7 +41,7 @@ def init_worker(function):
     function.agent = get_agent(
         config,
         device,
-        policy_net_path=get_model_path(args.run_name),
+        policy_net_path=get_model_path(args.run_name, last_checkpoint=args.last_iter),
     )
 
 
@@ -93,7 +84,6 @@ def process_benchmark(benchmark_data: BenchmarkData, env=None, agent=None):
 
 
 def main():
-
     bc_files = _find_bc_files(LLVM_TEST_SUITE_PATH)
 
     benchmarks = [
@@ -111,7 +101,9 @@ def main():
         agent = get_agent(
             config,
             device,
-            policy_net_path=get_model_path(args.run_name),
+            policy_net_path=get_model_path(
+                args.run_name, last_checkpoint=args.last_iter
+            ),
         )
         results = []
         for benchmark in tqdm(benchmarks):
@@ -158,6 +150,11 @@ if __name__ == "__main__":
     parser.add_argument(
         "--hack",
         help="eval_mode",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--last_iter",
+        help="last_iter",
         action="store_true",
     )
     args = parser.parse_args()

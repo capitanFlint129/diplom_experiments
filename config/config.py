@@ -96,7 +96,7 @@ class TrainConfig:
         ]
     )
     compiler_gym_env: str = "llvm-v0"
-    observation_space: str = "AutophaseNorm"
+    observation_space: str = "IR2Vec+InstCountNorm+AutophaseNorm"
     # observation_space: str = "IR2Vec+InstCountNorm+AutophaseNorm"
     # observation_space: list = field(
     #     default_factory=lambda: [

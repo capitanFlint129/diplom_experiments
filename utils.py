@@ -97,8 +97,50 @@ def save_model(state_dict, model_name: str, replace: bool = True):
     torch.save(state_dict, get_model_path(model_name))
 
 
-def get_model_path(model_name: str) -> str:
-    return os.path.join(MODELS_DIR, WANDB_PROJECT_NAME, f"{model_name}.pth")
+def get_model_path(model_name: str, last_checkpoint: bool = False) -> str:
+    result = os.path.join(MODELS_DIR, WANDB_PROJECT_NAME, f"{model_name}.pth")
+    if last_checkpoint:
+        model_id = model_name.split("-")[-1]
+        assert model_id.isdecimal()
+        model_id = int(model_id)
+        models_dir = os.path.join(MODELS_DIR, WANDB_PROJECT_NAME)
+        models_files_with_run_id = [
+            (filename.split("-")[-1].split(".")[0], filename)
+            for filename in list(os.listdir(models_dir))
+            if not filename.endswith(".json")
+        ]
+        model_checkpoints_filenames = [
+            filename
+            for (int_run_id, filename) in models_files_with_run_id
+            if int_run_id.isdecimal() and int(int_run_id) == model_id
+        ]
+        max_found = -1
+        for filename in model_checkpoints_filenames:
+            checkpoint_iter = filename.split("_")[0]
+            # if not checkpoint_iter.isdecimal() and checkpoint_iter != "best":
+            #     result = os.path.join(MODELS_DIR, WANDB_PROJECT_NAME, f"{filename}.pth")
+            #     print(f"LOAD MODEL FROM {result}")
+            #     return result
+            if checkpoint_iter.isdecimal() and int(checkpoint_iter) > max_found:
+                max_found = int(checkpoint_iter)
+        result = os.path.join(
+            MODELS_DIR, WANDB_PROJECT_NAME, f"{max_found}_{model_name}.pth"
+        )
+    print(f"LOAD MODEL FROM {result}")
+    return result
+
+
+def get_last_checkpoint(model_name: str) -> str:
+    models_files_with_run_id = [
+        (filename.split("-")[-1].split(".")[0], filename)
+        for filename in list(os.listdir(models_dir))
+    ]
+    models_files_with_run_id = [
+        (int(int_run_id), filename)
+        for (int_run_id, filename) in models_files_with_run_id
+        if int_run_id.isdecimal()
+    ]
+    return sorted(models_files_with_run_id)[-1][1]
 
 
 def make_env(config: TrainConfig):
@@ -385,8 +427,8 @@ def optimize_with_model(
                 print(f"{config.actions[action]}({action}, {value})", end=" ")
         flags.append(config.actions[action])
         prev_obs = obs
-        if len(cur_flags) > 0 and cur_flags[0] == "noop":
-            break
+        # if len(cur_flags) > 0 and cur_flags[0] == "noop":
+        # break
     if print_debug:
         print()
     return flags
@@ -411,6 +453,9 @@ def get_observation_from_cg(env: CompilerEnv, obs_name: str) -> np.ndarray:
                 autophase / autophase[-5],
             ]
         )
+    elif obs_name == "AutophaseNorm":
+        autophase = env.observation["Autophase"]
+        return autophase / autophase[-5]
     else:
         return env.observation[obs_name]
 
