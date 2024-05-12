@@ -6,6 +6,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from env.performance_optimization.llvm import compile_one_source_with_opt_sequence
+from runtime_eval.jotai.consts import TMP_DATA_DIR
 
 BASELINE_SEQUENCES = {
     "O3": ["-O3"],
@@ -17,6 +18,7 @@ JOTAI_SRC_PATH = [
     "/home/flint/diplom/jotai-benchmarks/benchmarks/anghaLeaves",
     "/home/flint/diplom/jotai-benchmarks/benchmarks/anghaMath",
 ]
+
 
 def get_benchmark_source_path(benchmark_name):
     for path in JOTAI_SRC_PATH:
@@ -31,34 +33,34 @@ def process_benchmark(data: tuple[str, str]):
     tmpfilename = f"{p.name}.o"
 
     def _compile(linkopts, model_sequence):
-        compile_one_source_with_opt_sequence(
-            source_path=source_path,
-            result_path=f"{RUN_DIR_PATH}/O0/{benchmark_name}",
-            sequence=[],
-            linkopts=linkopts,
-            tmpfilename=tmpfilename,
-        )
-        compile_one_source_with_opt_sequence(
-            source_path=source_path,
-            result_path=f"{RUN_DIR_PATH}/O2/{benchmark_name}",
-            sequence=["-O2"],
-            linkopts=linkopts,
-            tmpfilename=tmpfilename,
-        )
-        compile_one_source_with_opt_sequence(
-            source_path=source_path,
-            result_path=f"{RUN_DIR_PATH}/O3/{benchmark_name}",
-            sequence=["-O3"],
-            linkopts=linkopts,
-            tmpfilename=tmpfilename,
-        )
+        # compile_one_source_with_opt_sequence(
+        #     source_path=source_path,
+        #     result_path=f"{RUN_DIR_PATH}/O0/{benchmark_name}",
+        #     sequence=[],
+        #     linkopts=linkopts,
+        #     tmpfilename=tmpfilename,
+        # )
+        # compile_one_source_with_opt_sequence(
+        #     source_path=source_path,
+        #     result_path=f"{RUN_DIR_PATH}/O2/{benchmark_name}",
+        #     sequence=["-O2"],
+        #     linkopts=linkopts,
+        #     tmpfilename=tmpfilename,
+        # )
+        # compile_one_source_with_opt_sequence(
+        #     source_path=source_path,
+        #     result_path=f"{RUN_DIR_PATH}/O3/{benchmark_name}",
+        #     sequence=["-O3"],
+        #     linkopts=linkopts,
+        #     tmpfilename=tmpfilename,
+        # )
         if not isinstance(model_sequence, str):
             model_sequence = ""
             print(f"model_sequence is not str: {model_sequence}")
 
         compile_one_source_with_opt_sequence(
             source_path=source_path,
-            result_path=f"{RUN_DIR_PATH}/model/{benchmark_name}",
+            result_path=f"{RUN_DIR_PATH}/bin/{benchmark_name}",
             sequence=model_sequence.split(),
             linkopts=linkopts,
             tmpfilename=tmpfilename,
@@ -79,10 +81,10 @@ def process_benchmark(data: tuple[str, str]):
 def main():
     filename = f"{RUN_DIR_PATH}/optimizations.csv"
     print(filename)
-    os.makedirs(f"{RUN_DIR_PATH}/O0", exist_ok=True)
-    os.makedirs(f"{RUN_DIR_PATH}/O2", exist_ok=True)
-    os.makedirs(f"{RUN_DIR_PATH}/O3", exist_ok=True)
-    os.makedirs(f"{RUN_DIR_PATH}/model", exist_ok=True)
+    # os.makedirs(f"{RUN_DIR_PATH}/O0", exist_ok=True)
+    # os.makedirs(f"{RUN_DIR_PATH}/O2", exist_ok=True)
+    # os.makedirs(f"{RUN_DIR_PATH}/O3", exist_ok=True)
+    os.makedirs(f"{RUN_DIR_PATH}/bin", exist_ok=True)
     model_optimizations = pd.read_csv(filename)
 
     # for el in zip(model_optimizations.benchmark, model_optimizations.optimizations):
@@ -110,7 +112,7 @@ if __name__ == "__main__":
         action="store_true",
     )
     args = parser.parse_args()
-    
-    RUN_DIR_PATH = f"_runtime_eval/{args.run_name}"
-    
+
+    RUN_DIR_PATH = f"{TMP_DATA_DIR}/{args.run_name}"
+
     main()
