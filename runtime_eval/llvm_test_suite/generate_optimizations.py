@@ -38,11 +38,16 @@ class BenchmarkData:
 def init_worker(function):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     function.env = make_env(config)
-    function.agent = get_agent(
-        config,
-        device,
-        policy_net_path=get_model_path(args.run_name, last_checkpoint=args.last_iter),
-    )
+    if args.o3:
+        function.agent = None
+    else:
+        function.agent = get_agent(
+            config,
+            device,
+            policy_net_path=get_model_path(
+                args.run_name, last_checkpoint=args.last_iter
+            ),
+        )
 
 
 def process_benchmark(benchmark_data: BenchmarkData, env=None, agent=None):
@@ -58,22 +63,25 @@ def process_benchmark(benchmark_data: BenchmarkData, env=None, agent=None):
         print(e)
         return None
 
-    try:
-        flags = optimize_with_model(
-            config,
-            agent,
-            env,
-            eval_mode=True,
-            iters=config.episode_length,
-            print_debug=False,
-            hack=args.hack,
-        )
-    except TimeoutExpired as e:
-        print(f"IR2vec timeout skip benchmark: {e}")
-        return None, None
-    except Exception as e:
-        print(f"Exception. Skip benchmark: {e}")
-        return None, None
+    if args.o3:
+        flags = ["-O3"]
+    else:
+        try:
+            flags = optimize_with_model(
+                config,
+                agent,
+                env,
+                eval_mode=True,
+                iters=config.episode_length,
+                print_debug=False,
+                hack=args.hack,
+            )
+        except TimeoutExpired as e:
+            print(f"IR2vec timeout skip benchmark: {e}")
+            return None, None
+        except Exception as e:
+            print(f"Exception. Skip benchmark: {e}")
+            return None, None
 
     optimizations = []
     for f in flags:
@@ -98,13 +106,16 @@ def main():
     if args.no_parallel:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         env = make_env(config)
-        agent = get_agent(
-            config,
-            device,
-            policy_net_path=get_model_path(
-                args.run_name, last_checkpoint=args.last_iter
-            ),
-        )
+        if args.o3:
+            agent = None
+        else:
+            agent = get_agent(
+                config,
+                device,
+                policy_net_path=get_model_path(
+                    args.run_name, last_checkpoint=args.last_iter
+                ),
+            )
         results = []
         for benchmark in tqdm(benchmarks):
             results.append(process_benchmark(benchmark, env, agent))
@@ -157,7 +168,15 @@ if __name__ == "__main__":
         help="last_iter",
         action="store_true",
     )
+    parser.add_argument(
+        "--o3",
+        help="ignore model and compile with -O3",
+        action="store_true",
+    )
     args = parser.parse_args()
-    config = TrainConfig.load_config(args.run_name)
+    if args.o3:
+        config = TrainConfig()
+    else:
+        config = TrainConfig.load_config(args.run_name)
 
     main()
