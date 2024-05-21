@@ -296,6 +296,14 @@ O23_SUBSET_SEQUENCE_V2 = [
     "-strip-dead-prototypes -globaldce -constmerge -loop-simplify -lcssa -loop-sink -instsimplify -div-rem-pairs -simplifycfg",
 ]
 
+MICOMP_O3 = [
+    "-ipsccp -globalopt -deadargelim -simplifycfg -functionattrs -argpromotion -sroa -jump-threading -reassociate -indvars -mldst-motion -lcssa -rpo-functionattrs -bdce -dse -inferattrs -prune-eh -alignment-from-assumptions -barrier -loop-unswitch -float2int -forceattrs -loop-idiom -gvn -loop-deletion -loop-unroll -loop-vectorize -sccp -strip-dead-prototypes -inline -globaldce -constmerge",
+    "-licm -mem2reg",
+    "-loop-rotate -instcombine -loop-simplify",
+    "-memcpyopt",
+    "-loop-unswitch -adce -slp-vectorizer -tailcallelim",
+]
+
 
 O3_SEQ_NO_ANALITICAL = [
     "-ee-instrument",
