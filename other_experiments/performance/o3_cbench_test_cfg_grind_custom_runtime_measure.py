@@ -1,9 +1,11 @@
+from scipy import stats
 import argparse
 import os
 from subprocess import TimeoutExpired
 
 import compiler_gym
 import gym
+import numpy as np
 import pandas as pd
 import torch
 from compiler_gym import CompilerEnv
@@ -194,6 +196,12 @@ def main():
         "model": {},
     }
 
+    obs_times = {
+        "Autophase": [],
+        "InstCount": [],
+        "IR2Vec": [],
+    }
+
     for benchmark in tqdm(benchmarks[:BENCHMARKS_LIMIT]):
         benchmark_name = str(benchmark).rsplit("/", maxsplit=1)[-1]
         if benchmark_name in skipped_benchmarks:
@@ -216,14 +224,17 @@ def main():
 
             new_env.reset()
             try:
-                flags = optimize_with_model(
+                flags, times = optimize_with_model(
                     config,
                     agent,
                     new_env,
                     iters=episode_len,
                     eval_mode=not args.disable_eval_mode,
                     hack=args.hack,
+                    measure_time=True,
                 )
+                for obs_name in times:
+                    obs_times[obs_name] += times[obs_name]
             except TimeoutExpired as e:
                 print(f"IR2vec timeout skip benchmark: {e}")
             except Exception as e:
@@ -321,6 +332,20 @@ def main():
         os.path.join(CBENCH_EVAL_DIR, args.run_name, "runtime_measure_std.csv")
     )
     save_hyperfine_whisker_plots(hypefine_results)
+    for obs in obs_times:
+        print(obs)
+        print(np.mean(obs_times[obs]))
+        print(
+            stats.norm.interval(
+                0.95,
+                loc=np.mean(obs_times[obs]),
+                scale=np.std(obs_times[obs]) / np.sqrt(len(obs_times[obs])),
+            )
+        )
+    save_whisker_plot(
+        {el: {"times": obs_times[el]} for el in obs_times},
+        result_filename="vec_whisker_plots.svg",
+    )
     print_df(pd_results)
     print_df(pd_results_std)
     print(pd_results.drop(columns=["benchmark"]).mean())

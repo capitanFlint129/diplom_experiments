@@ -12,6 +12,7 @@ import plotly.graph_objects as go
 import torch
 from compiler_gym.datasets import FilesDataset
 from compiler_gym.envs import CompilerEnv, LlvmEnv
+from compiler_gym.util.timer import Timer
 from sklearn.model_selection import train_test_split
 
 import wandb
@@ -374,6 +375,7 @@ def optimize_with_model(
     iters=10,
     print_debug=True,
     hack: bool = False,
+    measure_time=False,
 ) -> list[str]:
     if print_debug:
         print(f"Eval mode: {eval_mode} - hack: {hack}")
@@ -384,8 +386,22 @@ def optimize_with_model(
     observation_modifier = ObservationModifier(
         None, config.observation_modifiers, config.episode_length
     )
+    obs_times = {
+        "Autophase": [],
+        "InstCount": [],
+        "IR2Vec": [],
+    }
     for i in range(iters):
-        base_observation = get_observation_from_cg(env, config.observation_space)
+        if measure_time:
+            base_observation, times = get_observation_from_cg(
+                env, config.observation_space, measure_time=measure_time
+            )
+            for obs_name in times:
+                obs_times[obs_name].append(times[obs_name])
+        else:
+            base_observation, times = get_observation_from_cg(
+                env, config.observation_space, measure_time=measure_time
+            )
         obs = observation_modifier.modify(
             base_observation, config.episode_length - i, ir=env.observation["Ir"]
         )
@@ -431,20 +447,47 @@ def optimize_with_model(
         # break
     if print_debug:
         print()
-    return flags
+    if measure_time:
+        return flags, obs_times
+    else:
+        return flags
 
 
-def get_observation_from_cg(env: CompilerEnv, obs_name: str) -> np.ndarray:
+def get_observation_from_cg(
+    env: CompilerEnv, obs_name: str, measure_time: bool = False
+) -> np.ndarray:
     if obs_name == "IR2Vec":
         return get_ir2vec(env.observation["Ir"])
     elif obs_name == "IR2Vec+InstCountNorm+AutophaseNorm":
-        return np.concatenate(
-            [
-                get_ir2vec(env.observation["Ir"]),
-                env.observation["InstCountNorm"],
-                env.observation["Autophase"] / env.observation["IrInstructionCount"],
-            ]
-        )
+        if measure_time:
+            obs_times = {
+                "Autophase": None,
+                "InstCount": None,
+                "IR2Vec": None,
+            }
+            obses = []
+            with Timer() as timer:
+                obses.append(get_ir2vec(env.observation["Ir"]))
+            obs_times["IR2Vec"] = timer.time
+            with Timer() as timer:
+                obses.append(env.observation["InstCountNorm"])
+            obs_times["InstCount"] = timer.time
+            with Timer() as timer:
+                env.observation["Autophase"]
+            obs_times["Autophase"] = timer.time
+            obses.append(
+                env.observation["Autophase"] / env.observation["IrInstructionCount"]
+            )
+            return np.concatenate(obses), obs_times
+        else:
+            return np.concatenate(
+                [
+                    get_ir2vec(env.observation["Ir"]),
+                    env.observation["InstCountNorm"],
+                    env.observation["Autophase"]
+                    / env.observation["IrInstructionCount"],
+                ]
+            )
     elif obs_name == "InstCountNorm+AutophaseNorm":
         autophase = env.observation["Autophase"]
         return np.concatenate(
