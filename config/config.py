@@ -166,6 +166,8 @@ class TrainConfig:
 
     @staticmethod
     def load_config(run_name: str) -> "TrainConfig":
+        if run_name.split("-")[0].isdecimal():
+            run_name = run_name.split("-", maxsplit=1)[1]
         with open(
             os.path.join(MODELS_DIR_PROJECT, f"{run_name}_config.json"), "r"
         ) as inf:
