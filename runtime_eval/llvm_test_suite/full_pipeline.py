@@ -137,7 +137,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--hack",
-        help="eval_mode",
+        help="use action masking for inference",
         action="store_true",
     )
     # parser.add_argument(
@@ -147,6 +147,7 @@ if __name__ == "__main__":
     # )
     parser.add_argument(
         "--lit_runs",
+        help="number of runs in llvm test suite infrastructure",
         type=int,
         default=1,
     )

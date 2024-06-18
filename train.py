@@ -23,7 +23,7 @@ def main():
         max(
             [
                 int(r.name.split("-")[-1])
-                for r in api.runs(f"tekkengod/{WANDB_PROJECT_NAME}")
+                for r in api.runs(f"{args.wandb_user}/{WANDB_PROJECT_NAME}")
                 if r.name.split("-")[-1].isdecimal()
             ]
         )
@@ -94,6 +94,7 @@ def main():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("run_name", help="run name")
+    parser.add_argument("wandb_user", help="run name")
     parser.add_argument(
         "--test",
         help="test",
