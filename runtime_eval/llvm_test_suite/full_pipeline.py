@@ -7,9 +7,15 @@ from runtime_eval.llvm_test_suite.consts import (
     LLVM_TEST_SUITE_TEST_PATH,
     TMP_DATA_DIR,
     LLVM_TEST_SUITE_TEST_PATH_O3_COMPILED,
+    LLVM_TEST_SUITE_TEST_PATH_O0_COMPILED,
 )
 
 MODELS = [
+    # "__o0",
+    # награда
+    # "best_model_mca-228",
+    "best_model_insts-229",
+    # "best_model_runtime-230",
     # представления
     # "autophase-264",
     # "ir2vec-265",
@@ -115,11 +121,34 @@ def lit_run_o3(model_name: str, runs: int = 1):
         )
 
 
+def lit_run_o0(model_name: str, runs: int = 1):
+    run_dir_path = f"{TMP_DATA_DIR}/{model_name}"
+    results_path = f"{run_dir_path}/results"
+    os.makedirs(results_path, exist_ok=True)
+    for i in range(runs):
+        result_filename = f"{model_name}_{i}.json"
+        proc = subprocess.run(
+            f"sudo lit -v -j 1 --time-tests -o {result_filename} .",
+            shell=True,
+            capture_output=True,
+            cwd=LLVM_TEST_SUITE_TEST_PATH_O0_COMPILED,
+        )
+        if proc.returncode != 0:
+            print("ERROR: tests failed")
+            print(proc.stderr)
+        shutil.copy(
+            os.path.join(LLVM_TEST_SUITE_TEST_PATH_O0_COMPILED, result_filename),
+            os.path.join(results_path, result_filename),
+        )
+
+
 def main():
     for i, model_name in enumerate(MODELS):
         print(f"Model {i + 1}/{len(MODELS)}: {model_name}")
         if model_name == "__o3":
             lit_run_o3(model_name, runs=args.lit_runs)
+        elif model_name == "__o0":
+            lit_run_o0(model_name, runs=args.lit_runs)
         elif model_name == "__o3_opt":
             generate_optimizations(model_name, o3=True)
             compile_with_optimizations(model_name)
@@ -137,7 +166,7 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--hack",
-        help="eval_mode",
+        help="use action masking for inference",
         action="store_true",
     )
     # parser.add_argument(
@@ -147,8 +176,9 @@ if __name__ == "__main__":
     # )
     parser.add_argument(
         "--lit_runs",
+        help="number of runs in llvm test suite infrastructure",
         type=int,
-        default=1,
+        default=3,
     )
     args = parser.parse_args()
 

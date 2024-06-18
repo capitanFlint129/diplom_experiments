@@ -11,22 +11,22 @@ from runtime_eval.llvm_test_suite.consts import (
 
 MODELS = [
     # награда
-    # "best_model_mca-228",
-    # "best_model_insts-229",
-    # "best_model_runtime-230",
+    "best_model_mca-228",
+    "best_model_insts-229",
+    "best_model_runtime-230",
     # # представления
-    # "autophase-264",
-    # "ir2vec-265",
-    # "instcount-271",
+    "autophase-264",
+    "ir2vec-265",
+    "instcount-271",
     # # пространства действий
-    # "poset_odg-259",
-    # "poset_manual_o3-260",
-    # "micomp_actions-270",
-    # "poset_o23_manual_with_o23-272",
-    # "o3_with_full_action_set-275",
+    "poset_odg-259",
+    "poset_manual_o3-260",
+    "micomp_actions-270",
+    "poset_o23_manual_with_o23-272",
+    "o3_with_full_action_set-275",
     # # особые случаи
     # # "__o3",
-    # "__o3_opt",
+    "__o3_opt",
     "__o0_opt",
 ]
 
